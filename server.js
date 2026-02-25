@@ -1822,10 +1822,45 @@ app.post('/api/attendance/get-timer-state', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Student ID required' });
         }
 
+        console.log('🔍 Getting timer state for:', studentId);
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Find active session
+        // CRITICAL: Check StudentManagement first (new system)
+        const isValidObjectId = mongoose.Types.ObjectId.isValid(studentId) &&
+            /^[0-9a-fA-F]{24}$/.test(studentId);
+
+        let student;
+        if (isValidObjectId) {
+            student = await StudentManagement.findOne({
+                $or: [
+                    { _id: studentId },
+                    { enrollmentNo: studentId }
+                ]
+            });
+        } else {
+            student = await StudentManagement.findOne({ enrollmentNo: studentId });
+        }
+
+        if (student && student.isRunning) {
+            // Student has active timer in StudentManagement
+            console.log(`✅ Found active timer in StudentManagement: ${student.timerValue}s`);
+            return res.json({
+                success: true,
+                timerState: {
+                    attendedSeconds: student.timerValue || 0,
+                    totalLectureSeconds: 3600, // Default 1 hour
+                    isRunning: student.isRunning,
+                    isPaused: false,
+                    sessionId: student._id.toString(),
+                    gracePeriodsUsed: 0
+                },
+                serverTime: Date.now()
+            });
+        }
+
+        // Fallback: Check AttendanceSession (legacy system)
         const session = await AttendanceSession.findOne({
             studentId,
             date: today,
@@ -1833,6 +1868,7 @@ app.post('/api/attendance/get-timer-state', async (req, res) => {
         });
 
         if (!session) {
+            console.log('⚠️ No active session found');
             return res.json({
                 success: true,
                 timerState: {
@@ -1845,7 +1881,7 @@ app.post('/api/attendance/get-timer-state', async (req, res) => {
             });
         }
 
-        // Calculate current attended time
+        // Calculate current attended time from session
         const now = Date.now();
         const sessionStart = new Date(session.sessionStartTime).getTime();
         let attendedSeconds = Math.floor((now - sessionStart) / 1000);

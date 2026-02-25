@@ -1391,10 +1391,13 @@ io.on('connection', (socket) => {
 
                     if (student) {
                         console.log(`✅ Found student: ${student.name} (${student.enrollmentNo})`);
+                        console.log(`📝 Update data received:`, { timerValue, isRunning, status });
+                        console.log(`📝 isRunning type:`, typeof isRunning, `value:`, isRunning);
+                        
                         const updateResult = await StudentManagement.findByIdAndUpdate(student._id, {
-                            timerValue,
-                            isRunning,
-                            status,
+                            timerValue: timerValue,
+                            isRunning: isRunning,
+                            status: status,
                             lastUpdated: new Date()
                         }, { new: true });
 
@@ -1404,6 +1407,7 @@ io.on('connection', (socket) => {
                             status: updateResult.status,
                             timerValue: updateResult.timerValue
                         });
+                        console.log(`💾 Full update result:`, updateResult);
 
                         // Broadcast with enrollmentNo for teacher matching
                         io.emit('student_update', {

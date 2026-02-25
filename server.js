@@ -2220,33 +2220,74 @@ app.post('/api/attendance/update-timer', async (req, res) => {
     try {
         const { studentId, timerValue, wifiConnected } = req.body;
 
+        console.log('💓 Heartbeat received:', { studentId, timerValue, wifiConnected });
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
+        // Update AttendanceSession (legacy)
         const session = await AttendanceSession.findOne({
             studentId,
             date: today
         });
 
-        if (!session) {
-            return res.status(404).json({ success: false, error: 'Session not found' });
+        if (session) {
+            session.timerValue = timerValue;
+            session.wifiConnected = wifiConnected;
+            session.isActive = wifiConnected;
+            session.lastUpdate = new Date();
+            await session.save();
+
+            // Also update attendance record
+            await AttendanceRecord.updateOne(
+                { studentId, date: today },
+                {
+                    timerValue,
+                    checkOutTime: new Date()
+                }
+            );
         }
 
-        session.timerValue = timerValue;
-        session.wifiConnected = wifiConnected;
-        session.isActive = wifiConnected;
-        session.lastUpdate = new Date();
+        // CRITICAL: Update StudentManagement collection (used by teacher app)
+        // Find student by enrollmentNo or _id
+        const isValidObjectId = mongoose.Types.ObjectId.isValid(studentId) &&
+            /^[0-9a-fA-F]{24}$/.test(studentId);
 
-        await session.save();
+        let student;
+        if (isValidObjectId) {
+            student = await StudentManagement.findOne({
+                $or: [
+                    { _id: studentId },
+                    { enrollmentNo: studentId }
+                ]
+            });
+        } else {
+            student = await StudentManagement.findOne({ enrollmentNo: studentId });
+        }
 
-        // Also update attendance record
-        await AttendanceRecord.updateOne(
-            { studentId, date: today },
-            {
-                timerValue,
-                checkOutTime: new Date()
-            }
-        );
+        if (student) {
+            console.log(`💓 Updating StudentManagement for ${student.name} (${student.enrollmentNo})`);
+            await StudentManagement.findByIdAndUpdate(student._id, {
+                timerValue: timerValue,
+                isRunning: true, // Heartbeat means timer is running
+                status: 'attending',
+                lastUpdated: new Date()
+            });
+            console.log(`✅ StudentManagement updated: ${timerValue}s, isRunning: true`);
+
+            // Broadcast to teachers
+            io.emit('student_update', {
+                studentId: student._id.toString(),
+                enrollmentNo: student.enrollmentNo,
+                name: student.name,
+                timerValue: timerValue,
+                isRunning: true,
+                status: 'attending'
+            });
+            console.log(`📡 Broadcasted heartbeat update to teachers`);
+        } else {
+            console.log(`⚠️ Student not found in StudentManagement: ${studentId}`);
+        }
 
         res.json({ success: true, message: 'Timer updated' });
 

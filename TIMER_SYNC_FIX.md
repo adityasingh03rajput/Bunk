@@ -1,46 +1,44 @@
 # Real-Time Timer Sync Fix
 
-## Problem
+## Problem 1: Timer Not Showing on Teacher App
 Student timer was running on student app (showing 00:14:29) but teacher app showed "Absent" with 00:00 timer.
 
-## Root Cause
-**Data Source Mismatch:**
+## Problem 2: Timer Auto-Stops After Few Seconds
+Student's timer automatically stops after running for a few seconds.
+
+## Root Causes
+
+### Issue 1: Data Source Mismatch
 - Student app sends heartbeat every 5 minutes to `/api/attendance/update-timer`
 - This endpoint was updating `AttendanceSession` collection only
 - Teacher app reads from `StudentManagement` collection via `/api/view-records/students`
 - Result: Student and teacher were reading from different database collections
 
-## Investigation Steps
-1. Checked database directly for enrollment "1234":
-   - Timer Value: 0 seconds
-   - Is Running: false
-   - Status: absent
-   - Last Updated: Yesterday (Feb 24)
+### Issue 2: Timer State Validation Failure
+- UnifiedTimerManager syncs with server every 30 seconds via `/api/attendance/get-timer-state`
+- This endpoint only checked `AttendanceSession` collection
+- When no session found, it returned `isRunning: false`
+- This caused the timer to stop automatically
+- Student app uses `StudentManagement` collection for timer state, not `AttendanceSession`
 
-2. Tested socket connection with test script:
-   - Socket connection works perfectly
-   - Server receives and broadcasts timer updates
-   - Database updates successfully when using socket `timer_update` event
+## Solutions
 
-3. Found that student app uses heartbeat system:
-   - Sends updates every 5 minutes via HTTP POST to `/api/attendance/update-timer`
-   - Does NOT use socket `timer_update` for regular updates
-   - Socket is only used for special events (Random Ring, etc.)
+### Fix 1: Update Heartbeat Endpoint
+Modified `/api/attendance/update-timer` endpoint to:
+1. Update both `AttendanceSession` (legacy) and `StudentManagement` (teacher source)
+2. Broadcast updates via socket to all teachers in real-time
+3. Added detailed logging for debugging
 
-4. Discovered the mismatch:
-   - Heartbeat endpoint updated `AttendanceSession` collection
-   - Teacher endpoint read from `StudentManagement` collection
-   - Two different data sources = no real-time sync
+### Fix 2: Update Timer State Endpoint
+Modified `/api/attendance/get-timer-state` endpoint to:
+1. Check `StudentManagement` collection FIRST (new system)
+2. Return correct `isRunning` state from `StudentManagement`
+3. Fallback to `AttendanceSession` for legacy support
+4. Added logging to track which data source is used
 
-## Solution
-Modified `/api/attendance/update-timer` endpoint in `server.js` to:
+## Code Changes
 
-1. Continue updating `AttendanceSession` (for legacy compatibility)
-2. **Also update `StudentManagement` collection** (used by teacher app)
-3. Broadcast updates via socket to all connected teachers
-4. Add detailed logging for debugging
-
-### Changes Made
+### `/api/attendance/update-timer` (Line 2219)
 ```javascript
 // CRITICAL: Update StudentManagement collection (used by teacher app)
 const student = await StudentManagement.findOne({ enrollmentNo: studentId });
@@ -64,20 +62,46 @@ if (student) {
 }
 ```
 
+### `/api/attendance/get-timer-state` (Line 1817)
+```javascript
+// CRITICAL: Check StudentManagement first (new system)
+let student = await StudentManagement.findOne({ enrollmentNo: studentId });
+
+if (student && student.isRunning) {
+    // Student has active timer in StudentManagement
+    return res.json({
+        success: true,
+        timerState: {
+            attendedSeconds: student.timerValue || 0,
+            isRunning: student.isRunning,
+            // ... other fields
+        }
+    });
+}
+
+// Fallback: Check AttendanceSession (legacy system)
+const session = await AttendanceSession.findOne({ ... });
+```
+
 ## Testing
 1. Student starts timer on phone
 2. After 1 minute, first heartbeat is sent
 3. Server updates both `AttendanceSession` and `StudentManagement`
 4. Teacher app receives socket broadcast
 5. Teacher sees real-time timer update
+6. Every 30 seconds, UnifiedTimerManager syncs with server
+7. Server returns correct `isRunning: true` from `StudentManagement`
+8. Timer continues running without auto-stopping
 
-## Heartbeat Schedule
+## Heartbeat & Sync Schedule
 - **Initial heartbeat**: 1 minute after timer starts
 - **Regular heartbeats**: Every 5 minutes
+- **Timer state sync**: Every 30 seconds (UnifiedTimerManager)
 - **Broadcast**: Immediate socket broadcast to all teachers after each heartbeat
 
 ## Files Modified
 - `server.js` - Updated `/api/attendance/update-timer` endpoint (line 2219)
+- `server.js` - Updated `/api/attendance/get-timer-state` endpoint (line 1817)
 
 ## Deployment
 - Changes pushed to GitHub `bssid` branch
@@ -89,13 +113,16 @@ After Render deploys:
 1. Student logs in and starts timer
 2. Wait 1 minute for first heartbeat
 3. Check teacher app - should show timer running
-4. Check database: `node check-student-1234.js`
+4. Timer should NOT auto-stop after 30 seconds
+5. Check database: `node check-student-1234.js`
    - Should show `isRunning: true`
    - Should show correct `timerValue`
    - Should show recent `lastUpdated` timestamp
 
 ## Related Files
 - `App.js` - Student app heartbeat logic (line 679-713)
+- `UnifiedTimerManager.js` - Timer state sync logic (line 150-224)
 - `server.js` - Timer update endpoint (line 2219)
+- `server.js` - Timer state endpoint (line 1817)
 - `server.js` - View records endpoint (line 3778)
 - `StudentList.js` - Teacher app display logic

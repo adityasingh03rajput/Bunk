@@ -3461,6 +3461,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         // Try to find as student first
         let user = null;
         let role = null;
+        let userFound = false;
 
         if (mongoose.connection.readyState === 1) {
             // Check in StudentManagement collection
@@ -3472,6 +3473,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             });
 
             if (user) {
+                userFound = true;
                 // Check if password is hashed (starts with $2b$ for bcrypt)
                 const isPasswordValid = user.password.startsWith('$2b$')
                     ? await bcrypt.compare(password, user.password)
@@ -3499,6 +3501,10 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                             role: 'student'
                         }
                     });
+                } else {
+                    // User found but password incorrect
+                    console.log('❌ Incorrect password for student:', sanitizedId);
+                    return res.json({ success: false, message: 'Password incorrect' });
                 }
             }
 
@@ -3511,6 +3517,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             });
 
             if (user) {
+                userFound = true;
                 // Check if password is hashed
                 const isPasswordValid = user.password.startsWith('$2b$')
                     ? await bcrypt.compare(password, user.password)
@@ -3518,7 +3525,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
                 if (isPasswordValid) {
                     role = 'teacher';
-                    console.log('Teacher logged in:', user.name);
+                    console.log('✅ Teacher logged in:', user.name);
                     return res.json({
                         success: true,
                         user: {
@@ -3533,47 +3540,70 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                             role: 'teacher'
                         }
                     });
+                } else {
+                    // User found but password incorrect
+                    console.log('❌ Incorrect password for teacher:', sanitizedId);
+                    return res.json({ success: false, message: 'Password incorrect' });
                 }
             }
         } else {
             // In-memory storage (development only)
             user = studentManagementMemory.find(s =>
-                (s.enrollmentNo === sanitizedId || s.email === sanitizedId) && s.password === password
+                (s.enrollmentNo === sanitizedId || s.email === sanitizedId)
             );
 
             if (user) {
-                console.log('Student logged in (memory):', user.name);
-                return res.json({
-                    success: true,
-                    user: {
-                        ...user,
-                        role: 'student'
-                    }
-                });
+                userFound = true;
+                if (user.password === password) {
+                    console.log('✅ Student logged in (memory):', user.name);
+                    return res.json({
+                        success: true,
+                        user: {
+                            ...user,
+                            role: 'student'
+                        }
+                    });
+                } else {
+                    console.log('❌ Incorrect password for student (memory):', sanitizedId);
+                    return res.json({ success: false, message: 'Password incorrect' });
+                }
             }
 
             user = teachersMemory.find(t =>
-                (t.employeeId === sanitizedId || t.email === sanitizedId) && t.password === password
+                (t.employeeId === sanitizedId || t.email === sanitizedId)
             );
 
             if (user) {
-                console.log('Teacher logged in (memory):', user.name);
-                return res.json({
-                    success: true,
-                    user: {
-                        ...user,
-                        role: 'teacher'
-                    }
-                });
+                userFound = true;
+                if (user.password === password) {
+                    console.log('✅ Teacher logged in (memory):', user.name);
+                    return res.json({
+                        success: true,
+                        user: {
+                            ...user,
+                            role: 'teacher'
+                        }
+                    });
+                } else {
+                    console.log('❌ Incorrect password for teacher (memory):', sanitizedId);
+                    return res.json({ success: false, message: 'Password incorrect' });
+                }
             }
         }
 
-        console.log('Login failed for:', sanitizedId);
+        // User not found in database
+        if (!userFound) {
+            console.log('❌ User not found:', sanitizedId);
+            return res.json({ success: false, message: 'User not found in database' });
+        }
+
+        // Fallback (should not reach here)
+        console.log('❌ Login failed for:', sanitizedId);
         res.json({ success: false, message: 'Invalid ID or password' });
 
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ success: false, message: 'Login failed' });
+        console.error('❌ Login error:', error);
+        res.status(500).json({ success: false, message: 'Server error. Please try again later.' });
     }
 });
 
@@ -3764,12 +3794,11 @@ app.get('/api/view-records/students', async (req, res) => {
                 branch: branch
             }).select('-password');
 
-            // Get current attendance session and stats for each student
-            const today = new Date().toISOString().split('T')[0];
+            // Get attendance stats for each student
             const studentsWithStats = await Promise.all(
                 students.map(async (student) => {
                     try {
-                        // Get attendance records for stats
+                        // Get attendance records for historical stats
                         const records = await AttendanceRecord.find({
                             studentId: student._id
                         });
@@ -3778,31 +3807,20 @@ app.get('/api/view-records/students', async (req, res) => {
                         const present = records.filter(r => r.status === 'present').length;
                         const attendancePercentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
-                        // Get current session for real-time status
-                        const session = await AttendanceSession.findOne({
-                            studentId: student._id,
-                            date: today
-                        });
-
-                        // Get today's record
-                        const todayRecord = await AttendanceRecord.findOne({
-                            studentId: student._id,
-                            date: today
-                        });
-
+                        // Use real-time data from StudentManagement (updated by timer_update socket)
+                        // This is the CORRECT source for live timer data
                         return {
                             ...student.toObject(),
                             // Historical stats
                             attendancePercentage,
                             totalDays: total,
                             presentDays: present,
-                            // Real-time status
-                            isRunning: session?.isActive || false,
-                            timerValue: session?.timerValue || 0,
-                            status: session?.isActive ? 'attending' : (todayRecord?.status || 'absent'),
-                            joinTime: session?.sessionStartTime || null,
-                            wifiConnected: session?.wifiConnected || false,
-                            sessionId: session?._id || null
+                            // Real-time status from StudentManagement (updated by socket)
+                            isRunning: student.isRunning || false,
+                            timerValue: student.timerValue || 0,
+                            status: student.status || 'absent',
+                            lastUpdated: student.lastUpdated || null,
+                            _id: student._id.toString() // Ensure ID is string for matching
                         };
                     } catch (error) {
                         console.error(`❌ Error getting data for student ${student.name}:`, error);
@@ -3814,12 +3832,15 @@ app.get('/api/view-records/students', async (req, res) => {
                             isRunning: false,
                             timerValue: 0,
                             status: 'absent',
-                            joinTime: null,
-                            wifiConnected: false
+                            lastUpdated: null,
+                            _id: student._id.toString()
                         };
                     }
                 })
             );
+
+            console.log(`✅ Fetched ${studentsWithStats.length} students for ${branch} Sem ${semester}`);
+            console.log(`📊 Active students: ${studentsWithStats.filter(s => s.isRunning).length}`);
 
             res.json({
                 success: true,

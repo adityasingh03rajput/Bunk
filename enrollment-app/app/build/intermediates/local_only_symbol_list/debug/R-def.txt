@@ -5,7 +5,9 @@ id livenessStatus
 id previewView
 id progressText
 id saveButton
+id searchButton
 id statusText
+id studentNameText
 id takeFacialDataButton
 layout activity_camera
 layout activity_main

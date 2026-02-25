@@ -17,6 +17,8 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
     
     private lateinit var enrollmentNoInput: EditText
+    private lateinit var searchButton: Button
+    private lateinit var studentNameText: TextView
     private lateinit var takeFacialDataButton: Button
     private lateinit var saveButton: Button
     private lateinit var statusText: TextView
@@ -33,6 +35,8 @@ class MainActivity : AppCompatActivity() {
         
         // Initialize views
         enrollmentNoInput = findViewById(R.id.enrollmentNoInput)
+        searchButton = findViewById(R.id.searchButton)
+        studentNameText = findViewById(R.id.studentNameText)
         takeFacialDataButton = findViewById(R.id.takeFacialDataButton)
         saveButton = findViewById(R.id.saveButton)
         statusText = findViewById(R.id.statusText)
@@ -41,12 +45,53 @@ class MainActivity : AppCompatActivity() {
         apiService = ApiService(this)
         
         // Set up button listeners
+        searchButton.setOnClickListener {
+            fetchStudentName()
+        }
+        
         takeFacialDataButton.setOnClickListener {
             handleTakeFacialData()
         }
         
         saveButton.setOnClickListener {
             handleSave()
+        }
+    }
+    
+    private fun fetchStudentName() {
+        val enrollmentNo = enrollmentNoInput.text.toString().trim()
+        
+        if (enrollmentNo.isEmpty()) {
+            studentNameText.visibility = android.view.View.GONE
+            Toast.makeText(this, "Please enter enrollment number", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Show loading state
+        studentNameText.text = "Searching..."
+        studentNameText.visibility = android.view.View.VISIBLE
+        studentNameText.setTextColor(getColor(android.R.color.darker_gray))
+        
+        lifecycleScope.launch {
+            try {
+                val response = apiService.getStudentByEnrollment(enrollmentNo)
+                
+                if (response.success && response.studentName.isNotEmpty()) {
+                    studentNameText.text = "Student: ${response.studentName}"
+                    studentNameText.visibility = android.view.View.VISIBLE
+                    studentNameText.setTextColor(getColor(android.R.color.holo_green_dark))
+                } else {
+                    studentNameText.text = "Student not found"
+                    studentNameText.visibility = android.view.View.VISIBLE
+                    studentNameText.setTextColor(getColor(android.R.color.holo_red_dark))
+                    Toast.makeText(this@MainActivity, "Student not found", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                studentNameText.text = "Error: ${e.message}"
+                studentNameText.visibility = android.view.View.VISIBLE
+                studentNameText.setTextColor(getColor(android.R.color.holo_red_dark))
+                Toast.makeText(this@MainActivity, "Network error: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
     

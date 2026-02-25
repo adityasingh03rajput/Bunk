@@ -1,14 +1,13 @@
 
 // Configuration
 // Server URL - can be changed in Settings
-// Priority: 1. Saved in localStorage, 2. Localhost (default)
-// Force reset to localhost if it's pointing to old Render URL
+// Priority: 1. Saved in localStorage, 2. Render URL (default)
 const savedUrl = localStorage.getItem('serverUrl');
-if (savedUrl && savedUrl.includes('render.com')) {
-    console.log('🔄 Resetting old Render URL to localhost');
-    localStorage.setItem('serverUrl', 'http://localhost:3000');
+if (savedUrl && savedUrl.includes('localhost')) {
+    console.log('🔄 Resetting localhost URL to Render');
+    localStorage.setItem('serverUrl', 'https://letsbunk-uw7g.onrender.com');
 }
-let SERVER_URL = localStorage.getItem('serverUrl') || 'http://localhost:3000';
+let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-uw7g.onrender.com';
 
 console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 
@@ -46,15 +45,23 @@ async function loadDynamicDropdownData() {
     try {
         // Fetch branches/courses
         const branchesResponse = await fetch(`${SERVER_URL}/api/config/branches`);
+        console.log('📡 Branches API response status:', branchesResponse.status);
+        
         if (branchesResponse.ok) {
             const branchesData = await branchesResponse.json();
+            console.log('📦 Branches data received:', branchesData);
+            
             if (branchesData.success && branchesData.branches) {
                 dynamicData.branches = branchesData.branches.map(b => ({
                     value: b.name,
                     label: b.displayName || b.name
                 }));
-                console.log(`✅ Loaded ${dynamicData.branches.length} branches`);
+                console.log(`✅ Loaded ${dynamicData.branches.length} branches:`, dynamicData.branches);
+            } else {
+                console.warn('⚠️ Branches API returned success=false or no branches array');
             }
+        } else {
+            console.error('❌ Branches API failed with status:', branchesResponse.status);
         }
 
         // Fetch semesters
@@ -81,26 +88,14 @@ async function loadDynamicDropdownData() {
             }
         }
 
-        // If no data from server, use defaults
+        // If no data from server, show warning
         if (dynamicData.branches.length === 0) {
-            console.log('⚠️ No branches from server, using defaults');
-            dynamicData.branches = [
-                { value: 'B.Tech Data Science', label: 'Data Science' },
-                { value: 'CSE', label: 'Computer Science' },
-                { value: 'ECE', label: 'Electronics' },
-                { value: 'ME', label: 'Mechanical' },
-                { value: 'CE', label: 'Civil' }
-            ];
+            console.warn('⚠️ No branches loaded from server! Please add branches in Settings.');
+            showNotification('No branches configured. Please add branches in Settings section.', 'warning');
         }
 
         if (dynamicData.departments.length === 0) {
-            console.log('⚠️ No departments from server, using defaults');
-            dynamicData.departments = [
-                { value: 'CSE', label: 'Computer Science' },
-                { value: 'ECE', label: 'Electronics' },
-                { value: 'ME', label: 'Mechanical' },
-                { value: 'CE', label: 'Civil' }
-            ];
+            console.warn('⚠️ No departments loaded from server! Please add teachers with departments.');
         }
 
         console.log('✅ Dynamic dropdown data loaded');
@@ -110,31 +105,37 @@ async function loadDynamicDropdownData() {
 
     } catch (error) {
         console.error('❌ Error loading dynamic data:', error);
-        // Use defaults on error
-        dynamicData.branches = [
-            { value: 'B.Tech Data Science', label: 'Data Science' },
-            { value: 'CSE', label: 'Computer Science' },
-            { value: 'ECE', label: 'Electronics' },
-            { value: 'ME', label: 'Mechanical' },
-            { value: 'CE', label: 'Civil' }
-        ];
-        dynamicData.departments = [
-            { value: 'CSE', label: 'Computer Science' },
-            { value: 'ECE', label: 'Electronics' },
-            { value: 'ME', label: 'Mechanical' },
-            { value: 'CE', label: 'Civil' }
-        ];
-
-        // Populate filter dropdowns even with defaults
+        showNotification('Failed to load configuration from server. Please check connection.', 'error');
+        
+        // Populate filter dropdowns even if empty
         populateFilterDropdowns();
     }
 }
 
 // Helper function to generate branch dropdown options
 function generateBranchOptions(selectedValue = '') {
-    return dynamicData.branches.map(branch =>
+    console.log('🔧 Generating branch options. Selected:', selectedValue, 'Available branches:', dynamicData.branches);
+    
+    // If no branches loaded, show a message
+    if (dynamicData.branches.length === 0) {
+        return '<option value="">No branches configured - Add in Settings</option>';
+    }
+    
+    // Check if selected value exists in branches
+    const selectedExists = dynamicData.branches.some(b => b.value === selectedValue);
+    
+    // If student has a branch that's not in the list, add it
+    let options = '';
+    if (selectedValue && !selectedExists) {
+        options += `<option value="${selectedValue}" selected>${selectedValue} (Current)</option>`;
+    }
+    
+    // Add all branches from API
+    options += dynamicData.branches.map(branch =>
         `<option value="${branch.value}" ${selectedValue === branch.value ? 'selected' : ''}>${branch.label}</option>`
     ).join('');
+    
+    return options;
 }
 
 // Helper function to generate department dropdown options
@@ -464,7 +465,7 @@ async function loadDashboardData() {
         const totalStudents = students.length;
 
         // Fetch dynamic branches from server
-        let courses = ['B.Tech Data Science']; // Fallback
+        let courses = [];
         try {
             const branchResponse = await fetch(`${SERVER_URL}/api/config/branches`);
             const branchData = await branchResponse.json();
@@ -472,7 +473,7 @@ async function loadDashboardData() {
                 courses = branchData.branches.map(b => b.name);
             }
         } catch (error) {
-            console.log('Using fallback branches');
+            console.error('Failed to load branches for dashboard:', error);
         }
 
         courses.forEach(course => {

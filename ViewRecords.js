@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { SOCKET_URL } from './config';
 
 // Mock student data generator (same as HTML version)
 const generateStudents = (semester, branch) => {
@@ -121,7 +122,7 @@ const ViewRecords = ({ onBack, theme }) => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:3000/api/view-records/students?semester=${selectedSemester}&branch=${encodeURIComponent(selectedBranch)}`
+        `${SOCKET_URL}/api/view-records/students?semester=${selectedSemester}&branch=${encodeURIComponent(selectedBranch)}`
       );
       const data = await response.json();
       if (data.success) {

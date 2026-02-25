@@ -2,5 +2,5 @@
 <resources>
     <!-- Server Configuration -->
     <!-- LetsBunk Server -->
-    <string name="server_base_url">http://192.168.1.6:3000/api</string>
+    <string name="server_base_url">https://letsbunk-uw7g.onrender.com/api</string>
 </resources>

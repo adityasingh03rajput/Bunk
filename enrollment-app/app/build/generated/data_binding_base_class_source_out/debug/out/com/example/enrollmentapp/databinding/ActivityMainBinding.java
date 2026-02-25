@@ -28,18 +28,27 @@ public final class ActivityMainBinding implements ViewBinding {
   public final Button saveButton;
 
   @NonNull
+  public final Button searchButton;
+
+  @NonNull
   public final TextView statusText;
+
+  @NonNull
+  public final TextView studentNameText;
 
   @NonNull
   public final Button takeFacialDataButton;
 
   private ActivityMainBinding(@NonNull ConstraintLayout rootView,
-      @NonNull EditText enrollmentNoInput, @NonNull Button saveButton, @NonNull TextView statusText,
+      @NonNull EditText enrollmentNoInput, @NonNull Button saveButton, @NonNull Button searchButton,
+      @NonNull TextView statusText, @NonNull TextView studentNameText,
       @NonNull Button takeFacialDataButton) {
     this.rootView = rootView;
     this.enrollmentNoInput = enrollmentNoInput;
     this.saveButton = saveButton;
+    this.searchButton = searchButton;
     this.statusText = statusText;
+    this.studentNameText = studentNameText;
     this.takeFacialDataButton = takeFacialDataButton;
   }
 
@@ -82,9 +91,21 @@ public final class ActivityMainBinding implements ViewBinding {
         break missingId;
       }
 
+      id = R.id.searchButton;
+      Button searchButton = ViewBindings.findChildViewById(rootView, id);
+      if (searchButton == null) {
+        break missingId;
+      }
+
       id = R.id.statusText;
       TextView statusText = ViewBindings.findChildViewById(rootView, id);
       if (statusText == null) {
+        break missingId;
+      }
+
+      id = R.id.studentNameText;
+      TextView studentNameText = ViewBindings.findChildViewById(rootView, id);
+      if (studentNameText == null) {
         break missingId;
       }
 
@@ -95,7 +116,7 @@ public final class ActivityMainBinding implements ViewBinding {
       }
 
       return new ActivityMainBinding((ConstraintLayout) rootView, enrollmentNoInput, saveButton,
-          statusText, takeFacialDataButton);
+          searchButton, statusText, studentNameText, takeFacialDataButton);
     }
     String missingId = rootView.getResources().getResourceName(id);
     throw new NullPointerException("Missing required view with ID: ".concat(missingId));

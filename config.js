@@ -9,7 +9,7 @@
 // SERVER CONFIGURATION
 // ============================================
 // Update this URL to your backend server (using computer IP for mobile testing)
-export const SERVER_BASE_URL = 'http://192.168.55.31:3000';
+export const SERVER_BASE_URL = 'https://letsbunk-uw7g.onrender.com';
 
 // Derived URLs (automatically generated from SERVER_BASE_URL)
 export const API_URL = `${SERVER_BASE_URL}/api/config`;

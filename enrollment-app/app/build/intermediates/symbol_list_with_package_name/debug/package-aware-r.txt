@@ -3462,6 +3462,7 @@ id scrollIndicatorDown
 id scrollIndicatorUp
 id scrollView
 id scrollable
+id searchButton
 id search_badge
 id search_bar
 id search_button
@@ -3511,6 +3512,7 @@ id staticPostLayout
 id statusText
 id stop
 id stretch
+id studentNameText
 id submenuarrow
 id submit_area
 id supportScrollUp

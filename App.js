@@ -41,9 +41,11 @@ import SecureStorage from './SecureStorage';
 // Face Verification Module
 import FaceVerification from './FaceVerification';
 
-// Configuration - Using computer IP for mobile device testing
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.6:3000/api/config';
-const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || 'http://192.168.1.6:3000';
+// Configuration - Import from centralized config
+import { SERVER_BASE_URL, API_URL as CONFIG_API_URL, SOCKET_URL as CONFIG_SOCKET_URL } from './config';
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || CONFIG_API_URL;
+const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || CONFIG_SOCKET_URL;
 
 // Constants
 const CACHE_KEY = '@timer_config';
@@ -2424,11 +2426,21 @@ export default function App() {
           });
         }
       } else {
-        setLoginError(data.message || 'Invalid credentials');
+        // Server returned an error message
+        setLoginError(data.message || 'Login failed');
+        console.error('Login failed:', data.message);
       }
     } catch (error) {
-      setLoginError('Connection error. Please check server.');
+      // Network or connection error
       console.error('Login error:', error);
+      
+      if (error.message === 'Network request failed') {
+        setLoginError('Cannot connect to server. Please check your internet connection.');
+      } else if (error.message.includes('timeout')) {
+        setLoginError('Server is not responding. Please try again later.');
+      } else {
+        setLoginError('Connection error. Please check server.');
+      }
     } finally {
       setIsLoggingIn(false);
     }

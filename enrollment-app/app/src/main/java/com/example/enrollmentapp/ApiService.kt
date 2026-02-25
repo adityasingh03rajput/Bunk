@@ -176,10 +176,69 @@ class ApiService(private val context: Context) {
             }
         }
     }
+    
+    suspend fun getStudentByEnrollment(enrollmentNo: String): StudentResponse {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Remove /api from baseUrl and add /api/students endpoint
+                val serverBase = baseUrl.replace("/api", "")
+                val url = URL("$serverBase/api/students?enrollmentNo=$enrollmentNo")
+                val connection = url.openConnection() as HttpURLConnection
+                
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+                
+                val responseCode = connection.responseCode
+                val inputStream = if (responseCode == HttpURLConnection.HTTP_OK) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+                
+                val reader = BufferedReader(InputStreamReader(inputStream))
+                val response = StringBuilder()
+                var line: String?
+                
+                while (reader.readLine().also { line = it } != null) {
+                    response.append(line)
+                }
+                reader.close()
+                
+                Log.d(TAG, "Student response: $response")
+                
+                val responseJson = JSONObject(response.toString())
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val studentsArray = responseJson.optJSONArray("students")
+                    if (studentsArray != null && studentsArray.length() > 0) {
+                        val student = studentsArray.getJSONObject(0)
+                        val name = student.optString("name", "")
+                        StudentResponse(true, name, "Student found")
+                    } else {
+                        StudentResponse(false, "", "Student not found")
+                    }
+                } else {
+                    val message = responseJson.optString("message", "Student not found")
+                    StudentResponse(false, "", message)
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting student", e)
+                StudentResponse(false, "", "Network error: ${e.message}")
+            }
+        }
+    }
 }
 
 data class ApiResponse(
     val success: Boolean,
     val message: String,
     val statusCode: Int
+)
+
+data class StudentResponse(
+    val success: Boolean,
+    val studentName: String,
+    val message: String
 )

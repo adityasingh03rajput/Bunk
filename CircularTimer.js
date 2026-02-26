@@ -18,7 +18,6 @@ import Svg, {
   G,
   Text as SvgText,
 } from 'react-native-svg';
-import { PlayIcon, PauseIcon } from './Icons';
 
 // Constants for circle dimensions
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -28,7 +27,6 @@ const OUTER_R = 125; // 250px diameter - Ring outer radius
 const RING_WIDTH = 24; // 24px - Ring thickness
 const INNER_R = 101; // 202px diameter - Ring inner radius
 const WHITE_CIRCLE_R = 87.5; // 175px diameter - White circle
-const PROGRESS_R = 80; // 160px diameter - Progress ring (inside white circle)
 
 // Default segments
 const DEFAULT_SEGMENTS = [
@@ -44,25 +42,9 @@ const DEFAULT_SEGMENTS = [
 
 export default function CircularTimer({
   theme = {},
-  initialTime = 0,
-  totalLectureTime = 0,
-  remainingTime = 0,
-  isRunning = false,
-  onToggleTimer = () => { },
-  onReset = () => { },
   onLongPressCenter = () => { },
-  formatTime = (time) => {
-    const hours = Math.floor(time / 3600);
-    const mins = Math.floor((time % 3600) / 60);
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  },
   timetable = null,
   currentDay = null,
-  lectureInfo = null,
-  serverUrl = null,
-  studentId = null,
-  onTimerPaused = () => { },
-  onTimerResumed = () => { },
 }) {
   const safeTheme = {
     primary: theme.primary || '#d97706',
@@ -78,50 +60,27 @@ export default function CircularTimer({
   const [isDragging, setIsDragging] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
   const [circleScale, setCircleScale] = useState(new Animated.Value(0));
-  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Update current time every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // WiFi-based attendance tracking (simplified)
-  const [wifiStatus, setWifiStatus] = useState('disconnected');
-  const [canStartTimer, setCanStartTimer] = useState(true);
-
-  // Simplified animations to prevent crashes
+  // Simplified animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const longPressAnim = useRef(new Animated.Value(0)).current;
 
   // Generate segments from timetable
   useEffect(() => {
-    console.log('≡ƒöä CircularTimer useEffect triggered');
+    console.log('🎨 CircularTimer useEffect triggered');
     console.log('  - Current Day:', currentDay);
-    console.log('  - Current Day type:', typeof currentDay);
     console.log('  - Timetable exists:', !!timetable);
     console.log('  - Timetable.schedule exists:', !!timetable?.schedule);
     
     // If timetable hasn't loaded yet, don't set DEFAULT_SEGMENTS
-    // Keep waiting for the timetable to load
     if (!timetable || !timetable.schedule) {
-      console.log('ΓÅ│ Waiting for timetable to load... (not setting defaults)');
+      console.log('⏳ Waiting for timetable to load...');
       return;
     }
-    
-    if (timetable.schedule) {
-      console.log('  - Schedule keys:', Object.keys(timetable.schedule));
-      console.log('  - Looking for key:', currentDay);
-      console.log('  - Key exists:', currentDay in timetable.schedule);
-    }
-    console.log('  - Schedule for day:', timetable.schedule[currentDay]);
 
     if (timetable.schedule[currentDay]) {
       const schedule = timetable.schedule[currentDay];
-      console.log('Γ£à CircularTimer - Found schedule with', schedule.length, 'periods');
+      console.log('📚 CircularTimer - Found schedule with', schedule.length, 'periods');
       if (Array.isArray(schedule) && schedule.length > 0) {
         const angleStep = 360 / schedule.length;
 
@@ -188,6 +147,7 @@ export default function CircularTimer({
             'INDUSTRIAL TRAINING': 'TRAINING',
             'SEMINAR': 'SEMINAR',
             'PRESENTATION': 'PRESENT',
+            'COMMERSO': 'COMMERSO',
           };
           
           // Return mapped short form or truncate long names
@@ -256,6 +216,7 @@ export default function CircularTimer({
               'AI': '#a855f7',
               'DIGITAL': '#3b82f6',
               'SIGNALS': '#0891b2',
+              'COMMERSO': '#0891b2',
             };
             
             // Check direct match first
@@ -279,8 +240,6 @@ export default function CircularTimer({
           
           const shortLabel = getShortForm(subject);
           const color = getColor(subject);
-          
-          console.log(`Segment ${i}: ${subject} -> ${shortLabel} -> ${color}`);
 
           return {
             id: i + 1,
@@ -294,40 +253,12 @@ export default function CircularTimer({
         });
         console.log('CircularTimer - Setting new segments:', newSegments);
         setSegments(newSegments);
-      } else {
-        console.log('CircularTimer - Schedule is not an array or empty');
       }
     } else {
-      console.log('ΓÜá∩╕Å CircularTimer - No schedule found for current day:', currentDay);
-      console.log('  Available days:', timetable.schedule ? Object.keys(timetable.schedule) : 'none');
-      console.log('  This might be an old timetable without Sunday support!');
-      console.log('  Using DEFAULT_SEGMENTS as fallback');
+      console.log('⚠️ CircularTimer - No schedule found for current day:', currentDay);
       setSegments(DEFAULT_SEGMENTS);
     }
   }, [timetable, currentDay]);
-
-  // Simplified pulse animation to prevent crashes
-  useEffect(() => {
-    if (isRunning) {
-      // Simple pulse without complex loops
-      const pulse = () => {
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.02, duration: 1000, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        ]).start(() => {
-          if (isRunning) pulse(); // Continue only if still running
-        });
-      };
-      pulse();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [isRunning]);
-
-  // Current time is now managed by state - updates every second
-
-  // Simplified segment animation to prevent crashes
-  // Removed complex morphing animations that cause crashes
 
   // Create arc path for a segment
   const createSegmentPath = (startAngle, endAngle) => {
@@ -366,92 +297,11 @@ export default function CircularTimer({
   // Get segment center position (in the middle of the ring thickness)
   const getSegmentCenter = (seg) => {
     const midAngle = ((seg.start + seg.end) / 2 - 90) * (Math.PI / 180);
-    const ringCenterRadius = (INNER_R + OUTER_R) / 2; // Center of the ring thickness
+    const ringCenterRadius = (INNER_R + OUTER_R) / 2;
     return {
       x: CENTER + ringCenterRadius * Math.cos(midAngle),
       y: CENTER + ringCenterRadius * Math.sin(midAngle),
     };
-  };
-
-  // Create a circular path at segment position
-  const createCirclePath = (seg) => {
-    const pos = getSegmentCenter(seg);
-    const r = 28; // Larger circle for better visibility (56px diameter)
-    return `M ${pos.x - r},${pos.y} A ${r},${r} 0 1,0 ${pos.x + r},${pos.y} A ${r},${r} 0 1,0 ${pos.x - r},${pos.y} Z`;
-  };
-
-  // Calculate clock hand angles based on class progress
-  const getClassProgressAngles = () => {
-    if (!timetable?.schedule?.[currentDay]) {
-      // No timetable, use timer progress
-      const progress = (initialTime % 60) / 60;
-      return {
-        elapsedAngle: progress * 360, // Time done
-        remainingAngle: 180 + (progress * 180), // Opposite side
-      };
-    }
-
-    // Find current class
-    const now = currentTime;
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentSeconds = now.getSeconds();
-    const currentTimeInSeconds = (currentHour * 3600) + (currentMinute * 60) + currentSeconds;
-
-    const schedule = timetable.schedule[currentDay];
-    let currentClass = null;
-
-    for (const slot of schedule) {
-      if (slot.time) {
-        const [start, end] = slot.time.split('-').map(t => t.trim());
-        const [startH, startM] = start.split(':').map(Number);
-        const [endH, endM] = end.split(':').map(Number);
-
-        const startSeconds = (startH * 3600) + (startM * 60);
-        const endSeconds = (endH * 3600) + (endM * 60);
-
-        if (currentTimeInSeconds >= startSeconds && currentTimeInSeconds <= endSeconds) {
-          currentClass = {
-            start: startSeconds,
-            end: endSeconds,
-            duration: endSeconds - startSeconds,
-            elapsed: currentTimeInSeconds - startSeconds,
-          };
-          break;
-        }
-      }
-    }
-
-    if (currentClass) {
-      // Calculate progress through current class
-      const progress = currentClass.elapsed / currentClass.duration;
-      const elapsedAngle = progress * 360; // Full circle for elapsed time
-      const remainingAngle = 180; // Fixed at 180┬░ (opposite direction)
-
-      return { elapsedAngle, remainingAngle };
-    }
-
-    // No current class, show 0
-    return { elapsedAngle: 0, remainingAngle: 180 };
-  };
-
-  // Create clock hand path
-  const createClockHand = (angle, length, width) => {
-    const rad = (angle - 90) * (Math.PI / 180);
-    const x = CENTER + length * Math.cos(rad);
-    const y = CENTER + length * Math.sin(rad);
-
-    return `M ${CENTER},${CENTER} L ${x},${y}`;
-  };
-
-  // Create interpolated path for smooth morphing
-  const createMorphedPath = (seg, progress) => {
-    if (progress === 0) return createSegmentPath(seg.start, seg.end);
-    if (progress === 1) return createCirclePath(seg);
-
-    // Simple approach: just switch at 0.5 for now
-    // For true morphing, you'd need complex path interpolation
-    return progress > 0.5 ? createCirclePath(seg) : createSegmentPath(seg.start, seg.end);
   };
 
   // Pan responder for touch
@@ -462,13 +312,11 @@ export default function CircularTimer({
 
       onPanResponderGrant: (e) => {
         setIsDragging(true);
-        // Simplified scale animation
         scaleAnim.setValue(1.03);
         const angle = getAngle(e.nativeEvent.locationX, e.nativeEvent.locationY);
         const seg = findSegment(angle);
         if (seg) {
           setActiveSegment(seg.id);
-          // Animate circle appearance
           Animated.spring(circleScale, {
             toValue: 1,
             tension: 200,
@@ -484,7 +332,6 @@ export default function CircularTimer({
         const seg = findSegment(angle);
         if (seg && seg.id !== activeSegment) {
           setActiveSegment(seg.id);
-          // Animate new circle
           circleScale.setValue(0);
           Animated.spring(circleScale, {
             toValue: 1,
@@ -498,9 +345,7 @@ export default function CircularTimer({
 
       onPanResponderRelease: () => {
         setIsDragging(false);
-        // Simplified scale reset
         scaleAnim.setValue(1);
-        // Animate circle disappearance
         Animated.timing(circleScale, {
           toValue: 0,
           duration: 300,
@@ -512,21 +357,15 @@ export default function CircularTimer({
 
       onPanResponderTerminate: () => {
         setIsDragging(false);
-        // Simplified scale reset
         scaleAnim.setValue(1);
       },
     })
   ).current;
 
-  // Progress calculation
-  const progress = (initialTime % 60) / 60;
-  const circumference = 2 * Math.PI * PROGRESS_R;
-  const dashOffset = circumference * (1 - progress);
-
   return (
     <View style={styles.container}>
       <Animated.View
-        style={[styles.timer, { transform: [{ scale: scaleAnim }, { scale: pulseAnim }] }]}
+        style={[styles.timer, { transform: [{ scale: scaleAnim }] }]}
         {...panResponder.panHandlers}
       >
         <Svg
@@ -625,35 +464,17 @@ export default function CircularTimer({
             stroke={safeTheme.border}
             strokeWidth="2"
           />
-
-          {/* Progress ring */}
-          <Circle
-            cx={CENTER}
-            cy={CENTER}
-            r={PROGRESS_R}
-            fill="none"
-            stroke="url(#grad)"
-            strokeWidth="6"
-            strokeDasharray={circumference}
-            strokeDashoffset={dashOffset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${CENTER} ${CENTER})`}
-          />
-
-          {/* No clock hands - clean design */}
         </Svg>
 
-        {/* Center controls - Fixed z-index layering */}
+        {/* Center controls - Face verification button */}
         <TouchableOpacity
-          style={[styles.center, { zIndex: 1000 }]} // Ensure center is above arcs
+          style={[styles.center, { zIndex: 1000 }]}
           onPressIn={() => {
             setIsLongPressing(true);
-            // Simplified long press animation
             longPressAnim.setValue(1);
           }}
           onPressOut={() => {
             setIsLongPressing(false);
-            // Simplified long press reset
             longPressAnim.setValue(0);
           }}
           onLongPress={() => {
@@ -665,52 +486,15 @@ export default function CircularTimer({
           delayLongPress={800}
           activeOpacity={1}
         >
-
-
-          {/* Time Display in HH:MM:SS format */}
-          <Text style={{ color: safeTheme.text, fontSize: 20, fontWeight: 'bold', marginTop: 8 }}>
-            {(() => {
-              const hours = Math.floor(initialTime / 3600);
-              const minutes = Math.floor((initialTime % 3600) / 60);
-              const seconds = initialTime % 60;
-              return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            })()}
+          {/* Period-based attendance message */}
+          <Text style={{ color: safeTheme.text, fontSize: 16, fontWeight: 'bold', marginTop: 8, textAlign: 'center' }}>
+            ✅ Period-based
           </Text>
           <Text style={[styles.timeLabel, { color: safeTheme.textSecondary, fontSize: 10, marginTop: 3 }]}>
-            LECTURE TIME
+            Attendance Active
           </Text>
 
-          {/* Show start button when not running - Fixed z-index */}
-          {!isRunning && (
-            <View style={{ alignItems: 'center', marginTop: 15, zIndex: 1001 }}>
-              <TouchableOpacity
-                style={[
-                  styles.playBtn, 
-                  { 
-                    backgroundColor: safeTheme.primary,
-                    zIndex: 1002, // Ensure play button is above everything
-                    elevation: 10, // Android elevation
-
-                  }
-                ]}
-                onPress={onToggleTimer}
-                activeOpacity={0.8}
-              >
-                <PlayIcon size={20} color={safeTheme.background} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Show running indicator when active */}
-          {isRunning && (
-            <View style={[styles.runningBadge, { backgroundColor: '#22c55e', marginTop: 15 }]}>
-              <Text style={styles.runningText}>🔴 TRACKING</Text>
-            </View>
-          )}
-
-
-
-          {/* Simplified Long Press Indicator */}
+          {/* Long Press Indicator */}
           {isLongPressing && (
             <View
               style={{
@@ -751,8 +535,6 @@ export default function CircularTimer({
         </TouchableOpacity>
       </Animated.View>
 
-
-
       {/* Hint */}
       <View style={styles.hint}>
         <Text style={[styles.hintText, { color: safeTheme.textSecondary }]}>
@@ -783,49 +565,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10, // Ensure center controls are above SVG
-    elevation: 10, // Android elevation
+    zIndex: 10,
+    elevation: 10,
   },
-  time: {
-    fontSize: 34,
-    fontWeight: 'bold',
-    fontFamily: 'monospace',
-    marginBottom: 12,
-  },
-  playBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 12, // Higher elevation to be above everything
-    zIndex: 20, // Ensure it's on top
-  },
-  resetBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  resetText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  runningBadge: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginBottom: 10,
-  },
-  runningText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
+  timeLabel: {
+    fontSize: 10,
+    marginTop: 3,
   },
   hint: {
     marginTop: 20,

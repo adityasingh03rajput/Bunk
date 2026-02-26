@@ -1,13 +1,13 @@
 
 // Configuration
 // Server URL - can be changed in Settings
-// Priority: 1. Saved in localStorage, 2. Render URL (default)
+// Priority: 1. Saved in localStorage, 2. Local IP (default)
 const savedUrl = localStorage.getItem('serverUrl');
 if (savedUrl && savedUrl.includes('localhost')) {
-    console.log('🔄 Resetting localhost URL to Render');
-    localStorage.setItem('serverUrl', 'https://letsbunk-uw7g.onrender.com');
+    console.log('🔄 Resetting localhost URL to Local IP');
+    localStorage.setItem('serverUrl', 'http://192.168.55.31:3000');
 }
-let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-uw7g.onrender.com';
+let SERVER_URL = localStorage.getItem('serverUrl') || 'http://192.168.55.31:3000';
 
 console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 
@@ -435,26 +435,26 @@ function updateServerStatus(connected) {
 // Dashboard
 async function loadDashboardData() {
     try {
-        const [studentsRes, teachersRes, attendanceRes] = await Promise.all([
+        const [studentsRes, teachersRes, dailyAttendanceRes] = await Promise.all([
             fetch(`${SERVER_URL}/api/students`),
             fetch(`${SERVER_URL}/api/teachers`),
-            fetch(`${SERVER_URL}/api/attendance/records`)
+            fetch(`${SERVER_URL}/api/attendance/daily-report?limit=1000`)
         ]);
 
         const studentsData = await studentsRes.json();
         const teachersData = await teachersRes.json();
-        const attendanceData = await attendanceRes.json();
+        const dailyAttendanceData = await dailyAttendanceRes.json();
 
         // Update global arrays (don't use const to avoid shadowing)
         students = studentsData.students || [];
         teachers = teachersData.teachers || [];
-        const records = attendanceData.records || [];
+        const dailyRecords = dailyAttendanceData.records || [];
 
         // Basic stats
         document.getElementById('totalStudents').textContent = students.length;
         document.getElementById('totalTeachers').textContent = teachers.length;
         document.getElementById('totalTimetables').textContent = '12'; // 4 courses × 3 semesters
-        document.getElementById('totalAttendance').textContent = records.length;
+        document.getElementById('totalAttendance').textContent = dailyRecords.length;
 
         // Course distribution with progress bars
         const courseCounts = students.reduce((acc, s) => {
@@ -514,20 +514,20 @@ async function loadDashboardData() {
         document.getElementById('sem3Count').textContent = semesterCounts.sem3 || 0;
         document.getElementById('sem5Count').textContent = semesterCounts.sem5 || 0;
 
-        // Attendance stats
-        if (records.length > 0) {
-            const presentCount = records.filter(r => r.status === 'present').length;
-            const attendanceRate = ((presentCount / records.length) * 100).toFixed(1);
+        // Attendance stats - using daily attendance data
+        if (dailyRecords.length > 0) {
+            const presentCount = dailyRecords.filter(r => r.dailyStatus === 'present').length;
+            const attendanceRate = ((presentCount / dailyRecords.length) * 100).toFixed(1);
             document.getElementById('overallRate').textContent = `${attendanceRate}%`;
 
             // Today's attendance
             const today = new Date().toDateString();
-            const todayRecords = records.filter(r => new Date(r.date).toDateString() === today);
-            const todayPresent = todayRecords.filter(r => r.status === 'present').length;
+            const todayRecords = dailyRecords.filter(r => new Date(r.date).toDateString() === today);
+            const todayPresent = todayRecords.filter(r => r.dailyStatus === 'present').length;
             document.getElementById('presentToday').textContent = todayPresent;
 
             // Total days
-            const uniqueDates = [...new Set(records.map(r => new Date(r.date).toDateString()))];
+            const uniqueDates = [...new Set(dailyRecords.map(r => new Date(r.date).toDateString()))];
             document.getElementById('totalDays').textContent = uniqueDates.length;
         }
 
@@ -9983,3 +9983,527 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(settingsSection, { attributes: true, attributeFilter: ['class'] });
     }
 });
+
+
+// ============================================
+// PERIOD-BASED ATTENDANCE FUNCTIONS
+// ============================================
+
+// Load Period Reports
+async function loadPeriodReport() {
+    try {
+        console.log('📊 Loading period report...');
+        
+        const date = document.getElementById('periodReportDate').value;
+        const semester = document.getElementById('periodReportSemester').value;
+        const branch = document.getElementById('periodReportBranch').value;
+        const period = document.getElementById('periodReportPeriod').value;
+        const search = document.getElementById('periodReportSearch').value.toLowerCase();
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (date) params.append('date', date);
+        if (semester) params.append('semester', semester);
+        if (branch) params.append('branch', branch);
+        if (period) params.append('period', period);
+        params.append('limit', '100');
+        
+        const response = await fetch(`${SERVER_URL}/api/attendance/period-report?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            let records = data.records || [];
+            
+            // Apply client-side search filter
+            if (search) {
+                records = records.filter(r => 
+                    r.enrollmentNo.toLowerCase().includes(search) ||
+                    r.studentName.toLowerCase().includes(search)
+                );
+            }
+            
+            renderPeriodReportTable(records);
+            showNotification(`Loaded ${records.length} period records`, 'success');
+        } else {
+            showNotification('Failed to load period report', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading period report:', error);
+        showNotification('Error loading period report', 'error');
+    }
+}
+
+function renderPeriodReportTable(records) {
+    const tbody = document.getElementById('periodReportTableBody');
+    
+    if (records.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <div class="empty-state-title">No Records Found</div>
+                    <div class="empty-state-description">Try adjusting your filters</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = records.map(record => {
+        const date = new Date(record.date).toLocaleDateString();
+        const checkInTime = record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-';
+        const statusClass = record.status === 'present' ? 'period-present' : 'period-absent';
+        const verificationClass = `verification-${record.verificationType || 'initial'}`;
+        
+        return `
+            <tr>
+                <td>${date}</td>
+                <td><span class="period-badge ${statusClass}">${record.period}</span></td>
+                <td>${record.enrollmentNo}</td>
+                <td>${record.studentName}</td>
+                <td>${record.subject || '-'}</td>
+                <td>${record.teacherName || record.teacher || '-'}</td>
+                <td>${record.room || '-'}</td>
+                <td><span class="period-badge ${statusClass}">${record.status}</span></td>
+                <td><span class="verification-badge ${verificationClass}">${record.verificationType || 'initial'}</span></td>
+                <td>${checkInTime}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Export Period Report as CSV
+async function exportPeriodReportCSV() {
+    try {
+        const date = document.getElementById('periodReportDate').value;
+        const semester = document.getElementById('periodReportSemester').value;
+        const branch = document.getElementById('periodReportBranch').value;
+        const period = document.getElementById('periodReportPeriod').value;
+        
+        const params = new URLSearchParams();
+        if (date) params.append('startDate', date);
+        if (date) params.append('endDate', date);
+        if (semester) params.append('semester', semester);
+        if (branch) params.append('branch', branch);
+        if (period) params.append('period', period);
+        
+        const url = `${SERVER_URL}/api/attendance/export?${params}`;
+        window.open(url, '_blank');
+        showNotification('Exporting period report...', 'success');
+    } catch (error) {
+        console.error('Error exporting period report:', error);
+        showNotification('Error exporting period report', 'error');
+    }
+}
+
+// Load Students for Manual Marking
+async function loadStudentsForManualMarking() {
+    try {
+        const semester = document.getElementById('manualMarkSemester').value;
+        const branch = document.getElementById('manualMarkBranch').value;
+        const date = document.getElementById('manualMarkDate').value;
+        const period = document.getElementById('manualMarkPeriod').value;
+        
+        if (!semester || !branch || !date || !period) {
+            showNotification('Please select all required fields', 'warning');
+            return;
+        }
+        
+        console.log('📋 Loading students for manual marking...', { semester, branch, date, period });
+        
+        // Get students for this semester and branch
+        const studentsResponse = await fetch(`${SERVER_URL}/api/students`);
+        const studentsData = await studentsResponse.json();
+        
+        if (!studentsData.success) {
+            showNotification('Failed to load students', 'error');
+            return;
+        }
+        
+        const students = studentsData.students.filter(s => 
+            s.semester == semester && s.branch === branch
+        );
+        
+        // Get existing attendance for this date and period
+        const params = new URLSearchParams({ date, period, semester, branch });
+        const attendanceResponse = await fetch(`${SERVER_URL}/api/attendance/period-report?${params}`);
+        const attendanceData = await attendanceResponse.json();
+        
+        const attendanceMap = {};
+        if (attendanceData.success) {
+            attendanceData.records.forEach(record => {
+                attendanceMap[record.enrollmentNo] = record.status;
+            });
+        }
+        
+        // Render students table
+        renderManualMarkingTable(students, attendanceMap);
+        document.getElementById('manualMarkingContainer').style.display = 'block';
+        document.getElementById('markAllPresentBtn').disabled = false;
+        document.getElementById('markAllAbsentBtn').disabled = false;
+        
+        showNotification(`Loaded ${students.length} students`, 'success');
+    } catch (error) {
+        console.error('Error loading students for marking:', error);
+        showNotification('Error loading students', 'error');
+    }
+}
+
+function renderManualMarkingTable(students, attendanceMap) {
+    const tbody = document.getElementById('manualMarkingTableBody');
+    
+    if (students.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    <div class="empty-state-icon">👥</div>
+                    <div class="empty-state-title">No Students Found</div>
+                    <div class="empty-state-description">No students in this semester and branch</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = students.map(student => {
+        const currentStatus = attendanceMap[student.enrollmentNo] || 'not marked';
+        const statusClass = currentStatus === 'present' ? 'status-present' : 
+                           currentStatus === 'absent' ? 'status-absent' : '';
+        
+        return `
+            <tr class="student-marking-row" data-enrollment="${student.enrollmentNo}">
+                <td>
+                    <input type="checkbox" class="student-marking-checkbox" value="${student.enrollmentNo}">
+                </td>
+                <td>${student.enrollmentNo}</td>
+                <td>${student.name}</td>
+                <td><span class="daily-status ${statusClass}">${currentStatus}</span></td>
+                <td>
+                    <button class="action-btn edit" onclick="markStudentPresent('${student.enrollmentNo}', '${student.name}')">
+                        ✓ Present
+                    </button>
+                    <button class="action-btn delete" onclick="markStudentAbsent('${student.enrollmentNo}', '${student.name}')">
+                        ✗ Absent
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Mark Student Present
+async function markStudentPresent(enrollmentNo, studentName) {
+    const period = document.getElementById('manualMarkPeriod').value;
+    const date = document.getElementById('manualMarkDate').value;
+    
+    const reason = prompt(`Mark ${studentName} present for ${period}?\n\nOptional reason:`);
+    if (reason === null) return; // User cancelled
+    
+    await submitManualMarking(enrollmentNo, period, 'present', reason || 'Manual marking by admin', date);
+}
+
+// Mark Student Absent
+async function markStudentAbsent(enrollmentNo, studentName) {
+    const period = document.getElementById('manualMarkPeriod').value;
+    const date = document.getElementById('manualMarkDate').value;
+    
+    const reason = prompt(`Mark ${studentName} absent for ${period}?\n\nOptional reason:`);
+    if (reason === null) return; // User cancelled
+    
+    await submitManualMarking(enrollmentNo, period, 'absent', reason || 'Manual marking by admin', date);
+}
+
+// Submit Manual Marking
+async function submitManualMarking(enrollmentNo, period, status, reason, date) {
+    try {
+        console.log('✏️ Submitting manual marking...', { enrollmentNo, period, status, reason });
+        
+        const response = await fetch(`${SERVER_URL}/api/attendance/manual-mark`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                teacherId: 'ADMIN001', // Admin user
+                enrollmentNo,
+                period,
+                status,
+                reason,
+                timestamp: date ? new Date(date).toISOString() : new Date().toISOString()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification(`Marked ${status} for ${data.markedPeriods.length} period(s)`, 'success');
+            // Reload the students table to show updated status
+            loadStudentsForManualMarking();
+        } else {
+            showNotification(data.message || 'Failed to mark attendance', 'error');
+        }
+    } catch (error) {
+        console.error('Error submitting manual marking:', error);
+        showNotification('Error marking attendance', 'error');
+    }
+}
+
+// Mark All Present
+async function markAllPresent() {
+    const checkboxes = document.querySelectorAll('.student-marking-checkbox:checked');
+    if (checkboxes.length === 0) {
+        showNotification('Please select at least one student', 'warning');
+        return;
+    }
+    
+    const period = document.getElementById('manualMarkPeriod').value;
+    const date = document.getElementById('manualMarkDate').value;
+    const reason = prompt(`Mark ${checkboxes.length} students present for ${period}?\n\nOptional reason:`);
+    
+    if (reason === null) return;
+    
+    for (const checkbox of checkboxes) {
+        await submitManualMarking(checkbox.value, period, 'present', reason || 'Bulk marking by admin', date);
+    }
+}
+
+// Mark All Absent
+async function markAllAbsent() {
+    const checkboxes = document.querySelectorAll('.student-marking-checkbox:checked');
+    if (checkboxes.length === 0) {
+        showNotification('Please select at least one student', 'warning');
+        return;
+    }
+    
+    const period = document.getElementById('manualMarkPeriod').value;
+    const date = document.getElementById('manualMarkDate').value;
+    const reason = prompt(`Mark ${checkboxes.length} students absent for ${period}?\n\nOptional reason:`);
+    
+    if (reason === null) return;
+    
+    for (const checkbox of checkboxes) {
+        await submitManualMarking(checkbox.value, period, 'absent', reason || 'Bulk marking by admin', date);
+    }
+}
+
+// Toggle All Students Marking
+function toggleAllStudentsMarking(checked) {
+    document.querySelectorAll('.student-marking-checkbox').forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+}
+
+// Load Audit Trail
+async function loadAuditTrail() {
+    try {
+        console.log('📝 Loading audit trail...');
+        
+        const enrollmentNo = document.getElementById('auditTrailEnrollment').value;
+        const date = document.getElementById('auditTrailDate').value;
+        const period = document.getElementById('auditTrailPeriod').value;
+        
+        const params = new URLSearchParams();
+        if (enrollmentNo) params.append('enrollmentNo', enrollmentNo);
+        if (date) params.append('date', date);
+        if (period) params.append('period', period);
+        params.append('limit', '100');
+        
+        const response = await fetch(`${SERVER_URL}/api/attendance/audit-trail?${params}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderAuditTrailTable(data.records || []);
+            showNotification(`Loaded ${data.records.length} audit records`, 'success');
+        } else {
+            showNotification('Failed to load audit trail', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading audit trail:', error);
+        showNotification('Error loading audit trail', 'error');
+    }
+}
+
+function renderAuditTrailTable(records) {
+    const tbody = document.getElementById('auditTrailTableBody');
+    
+    if (records.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-title">No Audit Records Found</div>
+                    <div class="empty-state-description">Try adjusting your filters</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = records.map(record => {
+        const date = new Date(record.date).toLocaleDateString();
+        const timestamp = new Date(record.modifiedAt).toLocaleString();
+        const oldStatusClass = record.oldStatus === 'present' ? 'period-present' : 'period-absent';
+        const newStatusClass = record.newStatus === 'present' ? 'period-present' : 'period-absent';
+        
+        return `
+            <tr>
+                <td>${date}</td>
+                <td>${record.period || '-'}</td>
+                <td>${record.enrollmentNo}</td>
+                <td>${record.studentName}</td>
+                <td>${record.oldStatus ? `<span class="period-badge ${oldStatusClass}">${record.oldStatus}</span>` : '-'}</td>
+                <td><span class="period-badge ${newStatusClass}">${record.newStatus}</span></td>
+                <td>${record.modifierName}</td>
+                <td>${record.modifierRole}</td>
+                <td class="audit-reason" title="${record.reason || '-'}">${record.reason || '-'}</td>
+                <td>${timestamp}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Export Audit Trail as CSV
+async function exportAuditTrailCSV() {
+    try {
+        showNotification('Exporting audit trail...', 'info');
+        
+        const enrollmentNo = document.getElementById('auditTrailEnrollment').value;
+        const date = document.getElementById('auditTrailDate').value;
+        const period = document.getElementById('auditTrailPeriod').value;
+        
+        const params = new URLSearchParams();
+        if (enrollmentNo) params.append('enrollmentNo', enrollmentNo);
+        if (date) params.append('date', date);
+        if (period) params.append('period', period);
+        params.append('limit', '10000');
+        
+        const response = await fetch(`${SERVER_URL}/api/attendance/audit-trail?${params}`);
+        const data = await response.json();
+        
+        if (data.success && data.records.length > 0) {
+            // Generate CSV
+            const csvHeader = 'Date,Period,Enrollment No,Student Name,Old Status,New Status,Modified By,Role,Reason,Timestamp\n';
+            const csvRows = data.records.map(record => {
+                const date = new Date(record.date).toLocaleDateString();
+                const timestamp = new Date(record.modifiedAt).toLocaleString();
+                return `${date},${record.period || ''},${record.enrollmentNo},${record.studentName},${record.oldStatus || ''},${record.newStatus},${record.modifierName},${record.modifierRole},"${record.reason || ''}",${timestamp}`;
+            }).join('\n');
+            
+            const csv = csvHeader + csvRows;
+            
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit_trail_${Date.now()}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('Audit trail exported successfully', 'success');
+        } else {
+            showNotification('No audit records to export', 'warning');
+        }
+    } catch (error) {
+        console.error('Error exporting audit trail:', error);
+        showNotification('Error exporting audit trail', 'error');
+    }
+}
+
+// Setup Period-Based Attendance Event Listeners
+function setupPeriodAttendanceListeners() {
+    // Period Reports
+    const refreshPeriodReportBtn = document.getElementById('refreshPeriodReportBtn');
+    if (refreshPeriodReportBtn) {
+        refreshPeriodReportBtn.addEventListener('click', loadPeriodReport);
+    }
+    
+    const exportPeriodReportBtn = document.getElementById('exportPeriodReportBtn');
+    if (exportPeriodReportBtn) {
+        exportPeriodReportBtn.addEventListener('click', exportPeriodReportCSV);
+    }
+    
+    // Manual Marking
+    const loadStudentsForMarkingBtn = document.getElementById('loadStudentsForMarkingBtn');
+    if (loadStudentsForMarkingBtn) {
+        loadStudentsForMarkingBtn.addEventListener('click', loadStudentsForManualMarking);
+    }
+    
+    const markAllPresentBtn = document.getElementById('markAllPresentBtn');
+    if (markAllPresentBtn) {
+        markAllPresentBtn.addEventListener('click', markAllPresent);
+    }
+    
+    const markAllAbsentBtn = document.getElementById('markAllAbsentBtn');
+    if (markAllAbsentBtn) {
+        markAllAbsentBtn.addEventListener('click', markAllAbsent);
+    }
+    
+    // Audit Trail
+    const refreshAuditTrailBtn = document.getElementById('refreshAuditTrailBtn');
+    if (refreshAuditTrailBtn) {
+        refreshAuditTrailBtn.addEventListener('click', loadAuditTrail);
+    }
+    
+    const exportAuditTrailBtn = document.getElementById('exportAuditTrailBtn');
+    if (exportAuditTrailBtn) {
+        exportAuditTrailBtn.addEventListener('click', exportAuditTrailCSV);
+    }
+    
+    // Populate filter dropdowns for new sections
+    populatePeriodReportFilters();
+    populateManualMarkingFilters();
+}
+
+function populatePeriodReportFilters() {
+    const semesterFilter = document.getElementById('periodReportSemester');
+    if (semesterFilter) {
+        semesterFilter.innerHTML = '<option value="">All Semesters</option>' + generateSemesterOptions();
+    }
+    
+    const branchFilter = document.getElementById('periodReportBranch');
+    if (branchFilter) {
+        branchFilter.innerHTML = '<option value="">All Branches</option>' + generateBranchOptions();
+    }
+}
+
+function populateManualMarkingFilters() {
+    const semesterFilter = document.getElementById('manualMarkSemester');
+    if (semesterFilter) {
+        semesterFilter.innerHTML = '<option value="">-- Select Semester --</option>' + generateSemesterOptions();
+    }
+    
+    const branchFilter = document.getElementById('manualMarkBranch');
+    if (branchFilter) {
+        branchFilter.innerHTML = '<option value="">-- Select Branch --</option>' + generateBranchOptions();
+    }
+    
+    // Set today's date as default
+    const dateInput = document.getElementById('manualMarkDate');
+    if (dateInput) {
+        dateInput.valueAsDate = new Date();
+    }
+}
+
+// Initialize period-based attendance listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupPeriodAttendanceListeners();
+});
+
+// Update switchSection to handle new sections
+const originalSwitchSection = switchSection;
+switchSection = function(sectionName) {
+    originalSwitchSection(sectionName);
+    
+    // Load data when switching to new sections
+    switch (sectionName) {
+        case 'period-reports':
+            populatePeriodReportFilters();
+            break;
+        case 'manual-marking':
+            populateManualMarkingFilters();
+            break;
+        case 'audit-trail':
+            // Auto-load audit trail
+            loadAuditTrail();
+            break;
+    }
+};

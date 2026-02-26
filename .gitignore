@@ -92,6 +92,12 @@ jspm_packages/
 .env
 .env.test
 
+# Firebase credentials (NEVER commit these!)
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+firebase-adminsdk-*.json
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
@@ -140,3 +146,7 @@ $RECYCLE.BIN/
 # APK files (keep only latest)
 app-release-*.apk
 !app-release-latest.apk
+
+# Database backups (large files, should not be committed)
+backups/
+!backups/.gitkeep

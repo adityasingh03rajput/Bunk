@@ -50,6 +50,18 @@
                     <span class="icon">📊</span>
                     <span>Attendance History</span>
                 </button>
+                <button class="nav-item" data-section="period-reports">
+                    <span class="icon">📈</span>
+                    <span>Period Reports</span>
+                </button>
+                <button class="nav-item" data-section="manual-marking">
+                    <span class="icon">✏️</span>
+                    <span>Manual Marking</span>
+                </button>
+                <button class="nav-item" data-section="audit-trail">
+                    <span class="icon">📝</span>
+                    <span>Audit Trail</span>
+                </button>
                 <button class="nav-item" data-section="periods">
                     <span class="icon">⏰</span>
                     <span>Period Settings</span>
@@ -570,10 +582,10 @@
                             </div>
                         </div>
                         <div class="summary-card">
-                            <div class="summary-icon">⏱️</div>
+                            <div class="summary-icon">⏰</div>
                             <div class="summary-info">
-                                <h3 id="totalHoursAttended">0h</h3>
-                                <p>Total Hours</p>
+                                <h3 id="avgPeriodsPerDay">0</h3>
+                                <p>Avg Periods/Day</p>
                             </div>
                         </div>
                     </div>
@@ -589,8 +601,8 @@
                                     <th>Total Days</th>
                                     <th>Present Days</th>
                                     <th>Attendance %</th>
-                                    <th>Total Hours</th>
-                                    <th>WiFi Status</th>
+                                    <th>Avg Periods/Day</th>
+                                    <th>Daily Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -614,6 +626,195 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </section>
+
+                <!-- Period Reports Section -->
+                <section id="period-reports-section" class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">📈 Period-Wise Attendance Reports</h2>
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" id="exportPeriodReportBtn">📤 Export CSV</button>
+                            <button class="btn btn-primary" id="refreshPeriodReportBtn">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="filters">
+                        <input type="date" id="periodReportDate" class="filter-select" title="Select date">
+                        <select id="periodReportSemester" class="filter-select">
+                            <option value="">All Semesters</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                        <select id="periodReportBranch" class="filter-select">
+                            <option value="">All Branches</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                        <select id="periodReportPeriod" class="filter-select">
+                            <option value="">All Periods</option>
+                            <option value="P1">Period 1</option>
+                            <option value="P2">Period 2</option>
+                            <option value="P3">Period 3</option>
+                            <option value="P4">Period 4</option>
+                            <option value="P5">Period 5</option>
+                            <option value="P6">Period 6</option>
+                            <option value="P7">Period 7</option>
+                            <option value="P8">Period 8</option>
+                        </select>
+                        <input type="text" id="periodReportSearch" class="search-input" placeholder="Search by name or enrollment...">
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Period</th>
+                                    <th>Enrollment No</th>
+                                    <th>Student Name</th>
+                                    <th>Subject</th>
+                                    <th>Teacher</th>
+                                    <th>Room</th>
+                                    <th>Status</th>
+                                    <th>Verification</th>
+                                    <th>Check-in Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="periodReportTableBody">
+                                <tr>
+                                    <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                        Select filters and click Refresh to load period reports
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="periodReportPagination" class="pagination" style="display: none;">
+                        <!-- Pagination controls will be added here -->
+                    </div>
+                </section>
+
+                <!-- Manual Marking Section -->
+                <section id="manual-marking-section" class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">✏️ Manual Attendance Marking</h2>
+                        <div class="action-buttons">
+                            <button class="btn btn-success" id="markAllPresentBtn" disabled>✓ Mark All Present</button>
+                            <button class="btn btn-danger" id="markAllAbsentBtn" disabled>✗ Mark All Absent</button>
+                        </div>
+                    </div>
+
+                    <div class="manual-marking-info" style="background: var(--bg-card); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary);">
+                        <h3 style="margin-bottom: 10px;">ℹ️ Manual Marking Instructions</h3>
+                        <ul style="color: var(--text-secondary); line-height: 1.8;">
+                            <li>Select semester, branch, date, and period to load students</li>
+                            <li>Marking a student <strong>present</strong> will mark them present for the selected period and all future periods</li>
+                            <li>Marking a student <strong>absent</strong> will mark only the selected period as absent</li>
+                            <li>All manual markings are logged in the audit trail</li>
+                            <li>You can optionally add a reason for the marking</li>
+                        </ul>
+                    </div>
+
+                    <div class="filters">
+                        <select id="manualMarkSemester" class="filter-select" required>
+                            <option value="">-- Select Semester --</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                        <select id="manualMarkBranch" class="filter-select" required>
+                            <option value="">-- Select Branch --</option>
+                            <!-- Populated dynamically -->
+                        </select>
+                        <input type="date" id="manualMarkDate" class="filter-select" required>
+                        <select id="manualMarkPeriod" class="filter-select" required>
+                            <option value="">-- Select Period --</option>
+                            <option value="P1">Period 1</option>
+                            <option value="P2">Period 2</option>
+                            <option value="P3">Period 3</option>
+                            <option value="P4">Period 4</option>
+                            <option value="P5">Period 5</option>
+                            <option value="P6">Period 6</option>
+                            <option value="P7">Period 7</option>
+                            <option value="P8">Period 8</option>
+                        </select>
+                        <button class="btn btn-primary" id="loadStudentsForMarkingBtn">📋 Load Students</button>
+                    </div>
+
+                    <div id="manualMarkingContainer" style="display: none;">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" id="selectAllStudentsMarking" onchange="toggleAllStudentsMarking(this.checked)">
+                                        </th>
+                                        <th>Enrollment No</th>
+                                        <th>Name</th>
+                                        <th>Current Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manualMarkingTableBody">
+                                    <!-- Students will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Audit Trail Section -->
+                <section id="audit-trail-section" class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">📝 Attendance Audit Trail</h2>
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary" id="exportAuditTrailBtn">📤 Export CSV</button>
+                            <button class="btn btn-primary" id="refreshAuditTrailBtn">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="filters">
+                        <input type="text" id="auditTrailEnrollment" class="search-input" placeholder="Enrollment number...">
+                        <input type="date" id="auditTrailDate" class="filter-select" title="Select date">
+                        <select id="auditTrailPeriod" class="filter-select">
+                            <option value="">All Periods</option>
+                            <option value="P1">Period 1</option>
+                            <option value="P2">Period 2</option>
+                            <option value="P3">Period 3</option>
+                            <option value="P4">Period 4</option>
+                            <option value="P5">Period 5</option>
+                            <option value="P6">Period 6</option>
+                            <option value="P7">Period 7</option>
+                            <option value="P8">Period 8</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Period</th>
+                                    <th>Enrollment No</th>
+                                    <th>Student Name</th>
+                                    <th>Old Status</th>
+                                    <th>New Status</th>
+                                    <th>Modified By</th>
+                                    <th>Role</th>
+                                    <th>Reason</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTrailTableBody">
+                                <tr>
+                                    <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                        Click Refresh to load audit trail records
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="auditTrailPagination" class="pagination" style="display: none;">
+                        <!-- Pagination controls will be added here -->
                     </div>
                 </section>
 

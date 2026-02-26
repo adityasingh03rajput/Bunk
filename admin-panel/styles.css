@@ -5211,3 +5211,357 @@ ture Details Styles */
         grid-template-columns: 1fr;
     }
 }
+
+
+/* ============================================
+   PERIOD-BASED ATTENDANCE STYLES
+   ============================================ */
+
+/* Period badges */
+.period-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 2px;
+    text-align: center;
+    min-width: 32px;
+}
+
+.period-present {
+    background: #10b981;
+    color: white;
+}
+
+.period-absent {
+    background: #ef4444;
+    color: white;
+}
+
+.period-break {
+    background: #6b7280;
+    color: white;
+}
+
+.period-pending {
+    background: #f59e0b;
+    color: white;
+}
+
+/* Daily status indicators */
+.daily-status {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    display: inline-block;
+}
+
+.status-present {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-absent {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Period timeline */
+.period-timeline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.period-slot {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 14px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.period-slot:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.period-slot.present {
+    background: #10b981;
+    color: white;
+    border-color: #059669;
+}
+
+.period-slot.absent {
+    background: #ef4444;
+    color: white;
+    border-color: #dc2626;
+}
+
+.period-slot.break {
+    background: #6b7280;
+    color: white;
+    border-color: #4b5563;
+}
+
+.period-slot.pending {
+    background: #f3f4f6;
+    color: #6b7280;
+    border-color: #d1d5db;
+}
+
+/* Verification type badges */
+.verification-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.verification-initial {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.verification-random {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.verification-manual {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+/* Manual marking section */
+.manual-marking-info {
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--primary);
+}
+
+.manual-marking-info h3 {
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.manual-marking-info ul {
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding-left: 20px;
+}
+
+.manual-marking-info li {
+    margin-bottom: 8px;
+}
+
+/* Student marking row */
+.student-marking-row {
+    transition: background 0.2s ease;
+}
+
+.student-marking-row:hover {
+    background: var(--bg-hover);
+}
+
+.student-marking-row.selected {
+    background: rgba(0, 217, 255, 0.1);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 20px;
+}
+
+.pagination-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 0 10px;
+}
+
+.pagination-page {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    text-align: center;
+}
+
+.pagination-page:hover {
+    background: var(--bg-hover);
+}
+
+.pagination-page.active {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+    font-weight: 600;
+}
+
+/* Status change indicators */
+.status-change {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-change-arrow {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.old-status {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.new-status {
+    font-weight: 600;
+}
+
+/* Audit trail specific */
+.audit-reason {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.audit-reason:hover {
+    white-space: normal;
+    overflow: visible;
+}
+
+/* Period report filters */
+.filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.filter-select,
+.search-input {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.filter-select:focus,
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+}
+
+.search-input {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Loading state */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 217, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.empty-state-description {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .period-timeline {
+        justify-content: center;
+    }
+    
+    .filters {
+        flex-direction: column;
+    }
+    
+    .filter-select,
+    .search-input {
+        width: 100%;
+    }
+    
+    .pagination {
+        flex-wrap: wrap;
+    }
+}

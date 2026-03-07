@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Server Configuration -->
-    <!-- Local LetsBunk Server -->
-    <string name="server_base_url">http://192.168.50.31:3000/api</string>
+    <!-- Production LetsBunk Server (Render.com) -->
+    <string name="server_base_url">https://letsbunk-uw7g.onrender.com/api</string>
 </resources>

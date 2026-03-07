@@ -1,13 +1,13 @@
 
 // Configuration
 // Server URL - can be changed in Settings
-// Priority: 1. Saved in localStorage, 2. Local IP (default)
+// Priority: 1. Saved in localStorage, 2. Production URL (default)
 const savedUrl = localStorage.getItem('serverUrl');
 if (savedUrl && savedUrl.includes('localhost')) {
-    console.log('🔄 Resetting localhost URL to Local IP');
-    localStorage.setItem('serverUrl', 'http://192.168.50.31:3000');
+    console.log('🔄 Resetting localhost URL to Production URL');
+    localStorage.setItem('serverUrl', 'https://letsbunk-uw7g.onrender.com');
 }
-let SERVER_URL = localStorage.getItem('serverUrl') || 'http://192.168.50.31:3000';
+let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-uw7g.onrender.com';
 
 console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 

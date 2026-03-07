@@ -9,9 +9,9 @@
 // SERVER CONFIGURATION
 // ============================================
 // Update this URL to your backend server (using computer IP for mobile testing)
-// Production: Render.com (deprecated - using local only)
-// Local: http://192.168.1.10:3000
-export const SERVER_BASE_URL = 'http://192.168.50.31:3000';
+// Production: Render.com
+// Local: http://192.168.50.31:3000
+export const SERVER_BASE_URL = 'https://letsbunk-uw7g.onrender.com';
 
 // Derived URLs (automatically generated from SERVER_BASE_URL)
 export const API_URL = `${SERVER_BASE_URL}/api/config`;
@@ -69,11 +69,11 @@ export const APP_NAME = 'LetsBunk';
 // 2. Rebuild the app: npm run android or BUILD_APK_PROPER_SDK.bat
 // 3. All API calls will automatically use the new URL
 //
-// Current Configuration: LOCAL HOSTING
-// - App: http://192.168.1.6:3000
-// - Admin Panel: http://192.168.1.6:3000 (or update in Settings)
+// Current Configuration: PRODUCTION (Render.com)
+// - App: https://letsbunk-uw7g.onrender.com
+// - Admin Panel: https://letsbunk-uw7g.onrender.com (or update in Settings)
 //
-// To switch back to production:
-// - Change SERVER_BASE_URL to: http://192.168.1.6:3000
-// - Update admin-panel/renderer.js line 10
+// To switch to local:
+// - Change SERVER_BASE_URL to: http://192.168.50.31:3000
+// - Update admin-panel/renderer.js
 // - Rebuild the app

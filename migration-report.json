@@ -1,0 +1,92 @@
+{
+  "startTime": "2026-02-25T16:23:31.945Z",
+  "steps": [
+    {
+      "stepNumber": 0,
+      "stepName": "Pre-migration Checks",
+      "status": "success",
+      "timestamp": "2026-02-25T16:23:33.191Z",
+      "backupCount": 2
+    },
+    {
+      "stepNumber": 1,
+      "stepName": "Create Database Backup",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.192Z"
+    },
+    {
+      "stepNumber": 2,
+      "stepName": "Verify New Schemas",
+      "status": "success",
+      "timestamp": "2026-02-25T16:23:33.293Z",
+      "existing": [
+        "periodattendances",
+        "dailyattendances",
+        "attendanceaudits",
+        "systemsettings"
+      ],
+      "missing": []
+    },
+    {
+      "stepNumber": 3,
+      "stepName": "Remove Timer Fields from StudentManagement",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.293Z"
+    },
+    {
+      "stepNumber": 4,
+      "stepName": "Remove Timer Fields from RandomRing",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.294Z"
+    },
+    {
+      "stepNumber": 5,
+      "stepName": "Drop AttendanceSession Collection",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.294Z"
+    },
+    {
+      "stepNumber": 6,
+      "stepName": "Create Indexes for New Collections",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.294Z"
+    },
+    {
+      "stepNumber": 7,
+      "stepName": "Seed Default System Settings",
+      "status": "dry-run",
+      "timestamp": "2026-02-25T16:23:33.295Z"
+    },
+    {
+      "stepNumber": 8,
+      "stepName": "Verify Migration Success",
+      "status": "success",
+      "timestamp": "2026-02-25T16:23:33.975Z",
+      "collections": {
+        "periodattendances": "exists",
+        "dailyattendances": "exists",
+        "attendanceaudits": "exists",
+        "systemsettings": "exists",
+        "attendancesessions": "ERROR: Still exists"
+      },
+      "indexes": {
+        "periodattendances": 3,
+        "dailyattendances": 1,
+        "attendanceaudits": 5,
+        "systemsettings": 2
+      },
+      "settings": {
+        "daily_threshold": 75
+      }
+    }
+  ],
+  "backupPath": null,
+  "errors": [],
+  "endTime": "2026-02-25T16:23:33.975Z",
+  "duration": 2.03,
+  "summary": {
+    "successCount": 3,
+    "errorCount": 0,
+    "skippedCount": 6
+  }
+}

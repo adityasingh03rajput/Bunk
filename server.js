@@ -4735,6 +4735,11 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
                 if (isPasswordValid) {
                     role = 'student';
+                    // Check enrollment validity
+                    if (user.isActive === false) {
+                        console.log('🚫 Student enrollment invalid:', user.name);
+                        return res.json({ success: false, message: 'Your enrollment is no longer valid. Please contact administration.' });
+                    }
                     console.log('✅ Student logged in:', user.name);
                     console.log('📸 PhotoUrl from DB:', user.photoUrl);
                     console.log('👤 Face embedding:', user.faceEmbedding ? `${user.faceEmbedding.length} floats` : 'Not enrolled');
@@ -4875,6 +4880,7 @@ const studentManagementSchema = new mongoose.Schema({
     faceEmbedding: { type: [Number], default: null }, // Face recognition embedding (192 floats)
     faceEnrolledAt: { type: Date }, // When face was enrolled
     createdAt: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: true }, // Enrollment validity - false = auto-logout
     status: { type: String, enum: ['attending', 'absent', 'present'], default: 'absent' },
     lastUpdated: { type: Date, default: Date.now },
     // Current class info
@@ -5610,6 +5616,31 @@ app.post('/api/enrollment/verify', async (req, res) => {
             message: 'Server error',
             error: error.message 
         });
+    }
+});
+
+// Check if a logged-in student's enrollment is still valid
+app.get('/api/student/validate', async (req, res) => {
+    try {
+        const { enrollmentNo } = req.query;
+        if (!enrollmentNo) {
+            return res.status(400).json({ success: false, message: 'enrollmentNo required' });
+        }
+
+        const student = await StudentManagement.findOne({ enrollmentNo }).select('isActive name');
+        if (!student) {
+            return res.json({ success: false, valid: false, reason: 'not_found' });
+        }
+
+        if (student.isActive === false) {
+            console.log('🚫 Enrollment invalid for:', student.name);
+            return res.json({ success: true, valid: false, reason: 'enrollment_invalid' });
+        }
+
+        return res.json({ success: true, valid: true });
+    } catch (error) {
+        console.error('❌ Error validating student:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 // End of Face Enrollment API Routes

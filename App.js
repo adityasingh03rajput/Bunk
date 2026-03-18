@@ -1722,6 +1722,27 @@ export default function App() {
             setSemester(userData.semester);
             setBranch(userData.branch);
 
+            // Validate enrollment on every app start
+            try {
+              const enrollmentNo = userData.enrollmentNo;
+              if (enrollmentNo) {
+                const validateRes = await fetch(`${SOCKET_URL}/api/student/validate?enrollmentNo=${enrollmentNo}`);
+                const validateData = await validateRes.json();
+                if (validateData.success && validateData.valid === false) {
+                  console.log('🚫 Enrollment invalid on app start — clearing session');
+                  await AsyncStorage.multiRemove([USER_DATA_KEY, LOGIN_ID_KEY, ROLE_KEY, STUDENT_NAME_KEY, STUDENT_ID_KEY, DAILY_VERIFICATION_KEY]);
+                  Alert.alert(
+                    'Enrollment Invalid',
+                    'Your enrollment is no longer valid. Please contact administration.',
+                    [{ text: 'OK' }]
+                  );
+                  return; // stop restoring session
+                }
+              }
+            } catch (e) {
+              console.log('⚠️ Enrollment validation skipped (network error)');
+            }
+
             if (userData.semester) {
               AsyncStorage.setItem(SEMESTER_KEY, userData.semester).catch(() => {});
             }

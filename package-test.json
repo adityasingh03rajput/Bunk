@@ -1,0 +1,26 @@
+{
+  "name": "letsbunk-testing",
+  "version": "1.0.0",
+  "description": "Complete testing suite for LetsBunk attendance system",
+  "scripts": {
+    "test": "node test-complete-flow.js",
+    "test:quick": "node quick-test.js",
+    "test:clear": "node clear-database.js",
+    "test:all": "npm run test:clear && npm run test"
+  },
+  "keywords": [
+    "letsbunk",
+    "attendance",
+    "testing",
+    "automation"
+  ],
+  "author": "LetsBunk Team",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.0.0",
+    "mongoose": "^8.0.0"
+  }
+}

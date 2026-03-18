@@ -1,0 +1,1914 @@
+
+-------------------------------------------------------------------------------
+   ROBOCOPY     ::     Robust File Copy for Windows                              
+-------------------------------------------------------------------------------
+
+  Started : Thursday, March 19, 2026 12:18:00 AM
+   Source : D:\bunk bssid old\
+     Dest : D:\bunk bssid\OLD_REFERENCE\
+
+    Files : *.*
+	    
+ Exc Dirs : .git
+	    node_modules
+	    android\app\build
+	    android\build
+	    android\.gradle
+	    
+  Options : *.* /S /E /DCOPY:DA /COPY:DAT /NP /R:1000000 /W:30 
+
+------------------------------------------------------------------------------
+
+	  New Dir        174	D:\bunk bssid old\
+	    New File  		    1180	.env
+	    New File  		       3	.env.example
+	    New File  		    1854	.gitignore
+	    New File  		    2738	ADMIN_PANEL_RESTORED.md
+	    New File  		    7641	ADMIN_PANEL_RUNNING.md
+	    New File  		   11685	ADMIN_PANEL_UPDATES_COMPLETE.md
+	    New File  		    8792	ADMIN_PANEL_UPDATE_PLAN.md
+	    New File  		    5948	API_SIGNAL_FLOW_FIX.md
+	    New File  		    6534	APK_BUILD_GUIDE.md
+	    New File  		  211769	App.js
+	    New File  		     489	app.json
+	    New File  		    8070	APP_JS_EMOJI_ERRORS.md
+	    New File  		    7353	ATTENDANCE_STATUS_DEBUG.md
+	    New File  		    5912	ATTENDANCE_STATUS_FIX.md
+	    New File  		    4613	AUTO_CHECKIN_ON_LOAD_FIX.md
+	    New File  		     113	babel.config.js
+	    New File  		    1350	BACKUP_DATABASE.bat
+	    New File  		    3731	BottomNavigation.js
+	    New File  		    9781	BSSIDStorage.js
+	    New File  		    8398	BSSID_CACHING_SYSTEM.md
+	    New File  		    4043	BSSID_PERIOD_TIME_UPDATE.md
+	    New File  		   12647	BSSID_REALTIME_UPDATE_COMPLETE.md
+	    New File  		    1491	BSSID_REFRESH_FIX.md
+	    New File  		    7438	BSSID_UPDATE_APP_INSTALLED.md
+	    New File  		    3703	BSSID_VALIDATION_FIX.md
+	    New File  		    5601	BUILD_APK_PROPER_SDK.bat
+	    New File  		    1796	BUILD_FAST.bat
+	    New File  		     677	BUILD_RELEASE_APK.bat
+	    New File  		    5146	BUILD_STATUS.md
+	    New File  		   48277	CalendarScreen.js
+	    New File  		     208	CHECK_DATABASE.bat
+	    New File  		   20423	CircularTimer.js
+	    New File  		    3175	CIRCULARTIMER_CLEANUP_COMPLETE.md
+	    New File  		    5300	CIRCULARTIMER_RESTORED.md
+	    New File  		    5889	CLEANUP_COMPLETE.md
+	    New File  		   13156	COMPLETE_SYSTEM_STATUS.md
+	    New File  		    2208	config.js
+	    New File  		    7316	DEPENDENCIES_INSTALLED.md
+	    New File  		    4507	DEPENDENCY_CHECK.md
+	    New File  		    5842	DEPLOYMENT_CHECKLIST.md
+	    New File  		    4254	DEPLOYMENT_STATUS.md
+	    New File  		     914	DROP_ATTENDANCE_SESSION.bat
+	    New File  		    1916	EDIT_BUTTON_FIX.md
+	    New File  		    6844	EMOJI_FIX_APPLIED.md
+	    New File  		    5278	EMOJI_FIX_COMPLETE.md
+	    New File  		    2984	EMOJI_PLACEHOLDERS_FIXED.md
+	    New File  		    6312	EMOJI_TYPO_SCAN_REPORT.md
+	    New File  		    7145	ENROLLMENT_APP_READY.md
+	    New File  		    4239	ENV_BASED_URL_CONFIGURATION.md
+	    New File  		    3294	ENV_CONFIGURATION_SUMMARY.md
+	    New File  		    2079	FaceVerification.js
+	    New File  		    5580	FACE_API_COMPLETE_REMOVAL_SUMMARY.md
+	    New File  		    2335	FACE_API_REMOVAL_COMPLETE.md
+	    New File  		    8114	FACE_API_REMOVAL_GUIDE.md
+	    New File  		   11861	FACE_DATA_IMPLEMENTATION_COMPLETE.md
+	    New File  		    7301	FACE_DATA_STORAGE_STATUS.md
+	    New File  		    4436	FACE_DATA_VERIFICATION.md
+	    New File  		   11663	FACE_ENROLLMENT_INTEGRATION.md
+	    New File  		    6688	FACE_VERIFICATION_BUILD_COMPLETE.md
+	    New File  		    6005	FACE_VERIFICATION_CHECK_IN_FIX.md
+	    New File  		   10617	FACE_VERIFICATION_COMPLETE.md
+	    New File  		   11458	FACE_VERIFICATION_INTEGRATION.md
+	    New File  		    8849	FACE_VERIFICATION_SUMMARY.txt
+	    New File  		   12740	Feedback.js
+	    New File  		    2652	FilterButtons.js
+	    New File  		    2736	FILTER_LOGIC_UPDATE.md
+	    New File  		    3873	FINAL_ENV_VERIFICATION.md
+	    New File  		   11253	FINAL_IMPLEMENTATION_SUMMARY.md
+	    New File  		    7596	FINAL_STATUS.md
+	    New File  		    9061	FINAL_VERIFICATION_COMPLETE.md
+	    New File  		   10287	FIREBASE_SETUP_GUIDE.md
+	    New File  		    3459	fix-app-emojis.js
+	    New File  		    4121	FloatingBrandButton.js
+	    New File  		    8520	FRONTEND_CLEANUP_INSTRUCTIONS.md
+	    New File  		   13342	HelpAndSupport.js
+	    New File  		   10201	Icons.js
+	    New File  		    5101	IMPLEMENTATION_STATUS.md
+	    New File  		     191	index.js
+	    New File  		    4431	INSTALLATION_COMPLETE.md
+	    New File  		    7629	INSTALLATION_SUCCESS.md
+	    New File  		    2487	INSTALL_APK_GUIDE.md
+	    New File  		     617	INSTALL_RELEASE_APK.bat
+	    New File  		    6060	IP_ADDRESS_REPORT.md
+	    New File  		   10547	LanyardCard.js
+	    New File  		 143.8 m	LetsBunk-Release.apk
+	    New File  		    4786	LETSBUNK_APP_INSTALLED.md
+	    New File  		   23480	LETSBUNK_DESIGN_UI_UX_DOCUMENTATION.md
+	    New File  		   23764	LetsBunk_Optimized_DFD.md
+	    New File  		   19033	LetsBunk_System_DFD.md
+	    New File  		    5831	LOCALHOST_CONFIGURATION.md
+	    New File  		    5975	LOCALHOST_SETUP_COMPLETE.md
+	    New File  		    7340	LOCAL_SERVER_CONFIGURATION.md
+	    New File  		   12980	LOCATION_PERMISSION_IMPLEMENTATION.md
+	    New File  		     133	metro.config.js
+	    New File  		    3734	METRO_BUNDLER_FIX.md
+	    New File  		    6870	MOBILE_DEVICE_SETUP.md
+	    New File  		    8860	MOBILE_INSTALLATION_COMPLETE.md
+	    New File  		    5415	MULTIPLE_BSSID_COMPLETE.md
+	    New File  		    3963	MULTIPLE_BSSID_DISPLAY_FIX.md
+	    New File  		    8083	MULTIPLE_BSSID_TESTING_GUIDE.md
+	    New File  		    8808	NativeWiFiService.js
+	    New File  		   15521	Notifications.js
+	    New File  		   15065	NotificationsScreen.js
+	    New File  		  682242	package-lock.json
+	    New File  		    1484	package.json
+	    New File  		    8228	PERIOD_BASED_ATTENDANCE_IMPLEMENTATION_COMPLETE.md
+	    New File  		   11115	ProfileScreen.js
+	    New File  		   12794	PROJECT_COMPLETE.md
+	    New File  		    2858	QUICK_REFERENCE_FACE_VERIFICATION.md
+	    New File  		    6205	QUICK_START_GUIDE.md
+	    New File  		    1380	QUICK_START_LOCAL.md
+	    New File  		    8201	RandomRingDialog.js
+	    New File  		   11824	RANDOM_RING_EXPLANATION.md
+	    New File  		    6626	README.md
+	    New File  		    7316	README_SETUP_COMPLETE.md
+	    New File  		    2874	REALTIME_SYNC_FIX.md
+	    New File  		     777	RESET_DATABASE.bat
+	    New File  		    1339	RESTART_SERVER.bat
+	    New File  		    3518	RUN_TESTS.bat
+	    New File  		    4922	SecureStorage.js
+	    New File  		    3137	SecurityStatusIndicator.js
+	    New File  		   18251	SemesterSelector.js
+	    New File  		    4212	SEMESTER_BRANCH_API_UPDATE.md
+	    New File  		  315126	server.js
+	    New File  		   13268	ServerTime.js
+	    New File  		    5194	SERVER_URL_FINAL_SETUP.md
+	    New File  		    5841	SERVER_URL_UNIFIED.md
+	    New File  		    8147	SETUP_FACE_VERIFICATION.md
+	    New File  		    6235	SETUP_LOCAL_MONGODB.md
+	    New File  		    5261	SETUP_NEW_DEVICE.md
+	    New File  		    3453	SETUP_RENDER_SERVER.md
+	    New File  		    4143	SINGLE_ENV_VARIABLE_SETUP.md
+	    New File  		    6174	STANDALONE_APK_READY.md
+	    New File  		     790	START_ADMIN_PANEL.bat
+	    New File  		    1567	START_ALL.bat
+	    New File  		    3689	START_HERE.md
+	    New File  		   17150	StudentList.js
+	    New File  		    7373	StudentProfileDialog.js
+	    New File  		    4933	StudentSearch.js
+	    New File  		    5148	TASKS_5_6_7_SUMMARY.md
+	    New File  		    7443	TASK_1.10_SUMMARY.md
+	    New File  		    5799	TASK_1.5_SUMMARY.md
+	    New File  		    4262	TASK_1.7_SUMMARY.md
+	    New File  		    6169	TASK_1.8_SUMMARY.md
+	    New File  		    7928	TASK_1.9_SUMMARY.md
+	    New File  		    8061	TASK_4.3_SUMMARY.md
+	    New File  		    8100	TASK_4.4_IMPLEMENTATION.md
+	    New File  		    4979	TASK_4.5_FIX_INSTRUCTIONS.md
+	    New File  		   11939	TASK_4.5_IMPLEMENTATION_SUMMARY.md
+	    New File  		   14600	TASK_4.7_IMPLEMENTATION.md
+	    New File  		    4586	TASK_5.1_SUMMARY.md
+	    New File  		    2812	TASK_8_CLEANUP_PLAN.md
+	    New File  		    8330	TASK_8_COMPLETION_SUMMARY.md
+	    New File  		    3953	TASK_COMPLETE.md
+	    New File  		   13648	TeacherHeader.js
+	    New File  		    7463	TeacherProfileDialog.js
+	    New File  		   11176	TECH_STACK_DOCUMENTATION.md
+	    New File  		   18211	TestBSSID.js
+	    New File  		       0	TESTING_FILES_OVERVIEW.txt
+	    New File  		    4749	TIMER_SYNC_FIX.md
+	    New File  		   56635	TimetableScreen.js
+	    New File  		   11213	TimetableSelector.js
+	    New File  		   10773	Updates.js
+	    New File  		    4944	URL_CHANGES_SUMMARY.md
+	    New File  		    2062	URL_UPDATE_VERIFICATION.md
+	    New File  		    4977	verify-task-4.3-issues.md
+	    New File  		     556	VERIFY_INDEXES.bat
+	    New File  		   14016	ViewRecords.js
+	    New File  		    5159	WHAT_WAS_DONE.md
+	    New File  		   22974	WiFiManager.js
+	    New File  		    6777	WIFI_DETECTION_FIX.md
+	    New File  		   12078	WIFI_DIAGNOSTIC_TEST.js
+	    New File  		    5519	WIFI_FACE_VERIFICATION_IMPLEMENTATION.md
+	    New File  		    6017	XIAOMI_PERMISSION_FIX.md
+	  New Dir          0	D:\bunk bssid old\.kiro\
+	  New Dir          0	D:\bunk bssid old\.kiro\specs\
+	  New Dir          4	D:\bunk bssid old\.kiro\specs\period-based-attendance-system\
+	    New File  		     111	.config.kiro
+	    New File  		   32549	design.md
+	    New File  		   29673	requirements.md
+	    New File  		   11075	tasks.md
+	  New Dir          1	D:\bunk bssid old\.vscode\
+	    New File  		       4	settings.json
+	  New Dir         22	D:\bunk bssid old\admin-panel\
+	    New File  		    2647	BUILD_INSTALLER.bat
+	    New File  		    6302	BUILD_INSTALLER.ps1
+	    New File  		     364	clear-cache.bat
+	    New File  		     208	CLEAR_CACHE.bat
+	    New File  		    1312	electron-builder.json
+	    New File  		  528264	icon.png
+	    New File  		   69650	index.html
+	    New File  		    2187	installer.nsh
+	    New File  		    3901	INSTALLER_READY.md
+	    New File  		    1114	LICENSE.txt
+	    New File  		   20991	main.js
+	    New File  		    1284	package-electron.json
+	    New File  		  150655	package-lock.json
+	    New File  		    1407	package.json
+	    New File  		    2997	README-EXECUTABLE.md
+	    New File  		    3271	README_INSTALLER.txt
+	    New File  		  443574	renderer.js
+	    New File  		    3547	reset-connection.html
+	    New File  		     311	Run-LetsBunk-Admin.bat
+	    New File  		     511	set-render-url.js
+	    New File  		     325	start-admin.bat
+	    New File  		  104724	styles.css
+	  New Dir          7	D:\bunk bssid old\android\
+	    New File  		     145	.gitignore
+	    New File  		    2017	build.gradle
+	    New File  		    2593	gradle.properties
+	    New File  		    8941	gradlew
+	    New File  		    2918	gradlew.bat
+	    New File  		      57	local.properties
+	    New File  		    2739	settings.gradle
+	  New Dir          1	D:\bunk bssid old\android\.gradle\
+	    New File  		       8	file-system.probe
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\
+	    New File  		       0	gc.properties
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\checksums\
+	    New File  		      17	checksums.lock
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\
+	    New File  		       0	gc.properties
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\
+	    New File  		      99	metadata.bin
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\classes\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\classes\org\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\classes\org\gradle\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\classes\org\gradle\accessors\
+	  New Dir         18	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\classes\org\gradle\accessors\dm\
+	    New File  		     927	LibrariesForLibs$AndroidGradleLibraryAccessors.class
+	    New File  		    1093	LibrariesForLibs$AndroidLibraryAccessors.class
+	    New File  		     765	LibrariesForLibs$BundleAccessors.class
+	    New File  		     924	LibrariesForLibs$KotlinGradleLibraryAccessors.class
+	    New File  		    1086	LibrariesForLibs$KotlinLibraryAccessors.class
+	    New File  		     901	LibrariesForLibs$KotlinPluginAccessors.class
+	    New File  		    1112	LibrariesForLibs$PluginAccessors.class
+	    New File  		    1243	LibrariesForLibs$VersionAccessors.class
+	    New File  		    4279	LibrariesForLibs.class
+	    New File  		    2227	LibrariesForLibsInPluginsBlock$AndroidGradleLibraryAccessors.class
+	    New File  		    2435	LibrariesForLibsInPluginsBlock$AndroidLibraryAccessors.class
+	    New File  		     891	LibrariesForLibsInPluginsBlock$BundleAccessors.class
+	    New File  		    2224	LibrariesForLibsInPluginsBlock$KotlinGradleLibraryAccessors.class
+	    New File  		    2428	LibrariesForLibsInPluginsBlock$KotlinLibraryAccessors.class
+	    New File  		     943	LibrariesForLibsInPluginsBlock$KotlinPluginAccessors.class
+	    New File  		    1196	LibrariesForLibsInPluginsBlock$PluginAccessors.class
+	    New File  		    1285	LibrariesForLibsInPluginsBlock$VersionAccessors.class
+	    New File  		    6077	LibrariesForLibsInPluginsBlock.class
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\sources\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\sources\org\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\sources\org\gradle\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\sources\org\gradle\accessors\
+	  New Dir          2	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a\sources\org\gradle\accessors\dm\
+	    New File  		   10507	LibrariesForLibs.java
+	    New File  		   15671	LibrariesForLibsInPluginsBlock.java
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\
+	    New File  		      99	metadata.bin
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\classes\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\classes\org\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\classes\org\gradle\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\classes\org\gradle\accessors\
+	  New Dir         60	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\classes\org\gradle\accessors\dm\
+	    New File  		    1043	LibrariesForReactAndroidLibs$AndroidPluginAccessors.class
+	    New File  		    1275	LibrariesForReactAndroidLibs$AndroidxAppcompatLibraryAccessors.class
+	    New File  		    2231	LibrariesForReactAndroidLibs$AndroidxLibraryAccessors.class
+	    New File  		    1049	LibrariesForReactAndroidLibs$AndroidxTestLibraryAccessors.class
+	    New File  		    1399	LibrariesForReactAndroidLibs$AndroidxVersionAccessors.class
+	    New File  		     989	LibrariesForReactAndroidLibs$BinaryCompatibilityPluginAccessors.class
+	    New File  		     969	LibrariesForReactAndroidLibs$BinaryCompatibilityVersionAccessors.class
+	    New File  		    1268	LibrariesForReactAndroidLibs$BinaryPluginAccessors.class
+	    New File  		    1277	LibrariesForReactAndroidLibs$BinaryVersionAccessors.class
+	    New File  		     801	LibrariesForReactAndroidLibs$BundleAccessors.class
+	    New File  		     983	LibrariesForReactAndroidLibs$FrescoImagepipelineLibraryAccessors.class
+	    New File  		    2211	LibrariesForReactAndroidLibs$FrescoLibraryAccessors.class
+	    New File  		     948	LibrariesForReactAndroidLibs$FrescoUiLibraryAccessors.class
+	    New File  		     946	LibrariesForReactAndroidLibs$InferLibraryAccessors.class
+	    New File  		     928	LibrariesForReactAndroidLibs$InferVersionAccessors.class
+	    New File  		     963	LibrariesForReactAndroidLibs$JavaxAnnotationLibraryAccessors.class
+	    New File  		     945	LibrariesForReactAndroidLibs$JavaxAnnotationVersionAccessors.class
+	    New File  		    1484	LibrariesForReactAndroidLibs$JavaxLibraryAccessors.class
+	    New File  		    1525	LibrariesForReactAndroidLibs$JavaxVersionAccessors.class
+	    New File  		     945	LibrariesForReactAndroidLibs$KotlinPluginAccessors.class
+	    New File  		     942	LibrariesForReactAndroidLibs$NexusPluginAccessors.class
+	    New File  		     922	LibrariesForReactAndroidLibs$NexusVersionAccessors.class
+	    New File  		    1241	LibrariesForReactAndroidLibs$Okhttp3LibraryAccessors.class
+	    New File  		    2691	LibrariesForReactAndroidLibs$PluginAccessors.class
+	    New File  		    5379	LibrariesForReactAndroidLibs$VersionAccessors.class
+	    New File  		    1156	LibrariesForReactAndroidLibs$YogaLibraryAccessors.class
+	    New File  		     970	LibrariesForReactAndroidLibs$YogaProguardLibraryAccessors.class
+	    New File  		     952	LibrariesForReactAndroidLibs$YogaProguardVersionAccessors.class
+	    New File  		    1233	LibrariesForReactAndroidLibs$YogaVersionAccessors.class
+	    New File  		    8612	LibrariesForReactAndroidLibs.class
+	    New File  		    1085	LibrariesForReactAndroidLibsInPluginsBlock$AndroidPluginAccessors.class
+	    New File  		    2626	LibrariesForReactAndroidLibsInPluginsBlock$AndroidxAppcompatLibraryAccessors.class
+	    New File  		    3870	LibrariesForReactAndroidLibsInPluginsBlock$AndroidxLibraryAccessors.class
+	    New File  		    2400	LibrariesForReactAndroidLibsInPluginsBlock$AndroidxTestLibraryAccessors.class
+	    New File  		    1441	LibrariesForReactAndroidLibsInPluginsBlock$AndroidxVersionAccessors.class
+	    New File  		    1031	LibrariesForReactAndroidLibsInPluginsBlock$BinaryCompatibilityPluginAccessors.class
+	    New File  		    1011	LibrariesForReactAndroidLibsInPluginsBlock$BinaryCompatibilityVersionAccessors.class
+	    New File  		    1352	LibrariesForReactAndroidLibsInPluginsBlock$BinaryPluginAccessors.class
+	    New File  		    1361	LibrariesForReactAndroidLibsInPluginsBlock$BinaryVersionAccessors.class
+	    New File  		     927	LibrariesForReactAndroidLibsInPluginsBlock$BundleAccessors.class
+	    New File  		    2283	LibrariesForReactAndroidLibsInPluginsBlock$FrescoImagepipelineLibraryAccessors.class
+	    New File  		    3748	LibrariesForReactAndroidLibsInPluginsBlock$FrescoLibraryAccessors.class
+	    New File  		    2248	LibrariesForReactAndroidLibsInPluginsBlock$FrescoUiLibraryAccessors.class
+	    New File  		    2246	LibrariesForReactAndroidLibsInPluginsBlock$InferLibraryAccessors.class
+	    New File  		     970	LibrariesForReactAndroidLibsInPluginsBlock$InferVersionAccessors.class
+	    New File  		    2263	LibrariesForReactAndroidLibsInPluginsBlock$JavaxAnnotationLibraryAccessors.class
+	    New File  		     987	LibrariesForReactAndroidLibsInPluginsBlock$JavaxAnnotationVersionAccessors.class
+	    New File  		    2877	LibrariesForReactAndroidLibsInPluginsBlock$JavaxLibraryAccessors.class
+	    New File  		    1609	LibrariesForReactAndroidLibsInPluginsBlock$JavaxVersionAccessors.class
+	    New File  		     987	LibrariesForReactAndroidLibsInPluginsBlock$KotlinPluginAccessors.class
+	    New File  		     984	LibrariesForReactAndroidLibsInPluginsBlock$NexusPluginAccessors.class
+	    New File  		     964	LibrariesForReactAndroidLibsInPluginsBlock$NexusVersionAccessors.class
+	    New File  		    2592	LibrariesForReactAndroidLibsInPluginsBlock$Okhttp3LibraryAccessors.class
+	    New File  		    2901	LibrariesForReactAndroidLibsInPluginsBlock$PluginAccessors.class
+	    New File  		    5673	LibrariesForReactAndroidLibsInPluginsBlock$VersionAccessors.class
+	    New File  		    2498	LibrariesForReactAndroidLibsInPluginsBlock$YogaLibraryAccessors.class
+	    New File  		    2270	LibrariesForReactAndroidLibsInPluginsBlock$YogaProguardLibraryAccessors.class
+	    New File  		     994	LibrariesForReactAndroidLibsInPluginsBlock$YogaProguardVersionAccessors.class
+	    New File  		    1317	LibrariesForReactAndroidLibsInPluginsBlock$YogaVersionAccessors.class
+	    New File  		   11275	LibrariesForReactAndroidLibsInPluginsBlock.class
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\sources\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\sources\org\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\sources\org\gradle\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\sources\org\gradle\accessors\
+	  New Dir          2	D:\bunk bssid old\android\.gradle\8.8\dependencies-accessors\63bfea9ebd7ffa1cdafd0ae8ce62aa3c210042bd\sources\org\gradle\accessors\dm\
+	    New File  		   45680	LibrariesForReactAndroidLibs.java
+	    New File  		   64090	LibrariesForReactAndroidLibsInPluginsBlock.java
+	  New Dir          2	D:\bunk bssid old\android\.gradle\8.8\executionHistory\
+	    New File  		 305.1 m	executionHistory.bin
+	    New File  		      17	executionHistory.lock
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\expanded\
+	  New Dir          1	D:\bunk bssid old\android\.gradle\8.8\fileChanges\
+	    New File  		       1	last-build.bin
+	  New Dir          3	D:\bunk bssid old\android\.gradle\8.8\fileHashes\
+	    New File  		   2.9 m	fileHashes.bin
+	    New File  		      17	fileHashes.lock
+	    New File  		  201867	resourceHashesCache.bin
+	  New Dir          0	D:\bunk bssid old\android\.gradle\8.8\vcsMetadata\
+	  New Dir          3	D:\bunk bssid old\android\.gradle\buildOutputCleanup\
+	    New File  		      17	buildOutputCleanup.lock
+	    New File  		      51	cache.properties
+	    New File  		  173381	outputFiles.bin
+	  New Dir          0	D:\bunk bssid old\android\.gradle\kotlin\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\kotlin\errors\
+	  New Dir          0	D:\bunk bssid old\android\.gradle\kotlin\sessions\
+	  New Dir          1	D:\bunk bssid old\android\.gradle\noVersion\
+	    New File  		      17	buildLogic.lock
+	  New Dir          1	D:\bunk bssid old\android\.gradle\vcs-1\
+	    New File  		       0	gc.properties
+	  New Dir          3	D:\bunk bssid old\android\app\
+	    New File  		    9504	build.gradle
+	    New File  		    2257	debug.keystore
+	    New File  		     576	proguard-rules.pro
+	  New Dir          0	D:\bunk bssid old\android\app\build\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\ap_generated_sources\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\ap_generated_sources\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\ap_generated_sources\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\assets\
+	  New Dir          1	D:\bunk bssid old\android\app\build\generated\assets\createBundleReleaseJsAndAssets\
+	    New File  		   1.6 m	index.android.bundle
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\createBundleReleaseJsAndAssets\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\pngs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\pngs\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\resValues\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\res\resValues\release\
+	  New Dir          1	D:\bunk bssid old\android\app\build\generated\res\resValues\release\values\
+	    New File  		     236	gradleResValues.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\src\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\src\main\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\src\main\java\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\src\main\java\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\rncli\src\main\java\com\facebook\
+	  New Dir          1	D:\bunk bssid old\android\app\build\generated\rncli\src\main\java\com\facebook\react\
+	    New File  		    2206	PackageList.java
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\source\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\source\buildConfig\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\source\buildConfig\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\source\buildConfig\release\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\source\buildConfig\release\com\countdowntimer\
+	  New Dir          1	D:\bunk bssid old\android\app\build\generated\source\buildConfig\release\com\countdowntimer\app\
+	    New File  		     577	BuildConfig.java
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\sourcemaps\
+	  New Dir          0	D:\bunk bssid old\android\app\build\generated\sourcemaps\react\
+	  New Dir          1	D:\bunk bssid old\android\app\build\generated\sourcemaps\react\release\
+	    New File  		   5.8 m	index.android.bundle.map
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\aar_metadata_check\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\aar_metadata_check\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\annotation_processor_list\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\annotation_processor_list\release\
+	    New File  		       2	annotationProcessors.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\apk_ide_redirect_file\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\apk_ide_redirect_file\release\
+	    New File  		      82	redirect.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\app_metadata\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\app_metadata\release\
+	    New File  		      56	app-metadata.properties
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\assets\
+	  New Dir          5	D:\bunk bssid old\android\app\build\intermediates\assets\release\
+	    New File  		     442	app.config
+	    New File  		  229746	face_detection_short_range.tflite
+	    New File  		   1.6 m	index.android.bundle
+	    New File  		   7.4 m	index.android.bundle.map
+	    New File  		   4.9 m	mobile_face_net.tflite
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\binary_art_profile\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\binary_art_profile\release\
+	    New File  		    2042	baseline.prof
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\binary_art_profile_metadata\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\binary_art_profile_metadata\release\
+	    New File  		     214	baseline.profm
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\compatible_screen_manifest\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\compatible_screen_manifest\release\
+	    New File  		     200	output-metadata.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\compile_and_runtime_not_namespaced_r_class_jar\release\
+	    New File  		 1004660	R.jar
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\compressed_assets\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\compressed_assets\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\compressed_assets\release\out\
+	  New Dir          5	D:\bunk bssid old\android\app\build\intermediates\compressed_assets\release\out\assets\
+	    New File  		     396	app.config.jar
+	    New File  		  229924	face_detection_short_range.tflite.jar
+	    New File  		  871620	index.android.bundle.jar
+	    New File  		   1.7 m	index.android.bundle.map.jar
+	    New File  		   4.9 m	mobile_face_net.tflite.jar
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_merge\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_merge\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_merge\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_package\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_package\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\data_binding_layout_info_type_package\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\default_proguard_files\
+	  New Dir          3	D:\bunk bssid old\android\app\build\intermediates\default_proguard_files\global\
+	    New File  		    4220	proguard-android-optimize.txt-8.2.1
+	    New File  		    3943	proguard-android.txt-8.2.1
+	    New File  		    4204	proguard-defaults.txt-8.2.1
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_0\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_1\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_2\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_3\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_4\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\dirs_bucket_5\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_0\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_1\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_2\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_3\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_4\
+	    New File  		     235	graph.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\currentProject\jar_c42c3e323752034f646bfef1e2c53a857a3c4c595372336cec8910972fc6aa9d_bucket_5\
+	    New File  		     235	graph.bin
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\externalLibs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\mixedScopes\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\desugar_graph\release\out\otherProjects\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\dex\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\dex\release\
+	  New Dir          3	D:\bunk bssid old\android\app\build\intermediates\dex\release\mergeDexRelease\
+	    New File  		   7.9 m	classes.dex
+	    New File  		   6.5 m	classes2.dex
+	    New File  		   8.0 m	classes3.dex
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\dex_archive_input_jar_hashes\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\dex_archive_input_jar_hashes\release\
+	    New File  		     373	out
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\dex_number_of_buckets_file\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\dex_number_of_buckets_file\release\
+	    New File  		       1	out
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\duplicate_classes_check\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\duplicate_classes_check\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_file_lib_dex_archives\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_file_lib_dex_archives\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex\release\
+	  New Dir          3	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex\release\mergeExtDexRelease\
+	    New File  		   7.7 m	classes.dex
+	    New File  		   6.2 m	classes2.dex
+	    New File  		   6.0 m	classes3.dex
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive_with_artifact_transforms\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive_with_artifact_transforms\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\external_libs_dex_archive_with_artifact_transforms\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_dex\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_dex\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_lib\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_lib\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_lib\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_libs_artifact_transform\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_libs_artifact_transform\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_external_libs_artifact_transform\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_file_lib\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_file_lib\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_mixed_scope\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_mixed_scope\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_mixed_scope\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_project\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_project\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_project\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_subproject\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_subproject\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\global_synthetics_subproject\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\
+	  New Dir          4	D:\bunk bssid old\android\app\build\intermediates\incremental\lintVitalAnalyzeRelease\
+	    New File  		     620	module.xml
+	    New File  		   57606	release-artifact-dependencies.xml
+	    New File  		  104992	release-artifact-libraries.xml
+	    New File  		    1931	release.xml
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\incremental\mergeReleaseAssets\
+	    New File  		    6458	merger.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\packageRelease\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\packageRelease\tmp\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\incremental\packageRelease\tmp\release\
+	    New File  		     478	dex-renamer-state.txt
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\incremental\packageRelease\tmp\release\zip-cache\
+	    New File  		   28681	androidResources
+	    New File  		   23164	javaResources0
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\release\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\incremental\release\mergeReleaseResources\
+	    New File  		    2342	compile-file-map.properties
+	    New File  		   1.0 m	merger.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\release\mergeReleaseResources\merged.dir\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\release\mergeReleaseResources\stripped.dir\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\incremental\release\packageReleaseResources\
+	    New File  		    2333	compile-file-map.properties
+	    New File  		    5791	merger.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\incremental\release-mergeJavaRes\
+	    New File  		   44801	merge-state
+	  New Dir        160	D:\bunk bssid old\android\app\build\intermediates\incremental\release-mergeJavaRes\zip-cache\
+	    New File  		   17116	+et0vGr6YfeulBmcXHU6+dJ1Vyc=
+	    New File  		   90931	+FPMD4fMxxJ1jwl4DPJFSw89TG4=
+	    New File  		   11504	+O8wnhAwB_mv0Pwvsyz2ghJwolA=
+	    New File  		   13204	0i8wtiQ8ZHemITEao+NtMeitrtU=
+	    New File  		   31906	0JrHKQ4wH_WQXQBmdlTURamG5FE=
+	    New File  		   38980	0M78xxRgAf3jRbJavIP_cMpHum0=
+	    New File  		   1.8 m	25JnhxYPfllHllJ0X0dnR9ww1l4=
+	    New File  		    4175	2PA+nSWtKpN1T__uC4AULOj1APE=
+	    New File  		   22964	3fLfATNJsXMUhbjzEKy2PUO47m8=
+	    New File  		   21345	3g1DMW4LayS6yQyXkUTU_f6Q6+g=
+	    New File  		    4676	3UHn4yi7Z9NQr99Wlxa_JB+UZwk=
+	    New File  		    1955	4yvMFHjviWWHtjanQY2TpQGOta4=
+	    New File  		   41698	57dZPSYvrCQBEja_692aqX2lL34=
+	    New File  		   12021	5WpBFt4NVa7dHfJsTmErpoRlQjk=
+	    New File  		   27631	6vwo0KnwA_uZssDaiOXIajNRWHM=
+	    New File  		    4720	7hswZAq4lXrTeKqwi7BMFTnO_uU=
+	    New File  		    9554	7KQI6uBG8g2iGTXiYVRoPtih2xk=
+	    New File  		    1607	7v2hQusOl7S4QXKiJJzJljlADRY=
+	    New File  		   36115	80sxhQ2WiRzeEk4r9iBYFWi_b60=
+	    New File  		   11657	8d2t6XeRp8BJzMwpZPdA9lwTYpY=
+	    New File  		   36288	9IcDjU6Kxp9Co0sUbXQqt8CTB7I=
+	    New File  		  152504	9vSu+16hS0Skg6AytCWUFI_yDtk=
+	    New File  		   47432	9xSiqC+22bKpQ+LCmS0Izuq1Mtc=
+	    New File  		     969	arghhBMW8S3R7Scxb4keZVuRZj8=
+	    New File  		  697487	Ay0Xp+1YU17a1R9WgaQqeGoHzVM=
+	    New File  		    6875	b9OdBbrRsE27bjbU40c1uGD54hk=
+	    New File  		  356135	bHKGGujhkBVrrUUsvYWd6AN0bTE=
+	    New File  		    4305	bHPELO6Jotxosb9DpZJWTD9pwn0=
+	    New File  		  156830	bIs6xCCdxVoaEzdrdI31tJQniVE=
+	    New File  		    6879	bU5cYk1SAM+wYbxjAtIqtsTr8ug=
+	    New File  		    5816	C+8CbH3kUIllreOwp+yfECMnMuw=
+	    New File  		    6270	C3A2LLg0Sc+MgQ4CZA3b0tlNOHk=
+	    New File  		   1.9 m	CGjP5UP62vLQzV5jB_uFeDiHwjo=
+	    New File  		   68237	Ck7jtPpmNtm6jRJux5VBmzQOad8=
+	    New File  		  128534	Com4dN3pTV1QflovxnW_QSjyoRk=
+	    New File  		   55298	cq5dGoOdZMl9L8cesfwStlSOJEA=
+	    New File  		     238	CtISUZ9MjnG8aOK2htmPTIEwH+Y=
+	    New File  		  143226	CWJfqhXYhctfnn8FJLhfnKM2iGw=
+	    New File  		   33573	D1wP1YgGmXAyg3D3ICZlHW+mQlQ=
+	    New File  		   27946	dL61baIwmcUAQu0vh2fVkWcqITo=
+	    New File  		   14592	DQH5I41dKsQoHhaoeMsBHD6mXCE=
+	    New File  		     961	dsrPEAUOzxB08XHeuNKV+VHOqUY=
+	    New File  		   1.6 m	DSSA1CBnUkP_rm9zkPUnJaPQh4w=
+	    New File  		  263658	dxeIu8Lfb5TdySP8qmxtqrbtl7g=
+	    New File  		    2042	DxjOqm0m6Td3bS1GmtHtCKzW2Lk=
+	    New File  		  792108	E3QTpckHLXL8x35Ewqc0cp_bLaI=
+	    New File  		  129378	ec9hzrnzki6QAL8xrwYs2h2efkw=
+	    New File  		   65006	EcYgfrLvOtluqdoSGZ15T9c0_MY=
+	    New File  		   27450	EKp+qTCCmBIoBhrRWKJbKum9O0k=
+	    New File  		    9867	f1ZTPIv+sKfw+kwqmCZ8f1d01LI=
+	    New File  		  764869	f8vcVtVN589pTKetVgCdIb7DijI=
+	    New File  		   1.4 m	FDMXb9MEKG3kyxdz8jYN1HwvTT4=
+	    New File  		    6951	fGJh12pS0FVjf53WoEG2OIfkL7U=
+	    New File  		   42953	FNzn8971fyUyjC_Tx7_DcA21lTg=
+	    New File  		   35177	FpzZUT6O1INoD7Upa2XKW_TePg8=
+	    New File  		   30691	FS2M1hbCmeVIuO2_Zv6tSlu1_8Q=
+	    New File  		  253946	g0nmP5MLtz80bgw7Yebis6w6geA=
+	    New File  		   17847	gcF4k+v5tLMWwpMQLbf2ICt7RlQ=
+	    New File  		  492039	GCnT8fzjcF7kXO3MOfXrcPNHQHc=
+	    New File  		   25935	gEHjMBH_ftjAgq16ohF9LnqRUnY=
+	    New File  		   28221	H2b+niiwcbTezPX5P0c7uTyD+dI=
+	    New File  		   17833	hbY9mW45ORIxBM9Fy_XahUTmpyk=
+	    New File  		  211088	Hc9wLsNrDLXvU0TeGENRbHwef6w=
+	    New File  		  466730	Hd+dTlcnPpPg4rdGKegVulItUoU=
+	    New File  		   20559	Hd9QzlhX9rUOQZAtUx7Etpc62IY=
+	    New File  		   41316	HmWR2lUJ+2GulWYPIKDpQpZ2d58=
+	    New File  		     261	I3Pl0wyGF+zA87xzYZKPwt2dE8I=
+	    New File  		  214788	I4tUD5JgVM5UjzfMHU+VXN699iU=
+	    New File  		   98825	ifvt6YzzeYsEZ5fpegQe0tS3eqk=
+	    New File  		    2775	IKHMvaPTwk9b1rWrPQM3CW36IhA=
+	    New File  		   22096	iNSrenyqWbXmZUlJAxQi5fERsyY=
+	    New File  		    3488	IPAIumExGVQNtD_UuS8WMu9_8DQ=
+	    New File  		    4617	iyPS+tlwI_V+i4p+dJh1d4T4BAw=
+	    New File  		  165563	J4_SmPdlfpzSkyVWfKqvZth4e9A=
+	    New File  		    3586	JiqA0dmgZc1HhTCjW3dFuo+q+oA=
+	    New File  		  168860	jOQALS2QOLMXmD6SA4yzBB1+RU0=
+	    New File  		  284184	jRP2gC72bsfTab7kSmqOhN69pbQ=
+	    New File  		   99079	jsnqt2LJJs+Wmw1wWYq+XpE8gBc=
+	    New File  		   64320	jWBpSLh2qkdOCGi5627bB7ZBGiI=
+	    New File  		   69360	kgVuWnx5M36RSO2Fw5Fz76CvnFM=
+	    New File  		   32824	kibNKKMgB9F4m9aT5TN+_560sUY=
+	    New File  		  365703	l2GesnsIJiPLdnqJh9Eoa_hgVwI=
+	    New File  		    2336	l4DgzijZd+4ZnPiNXV3cNKVA8Gc=
+	    New File  		   15611	lAca8delpFqHO2Pv99au68CJSJc=
+	    New File  		  274187	lr5Vm5QrTC31R4DqnfsVlduYviY=
+	    New File  		    4207	lS46KKLrDNnMyfFRsorTqB_+MOg=
+	    New File  		    3053	LtCH7kXgtC8EOIf3kZTrLiKW9CI=
+	    New File  		   77192	LTqSw7a803dAdiww0bvG7TUk4Ng=
+	    New File  		    7613	mdbkrrrvEqUT3Szt16QTxbzJXI8=
+	    New File  		    6280	mHQnH3vbIG0wMWUIpLJF8A7lJJ8=
+	    New File  		   20583	mmmV2UMq8lL431dggMpVLtGo340=
+	    New File  		   21805	Mn8PygTy_qh1B1mN7g5l54zlZWc=
+	    New File  		    1664	N2ZCBcp_6PRAHf_c37mxtjEd1+U=
+	    New File  		    8782	N4oz6h_x2+5UuxuPp2Mcn+h0NkY=
+	    New File  		   25987	n8fqgb1EQoLHCLziTBBq67mYkkM=
+	    New File  		     353	nfmCKJn0sKEc17HK+rHqaUEJOmo=
+	    New File  		    4890	NiTDnEp2GLeSKrbCLdTmr1L0CCk=
+	    New File  		   1.2 m	NLNwA1chHkL_3k8MLXHP5czHdvI=
+	    New File  		    2676	nwSgT4LQaeKj+jWRyZTEIJfVnDI=
+	    New File  		  193906	nX5u0ij+GhiTjH_5NtR6AkwFesU=
+	    New File  		   49665	N_cUuAJiuh0PgNxp_T+Zi2Aq5v8=
+	    New File  		   34311	O2WGmlRhpmh+CqUD6yZiovJVtOs=
+	    New File  		   3.1 m	OKM405LPe9H3i364AI5_L4FoJlg=
+	    New File  		  110536	oNwM03qle5Tj2ultm89NBI8QYvo=
+	    New File  		   2.4 m	oZcXRp5HUBzxYvhhDpBdyVpxNKM=
+	    New File  		    2199	p2zamrYiNjGFykitq5Hx0ymYY+E=
+	    New File  		  230863	PA8874GGqfMEAqtnAZ6bAlvg8_8=
+	    New File  		   38092	pkIYys1Nxoi1DETVwrc6ICEZS1c=
+	    New File  		    3769	PMGrVYVDIjickt3+ovti78bjGdg=
+	    New File  		   19555	PxtvdWpRHRLTvzQz676qiBfDNYk=
+	    New File  		    6003	Pyj+Md1wCuN+0aNXOdgRPjCCrGM=
+	    New File  		  784201	Q8ClMooKKpyq57Ofrd8cWPiXQAI=
+	    New File  		    2497	Qq5ISKug0Ht_IJwRrpvclXkGKj0=
+	    New File  		   18379	QSzUvXQMBP2WFBUGIsMfUILJpkI=
+	    New File  		   19977	RbUDaRouthbosgQ2H8TbHgBgcUc=
+	    New File  		   33627	RCjk2hZmMbpNkoMCni2tF_lml+0=
+	    New File  		   33350	RGBSIZvAPlJWLC40LdSikAnHTrs=
+	    New File  		   18988	Rm7DnUkLTAyvs9WAeJu96CMWpPM=
+	    New File  		    7500	RNc1ceXyRpyYD4BK9+K+SZuljfU=
+	    New File  		   12829	S1CR8cqIbbATpIJ5roYlvu1ATso=
+	    New File  		  139987	S5xCO1IrVIaDHgnijaF6PPRgZiU=
+	    New File  		   19936	Sjh_vuJvbittwg1Ky+OL3Zwzu9E=
+	    New File  		   12931	sOow146_iNljifmGQNTqX6c6KCg=
+	    New File  		    7307	T5IuVS7ZC94t0Ty2Szl8TIcfHW0=
+	    New File  		    8671	TdV7hLIkys5ZEZpNEv7IXDhHx6w=
+	    New File  		    7661	TeNNTn+oi06ckecB7bZGIp8y5vI=
+	    New File  		    1821	tK_7cg150AJQBfktSBTcopu8h+o=
+	    New File  		    3158	tlqiqh8v50aFBnG8YsIDZ5uDT0w=
+	    New File  		   32495	TMVay+pSCOZYBUrFgpflfgZ3lbU=
+	    New File  		   1.2 m	tnlDdj1Fuu80GurCRZ5b4pZs28s=
+	    New File  		    5191	tqs43pP+98rJsPSP7B02qnBqFbM=
+	    New File  		    9129	ttaetR8SExaEWcfStbNyAp3_MU4=
+	    New File  		    7458	ttk_QCm2FC6qPjI687gC+tIjR9k=
+	    New File  		    5021	uBkOB06KSP6zT6p+Lj3LcCmKzf4=
+	    New File  		   31413	uDjUBiP2++Dnne7w8mYlut8i1Po=
+	    New File  		   15476	uOFjWLa1Usa8aYWF74i9MaC6ykE=
+	    New File  		   42908	Ut9l_0w6W1LSG7h6XvgMsCo38r8=
+	    New File  		   63568	v7+u62M17WuJSyyL3d9xGLMUcoI=
+	    New File  		    1107	vBWUivetzKm1RQY1l56d59WPvdY=
+	    New File  		    3448	veRdg7JqmU1cLSV9stK71DeheCU=
+	    New File  		  633694	VG30B3hC8XWzySn3EIUHw7HzH88=
+	    New File  		  396938	Vy2IvV6B912H4vwhMs0+8YNqcAA=
+	    New File  		  190703	vZ2hCgTK0cwXSJY9vkXJfLiG_Js=
+	    New File  		  802340	w0vf7SPh7rB7HuP4ApSr4i8clKE=
+	    New File  		   11278	wJV0NAYdipxhcMlIVcntj3uvy9A=
+	    New File  		   41317	WpfTg3dFxBp8wNSFaWolCCH1CH4=
+	    New File  		    9612	WULNY_kLJFvfA7qdsfdlNm_8Zxg=
+	    New File  		   60329	wXZBsZH0a99RrBVwb7Vr5xgRk2E=
+	    New File  		   29371	xfn6oB1qgauzv_sB6GWV2Eiud5s=
+	    New File  		   55232	XPuxWrxHAjSFNFV9twMCiS2G3lY=
+	    New File  		  172930	Xr_N7ZhZRzk8UlHUTRcxpgad4U0=
+	    New File  		   20637	XxFbM0PHRGljUuyfW54_S42dWZA=
+	    New File  		   23137	YIKTHyAs516vwFWtDCKsinPXdWk=
+	    New File  		    5098	yN_nu7QOOZBUzLveNCmDJg7oChU=
+	    New File  		   46404	YW6ok97K4N3jX8tOpBgpqWUNXQA=
+	    New File  		   64290	YWmWvq2+w1q1RRVrV9jYvttYhpQ=
+	    New File  		   40157	Z6FvS+M6eOPIxgiFtbYOqfC4QYo=
+	    New File  		    1536	_ECopwH467Z463TcwC5yg+3Nbds=
+	    New File  		   52314	_Kxxz3sKtIidoc1JQokll7qyBHM=
+	    New File  		    6788	_ZvlwUd9yBL8qwSF8Tn_HB2E9Zc=
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\com\countdowntimer\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\com\countdowntimer\app\
+	    New File  		     641	BuildConfig.class
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\com\facebook\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\javac\release\classes\com\facebook\react\
+	    New File  		    2560	PackageList.class
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\
+	    New File  		     624	kotlin-tooling-metadata.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\com\countdowntimer\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\com\countdowntimer\app\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\com\letsbunk\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\com\letsbunk\faceverification\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\java_res\release\out\META-INF\
+	    New File  		      85	app_release.kotlin_module
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint-cache\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\
+	    New File  		      30	lint-cache-version.txt
+	    New File  		  13.9 m	private-apis-17-7541949.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\
+	    New File  		    9831	master-index.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\androidx\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\androidx\camera\
+	    New File  		    9088	group-index.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\com\google\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\maven.google\com\google\mediapipe\
+	    New File  		    3265	group-index.xml
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalAnalyzeRelease\sdk_index\
+	    New File  		   94108	snapshot.gz
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint-cache\lintVitalReportRelease\
+	    New File  		      30	lint-cache-version.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_intermediate_text_report\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint_vital_intermediate_text_report\release\
+	    New File  		      17	lint-results-release.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_partial_results\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_partial_results\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_partial_results\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_report_lint_model\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_report_lint_model\release\
+	  New Dir          4	D:\bunk bssid old\android\app\build\intermediates\lint_vital_report_lint_model\release\generateReleaseLintVitalReportModel\
+	    New File  		     620	module.xml
+	    New File  		   57428	release-artifact-dependencies.xml
+	    New File  		   92933	release-artifact-libraries.xml
+	    New File  		    1859	release.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\lint_vital_return_value\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\lint_vital_return_value\release\
+	    New File  		       1	return-value-release.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\local_only_symbol_list\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\local_only_symbol_list\release\
+	    New File  		     408	R-def.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\manifest_merge_blame_file\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\manifest_merge_blame_file\release\
+	    New File  		   76647	manifest-merger-blame-release-report.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_art_profile\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\merged_art_profile\release\
+	    New File  		   72431	baseline-prof.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_java_res\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\merged_java_res\release\
+	    New File  		  232397	base.jar
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_jni_libs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_jni_libs\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_jni_libs\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_manifest\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\merged_manifest\release\
+	    New File  		   20356	AndroidManifest.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_manifests\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\merged_manifests\release\
+	    New File  		   20356	AndroidManifest.xml
+	    New File  		     395	output-metadata.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\lib\
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\lib\arm64-v8a\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		  12.5 m	libexpo-modules-core.so
+	    New File  		   2.1 m	libfabricjni.so
+	    New File  		  185352	libfbjni.so
+	    New File  		  697888	libfolly_runtime.so
+	    New File  		  274856	libgifimage.so
+	    New File  		  143376	libglog.so
+	    New File  		   2.0 m	libhermes.so
+	    New File  		   93704	libhermesinstancejni.so
+	    New File  		  232120	libhermes_executor.so
+	    New File  		    8544	libimagepipeline.so
+	    New File  		   28944	libimage_processing_util_jni.so
+	    New File  		  121072	libjscinstance.so
+	    New File  		  101760	libjsi.so
+	    New File  		   35784	libjsijniprofiler.so
+	    New File  		  323152	libjsinspector.so
+	    New File  		   76576	libmapbufferjni.so
+	    New File  		  12.9 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   23624	libnative-filters.so
+	    New File  		  475392	libnative-imagetranscoder.so
+	    New File  		   47616	libreactnativeblob.so
+	    New File  		  930520	libreactnativejni.so
+	    New File  		    5840	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    5856	libreact_cxxreactpackage.so
+	    New File  		    4320	libreact_debug.so
+	    New File  		  119096	libreact_devsupportjni.so
+	    New File  		   54152	libreact_featureflags.so
+	    New File  		   60296	libreact_featureflagsjni.so
+	    New File  		  311240	libreact_nativemodule_core.so
+	    New File  		  182200	libreact_newarchdefaults.so
+	    New File  		  126624	libreact_render_componentregistry.so
+	    New File  		  179536	libreact_render_core.so
+	    New File  		    3768	libreact_render_debug.so
+	    New File  		   42304	libreact_render_graphics.so
+	    New File  		   48112	libreact_render_imagemanager.so
+	    New File  		   50872	libreact_render_mapbuffer.so
+	    New File  		   38360	libreact_utils.so
+	    New File  		  532168	librninstance.so
+	    New File  		  160552	librrc_image.so
+	    New File  		   90616	librrc_legacyviewmanagerinterop.so
+	    New File  		  378488	librrc_view.so
+	    New File  		    4048	libruntimeexecutor.so
+	    New File  		  610424	libstatic-webp.so
+	    New File  		   3.4 m	libtensorflowlite_gpu_jni.so
+	    New File  		   3.6 m	libtensorflowlite_jni.so
+	    New File  		  143536	libturbomodulejsijni.so
+	    New File  		  125504	libuimanagerjni.so
+	    New File  		  190856	libyoga.so
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\lib\armeabi-v7a\
+	    New File  		   1.0 m	libc++_shared.so
+	    New File  		  11.1 m	libexpo-modules-core.so
+	    New File  		   1.5 m	libfabricjni.so
+	    New File  		  124756	libfbjni.so
+	    New File  		  485160	libfolly_runtime.so
+	    New File  		  140440	libgifimage.so
+	    New File  		   82112	libglog.so
+	    New File  		   1.2 m	libhermes.so
+	    New File  		   52052	libhermesinstancejni.so
+	    New File  		  145004	libhermes_executor.so
+	    New File  		    5776	libimagepipeline.so
+	    New File  		   21692	libimage_processing_util_jni.so
+	    New File  		   64184	libjscinstance.so
+	    New File  		   53520	libjsi.so
+	    New File  		    8568	libjsijniprofiler.so
+	    New File  		  222964	libjsinspector.so
+	    New File  		   38992	libmapbufferjni.so
+	    New File  		   7.7 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   12616	libnative-filters.so
+	    New File  		  271720	libnative-imagetranscoder.so
+	    New File  		   13932	libreactnativeblob.so
+	    New File  		  658820	libreactnativejni.so
+	    New File  		    3920	libreactperfloggerjni.so
+	    New File  		  820252	libreact_codegen_rncore.so
+	    New File  		    3920	libreact_cxxreactpackage.so
+	    New File  		    3008	libreact_debug.so
+	    New File  		   71416	libreact_devsupportjni.so
+	    New File  		   22004	libreact_featureflags.so
+	    New File  		   26952	libreact_featureflagsjni.so
+	    New File  		  200992	libreact_nativemodule_core.so
+	    New File  		  120296	libreact_newarchdefaults.so
+	    New File  		   78076	libreact_render_componentregistry.so
+	    New File  		  107652	libreact_render_core.so
+	    New File  		    2572	libreact_render_debug.so
+	    New File  		   16024	libreact_render_graphics.so
+	    New File  		   15568	libreact_render_imagemanager.so
+	    New File  		   18700	libreact_render_mapbuffer.so
+	    New File  		    8912	libreact_utils.so
+	    New File  		  362720	librninstance.so
+	    New File  		   98140	librrc_image.so
+	    New File  		   49772	librrc_legacyviewmanagerinterop.so
+	    New File  		  260928	librrc_view.so
+	    New File  		    2580	libruntimeexecutor.so
+	    New File  		  431224	libstatic-webp.so
+	    New File  		   2.1 m	libtensorflowlite_gpu_jni.so
+	    New File  		   2.6 m	libtensorflowlite_jni.so
+	    New File  		   88488	libturbomodulejsijni.so
+	    New File  		   72804	libuimanagerjni.so
+	    New File  		  122196	libyoga.so
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\lib\x86\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		  11.1 m	libexpo-modules-core.so
+	    New File  		   2.0 m	libfabricjni.so
+	    New File  		  173016	libfbjni.so
+	    New File  		  693908	libfolly_runtime.so
+	    New File  		  249240	libgifimage.so
+	    New File  		  134652	libglog.so
+	    New File  		   2.2 m	libhermes.so
+	    New File  		   84344	libhermesinstancejni.so
+	    New File  		  214636	libhermes_executor.so
+	    New File  		    6972	libimagepipeline.so
+	    New File  		   35372	libimage_processing_util_jni.so
+	    New File  		  113304	libjscinstance.so
+	    New File  		   97164	libjsi.so
+	    New File  		   34024	libjsijniprofiler.so
+	    New File  		  312392	libjsinspector.so
+	    New File  		   71448	libmapbufferjni.so
+	    New File  		  19.8 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   22404	libnative-filters.so
+	    New File  		  557632	libnative-imagetranscoder.so
+	    New File  		   42180	libreactnativeblob.so
+	    New File  		  876116	libreactnativejni.so
+	    New File  		    4732	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    4748	libreact_cxxreactpackage.so
+	    New File  		    3340	libreact_debug.so
+	    New File  		  108448	libreact_devsupportjni.so
+	    New File  		   51052	libreact_featureflags.so
+	    New File  		   55976	libreact_featureflagsjni.so
+	    New File  		  300448	libreact_nativemodule_core.so
+	    New File  		  165936	libreact_newarchdefaults.so
+	    New File  		  117572	libreact_render_componentregistry.so
+	    New File  		  172104	libreact_render_core.so
+	    New File  		    2908	libreact_render_debug.so
+	    New File  		   42608	libreact_render_graphics.so
+	    New File  		   43460	libreact_render_imagemanager.so
+	    New File  		   50776	libreact_render_mapbuffer.so
+	    New File  		   34584	libreact_utils.so
+	    New File  		  508200	librninstance.so
+	    New File  		  150532	librrc_image.so
+	    New File  		   81460	librrc_legacyviewmanagerinterop.so
+	    New File  		  397016	librrc_view.so
+	    New File  		    2916	libruntimeexecutor.so
+	    New File  		  777332	libstatic-webp.so
+	    New File  		   4.1 m	libtensorflowlite_gpu_jni.so
+	    New File  		   4.3 m	libtensorflowlite_jni.so
+	    New File  		  133304	libturbomodulejsijni.so
+	    New File  		  113924	libuimanagerjni.so
+	    New File  		  225400	libyoga.so
+	  New Dir         48	D:\bunk bssid old\android\app\build\intermediates\merged_native_libs\release\out\lib\x86_64\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		  12.1 m	libexpo-modules-core.so
+	    New File  		   2.1 m	libfabricjni.so
+	    New File  		  180552	libfbjni.so
+	    New File  		  711824	libfolly_runtime.so
+	    New File  		  278688	libgifimage.so
+	    New File  		  144792	libglog.so
+	    New File  		   2.0 m	libhermes.so
+	    New File  		   89592	libhermesinstancejni.so
+	    New File  		  226200	libhermes_executor.so
+	    New File  		    8440	libimagepipeline.so
+	    New File  		   46200	libimage_processing_util_jni.so
+	    New File  		  119512	libjscinstance.so
+	    New File  		   99664	libjsi.so
+	    New File  		   35240	libjsijniprofiler.so
+	    New File  		  323880	libjsinspector.so
+	    New File  		   75696	libmapbufferjni.so
+	    New File  		   29064	libnative-filters.so
+	    New File  		  621000	libnative-imagetranscoder.so
+	    New File  		   44496	libreactnativeblob.so
+	    New File  		  918584	libreactnativejni.so
+	    New File  		    5920	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    5920	libreact_cxxreactpackage.so
+	    New File  		    4368	libreact_debug.so
+	    New File  		  114632	libreact_devsupportjni.so
+	    New File  		   52904	libreact_featureflags.so
+	    New File  		   59064	libreact_featureflagsjni.so
+	    New File  		  312000	libreact_nativemodule_core.so
+	    New File  		  178608	libreact_newarchdefaults.so
+	    New File  		  124832	libreact_render_componentregistry.so
+	    New File  		  178128	libreact_render_core.so
+	    New File  		    3816	libreact_render_debug.so
+	    New File  		   42472	libreact_render_graphics.so
+	    New File  		   45040	libreact_render_imagemanager.so
+	    New File  		   51448	libreact_render_mapbuffer.so
+	    New File  		   35480	libreact_utils.so
+	    New File  		  532664	librninstance.so
+	    New File  		  159240	librrc_image.so
+	    New File  		   87496	librrc_legacyviewmanagerinterop.so
+	    New File  		  383584	librrc_view.so
+	    New File  		    3848	libruntimeexecutor.so
+	    New File  		  809584	libstatic-webp.so
+	    New File  		   3.9 m	libtensorflowlite_gpu_jni.so
+	    New File  		   4.7 m	libtensorflowlite_jni.so
+	    New File  		  141616	libturbomodulejsijni.so
+	    New File  		  121104	libuimanagerjni.so
+	    New File  		  203200	libyoga.so
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_res\
+	  New Dir        126	D:\bunk bssid old\android\app\build\intermediates\merged_res\release\
+	    New File  		     996	drawable_rn_edit_text_material.xml.flat
+	    New File  		     316	drawable_splashscreen.xml.flat
+	    New File  		    3916	layout_activity_face_verification.xml.flat
+	    New File  		  355248	mipmap-hdpi_ic_launcher.png.flat
+	    New File  		  355260	mipmap-hdpi_ic_launcher_round.png.flat
+	    New File  		  355248	mipmap-mdpi_ic_launcher.png.flat
+	    New File  		  355260	mipmap-mdpi_ic_launcher_round.png.flat
+	    New File  		  355252	mipmap-xhdpi_ic_launcher.png.flat
+	    New File  		  355264	mipmap-xhdpi_ic_launcher_round.png.flat
+	    New File  		  355252	mipmap-xxhdpi_ic_launcher.png.flat
+	    New File  		  355264	mipmap-xxhdpi_ic_launcher_round.png.flat
+	    New File  		  355252	mipmap-xxxhdpi_ic_launcher.png.flat
+	    New File  		  355264	mipmap-xxxhdpi_ic_launcher_round.png.flat
+	    New File  		    5976	values-af_values-af.arsc.flat
+	    New File  		    5196	values-am_values-am.arsc.flat
+	    New File  		    7432	values-ar_values-ar.arsc.flat
+	    New File  		    6092	values-as_values-as.arsc.flat
+	    New File  		    5188	values-az_values-az.arsc.flat
+	    New File  		    4904	values-b+sr+Latn_values-b+sr+Latn.arsc.flat
+	    New File  		    5804	values-be_values-be.arsc.flat
+	    New File  		    7392	values-bg_values-bg.arsc.flat
+	    New File  		    7948	values-bn_values-bn.arsc.flat
+	    New File  		    4628	values-bs_values-bs.arsc.flat
+	    New File  		    4668	values-ca_values-ca.arsc.flat
+	    New File  		    6824	values-cs_values-cs.arsc.flat
+	    New File  		    5840	values-da_values-da.arsc.flat
+	    New File  		    6820	values-de_values-de.arsc.flat
+	    New File  		    7620	values-el_values-el.arsc.flat
+	    New File  		    2696	values-en-rAU_values-en-rAU.arsc.flat
+	    New File  		    2692	values-en-rCA_values-en-rCA.arsc.flat
+	    New File  		    5264	values-en-rGB_values-en-rGB.arsc.flat
+	    New File  		    2696	values-en-rIN_values-en-rIN.arsc.flat
+	    New File  		   13952	values-en-rXC_values-en-rXC.arsc.flat
+	    New File  		    1808	values-es-rES_values-es-rES.arsc.flat
+	    New File  		     956	values-es-rGT_values-es-rGT.arsc.flat
+	    New File  		    4924	values-es-rUS_values-es-rUS.arsc.flat
+	    New File  		    7024	values-es_values-es.arsc.flat
+	    New File  		    6652	values-et_values-et.arsc.flat
+	    New File  		    4700	values-eu_values-eu.arsc.flat
+	    New File  		    7716	values-fa_values-fa.arsc.flat
+	    New File  		    6060	values-fi_values-fi.arsc.flat
+	    New File  		    6532	values-fr-rCA_values-fr-rCA.arsc.flat
+	    New File  		    6992	values-fr_values-fr.arsc.flat
+	    New File  		    4732	values-gl_values-gl.arsc.flat
+	    New File  		    7640	values-gu_values-gu.arsc.flat
+	    New File  		     276	values-h720dp-v13_values-h720dp-v13.arsc.flat
+	    New File  		     484	values-hdpi-v4_values-hdpi-v4.arsc.flat
+	    New File  		     808	values-he_values-he.arsc.flat
+	    New File  		    8676	values-hi_values-hi.arsc.flat
+	    New File  		    6116	values-hr_values-hr.arsc.flat
+	    New File  		    6472	values-hu_values-hu.arsc.flat
+	    New File  		    6024	values-hy_values-hy.arsc.flat
+	    New File  		     796	values-id_values-id.arsc.flat
+	    New File  		    5180	values-in_values-in.arsc.flat
+	    New File  		    4564	values-is_values-is.arsc.flat
+	    New File  		    6620	values-it_values-it.arsc.flat
+	    New File  		    6536	values-iw_values-iw.arsc.flat
+	    New File  		    7140	values-ja_values-ja.arsc.flat
+	    New File  		    7912	values-ka_values-ka.arsc.flat
+	    New File  		    5804	values-kk_values-kk.arsc.flat
+	    New File  		    8212	values-km_values-km.arsc.flat
+	    New File  		    8312	values-kn_values-kn.arsc.flat
+	    New File  		    6824	values-ko_values-ko.arsc.flat
+	    New File  		    5848	values-ky_values-ky.arsc.flat
+	    New File  		     396	values-land_values-land.arsc.flat
+	    New File  		     884	values-large-v4_values-large-v4.arsc.flat
+	    New File  		     340	values-ldltr-v21_values-ldltr-v21.arsc.flat
+	    New File  		    6708	values-lo_values-lo.arsc.flat
+	    New File  		    6424	values-lt_values-lt.arsc.flat
+	    New File  		    6492	values-lv_values-lv.arsc.flat
+	    New File  		    7152	values-mk_values-mk.arsc.flat
+	    New File  		    8744	values-ml_values-ml.arsc.flat
+	    New File  		    5852	values-mn_values-mn.arsc.flat
+	    New File  		    7740	values-mr_values-mr.arsc.flat
+	    New File  		    6648	values-ms_values-ms.arsc.flat
+	    New File  		    8988	values-my_values-my.arsc.flat
+	    New File  		    5116	values-nb_values-nb.arsc.flat
+	    New File  		    6932	values-ne_values-ne.arsc.flat
+	    New File  		    1036	values-night-v8_values-night-v8.arsc.flat
+	    New File  		    6712	values-nl_values-nl.arsc.flat
+	    New File  		    6576	values-or_values-or.arsc.flat
+	    New File  		    7836	values-pa_values-pa.arsc.flat
+	    New File  		    6636	values-pl_values-pl.arsc.flat
+	    New File  		     248	values-port_values-port.arsc.flat
+	    New File  		    5648	values-pt-rBR_values-pt-rBR.arsc.flat
+	    New File  		    6500	values-pt-rPT_values-pt-rPT.arsc.flat
+	    New File  		    4180	values-pt_values-pt.arsc.flat
+	    New File  		    6124	values-ro_values-ro.arsc.flat
+	    New File  		     936	values-ru-rRU_values-ru-rRU.arsc.flat
+	    New File  		    7304	values-ru_values-ru.arsc.flat
+	    New File  		    8056	values-si_values-si.arsc.flat
+	    New File  		    6296	values-sk_values-sk.arsc.flat
+	    New File  		    6112	values-sl_values-sl.arsc.flat
+	    New File  		    6280	values-sq_values-sq.arsc.flat
+	    New File  		    7056	values-sr_values-sr.arsc.flat
+	    New File  		    6568	values-sv_values-sv.arsc.flat
+	    New File  		     772	values-sw600dp-v13_values-sw600dp-v13.arsc.flat
+	    New File  		    6128	values-sw_values-sw.arsc.flat
+	    New File  		    8444	values-ta_values-ta.arsc.flat
+	    New File  		    8208	values-te_values-te.arsc.flat
+	    New File  		    7676	values-th_values-th.arsc.flat
+	    New File  		    4788	values-tl_values-tl.arsc.flat
+	    New File  		    6748	values-tr_values-tr.arsc.flat
+	    New File  		    7180	values-uk_values-uk.arsc.flat
+	    New File  		    7672	values-ur_values-ur.arsc.flat
+	    New File  		    4624	values-uz_values-uz.arsc.flat
+	    New File  		     480	values-v16_values-v16.arsc.flat
+	    New File  		    3692	values-v17_values-v17.arsc.flat
+	    New File  		     244	values-v18_values-v18.arsc.flat
+	    New File  		   21504	values-v21_values-v21.arsc.flat
+	    New File  		     932	values-v22_values-v22.arsc.flat
+	    New File  		    3448	values-v23_values-v23.arsc.flat
+	    New File  		    1008	values-v24_values-v24.arsc.flat
+	    New File  		     580	values-v25_values-v25.arsc.flat
+	    New File  		    1052	values-v26_values-v26.arsc.flat
+	    New File  		     744	values-v28_values-v28.arsc.flat
+	    New File  		    7020	values-vi_values-vi.arsc.flat
+	    New File  		     720	values-watch-v20_values-watch-v20.arsc.flat
+	    New File  		     900	values-watch-v21_values-watch-v21.arsc.flat
+	    New File  		     576	values-xlarge-v4_values-xlarge-v4.arsc.flat
+	    New File  		    6716	values-zh-rCN_values-zh-rCN.arsc.flat
+	    New File  		    6192	values-zh-rHK_values-zh-rHK.arsc.flat
+	    New File  		    6752	values-zh-rTW_values-zh-rTW.arsc.flat
+	    New File  		     756	values-zh_values-zh.arsc.flat
+	    New File  		    4652	values-zu_values-zu.arsc.flat
+	    New File  		  217908	values_values.arsc.flat
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_res_blame_folder\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_res_blame_folder\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_res_blame_folder\release\out\
+	  New Dir        114	D:\bunk bssid old\android\app\build\intermediates\merged_res_blame_folder\release\out\multi-v2\
+	    New File  		  633463	release.json
+	    New File  		    6681	values-af.json
+	    New File  		    5036	values-am.json
+	    New File  		    7801	values-ar.json
+	    New File  		    5066	values-as.json
+	    New File  		    6056	values-az.json
+	    New File  		    5121	values-b+sr+Latn.json
+	    New File  		    5985	values-be.json
+	    New File  		    6692	values-bg.json
+	    New File  		    6691	values-bn.json
+	    New File  		    5063	values-bs.json
+	    New File  		    5064	values-ca.json
+	    New File  		    7741	values-cs.json
+	    New File  		    6570	values-da.json
+	    New File  		    7706	values-de.json
+	    New File  		    6694	values-el.json
+	    New File  		    2916	values-en-rAU.json
+	    New File  		    2916	values-en-rCA.json
+	    New File  		    6184	values-en-rGB.json
+	    New File  		    2916	values-en-rIN.json
+	    New File  		    2987	values-en-rXC.json
+	    New File  		    1110	values-es-rES.json
+	    New File  		     861	values-es-rGT.json
+	    New File  		    5092	values-es-rUS.json
+	    New File  		    7810	values-es.json
+	    New File  		    7708	values-et.json
+	    New File  		    5061	values-eu.json
+	    New File  		    7740	values-fa.json
+	    New File  		    6680	values-fi.json
+	    New File  		    6664	values-fr-rCA.json
+	    New File  		    7743	values-fr.json
+	    New File  		    5062	values-gl.json
+	    New File  		    6680	values-gu.json
+	    New File  		     702	values-h720dp-v13.json
+	    New File  		     731	values-hdpi-v4.json
+	    New File  		     812	values-he.json
+	    New File  		    7744	values-hi.json
+	    New File  		    6684	values-hr.json
+	    New File  		    6690	values-hu.json
+	    New File  		    6046	values-hy.json
+	    New File  		     813	values-id.json
+	    New File  		    6118	values-in.json
+	    New File  		    5056	values-is.json
+	    New File  		    7669	values-it.json
+	    New File  		    6676	values-iw.json
+	    New File  		    7712	values-ja.json
+	    New File  		    6648	values-ka.json
+	    New File  		    6047	values-kk.json
+	    New File  		    6681	values-km.json
+	    New File  		    6690	values-kn.json
+	    New File  		    7705	values-ko.json
+	    New File  		    6054	values-ky.json
+	    New File  		     708	values-land.json
+	    New File  		     817	values-large-v4.json
+	    New File  		     699	values-ldltr-v21.json
+	    New File  		    6046	values-lo.json
+	    New File  		    6694	values-lt.json
+	    New File  		    6708	values-lv.json
+	    New File  		    6686	values-mk.json
+	    New File  		    6696	values-ml.json
+	    New File  		    6048	values-mn.json
+	    New File  		    6688	values-mr.json
+	    New File  		    7672	values-ms.json
+	    New File  		    6696	values-my.json
+	    New File  		    6107	values-nb.json
+	    New File  		    6057	values-ne.json
+	    New File  		     801	values-night-v8.json
+	    New File  		    7704	values-nl.json
+	    New File  		    5074	values-or.json
+	    New File  		    6681	values-pa.json
+	    New File  		    7631	values-pl.json
+	    New File  		     678	values-port.json
+	    New File  		    6228	values-pt-rBR.json
+	    New File  		    6690	values-pt-rPT.json
+	    New File  		    4524	values-pt.json
+	    New File  		    6618	values-ro.json
+	    New File  		     829	values-ru-rRU.json
+	    New File  		    6687	values-ru.json
+	    New File  		    6688	values-si.json
+	    New File  		    6685	values-sk.json
+	    New File  		    6685	values-sl.json
+	    New File  		    6684	values-sq.json
+	    New File  		    6689	values-sr.json
+	    New File  		    7705	values-sv.json
+	    New File  		    6683	values-sw.json
+	    New File  		     811	values-sw600dp-v13.json
+	    New File  		    6693	values-ta.json
+	    New File  		    6694	values-te.json
+	    New File  		    6680	values-th.json
+	    New File  		    5066	values-tl.json
+	    New File  		    7740	values-tr.json
+	    New File  		    6688	values-uk.json
+	    New File  		    7745	values-ur.json
+	    New File  		    5058	values-uz.json
+	    New File  		    1519	values-v16.json
+	    New File  		    1039	values-v17.json
+	    New File  		     673	values-v18.json
+	    New File  		    7344	values-v21.json
+	    New File  		     767	values-v22.json
+	    New File  		     981	values-v23.json
+	    New File  		    1544	values-v24.json
+	    New File  		     766	values-v25.json
+	    New File  		     805	values-v26.json
+	    New File  		     767	values-v28.json
+	    New File  		    7668	values-vi.json
+	    New File  		     774	values-watch-v20.json
+	    New File  		     775	values-watch-v21.json
+	    New File  		     773	values-xlarge-v4.json
+	    New File  		    7749	values-zh-rCN.json
+	    New File  		    6688	values-zh-rHK.json
+	    New File  		    7747	values-zh-rTW.json
+	    New File  		     812	values-zh.json
+	    New File  		    5061	values-zu.json
+	    New File  		   63404	values.json
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\merged_res_blame_folder\release\out\single\
+	    New File  		    4211	release.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_shaders\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_shaders\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\merged_shaders\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\metadata_library_dependencies_report\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\metadata_library_dependencies_report\release\
+	    New File  		   16482	dependencies.pb
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\mixed_scope_dex_archive\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\mixed_scope_dex_archive\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\mixed_scope_dex_archive\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\out\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\out\arm64-v8a\
+	    New File  		   1.5 m	libexpo-modules-core.so.sym
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\out\armeabi-v7a\
+	    New File  		   1.2 m	libexpo-modules-core.so.sym
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\out\x86\
+	    New File  		   1.3 m	libexpo-modules-core.so.sym
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\native_symbol_tables\release\out\x86_64\
+	    New File  		   1.4 m	libexpo-modules-core.so.sym
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\navigation_json\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\navigation_json\release\
+	    New File  		       2	navigation.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\optimized_processed_res\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\optimized_processed_res\release\
+	    New File  		     413	output-metadata.json
+	    New File  		   4.1 m	resources-release-optimize.ap_
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\packaged_manifests\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_manifests\release\
+	    New File  		   20356	AndroidManifest.xml
+	    New File  		     397	output-metadata.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\packaged_res\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\drawable\
+	    New File  		    1954	rn_edit_text_material.xml
+	    New File  		     204	splashscreen.xml
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\layout\
+	    New File  		    2438	activity_face_verification.xml
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\mipmap-hdpi-v4\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\mipmap-mdpi-v4\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\mipmap-xhdpi-v4\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\mipmap-xxhdpi-v4\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\mipmap-xxxhdpi-v4\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\packaged_res\release\values\
+	    New File  		    1066	values.xml
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\processed_res\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\processed_res\release\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\processed_res\release\out\
+	    New File  		     394	output-metadata.json
+	    New File  		   4.1 m	resources-release.ap_
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\
+	  New Dir          6	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\
+	    New File  		   33103	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_0.jar
+	    New File  		   33245	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_1.jar
+	    New File  		   11784	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_2.jar
+	    New File  		   36779	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_3.jar
+	    New File  		   14383	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_4.jar
+	    New File  		   15373	51c127228033fbd1ff5255d8ab5893456ca6bb03a2658100bd53fc6eb21bec68_5.jar
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\countdowntimer\
+	  New Dir         12	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\countdowntimer\app\
+	    New File  		     812	BuildConfig.dex
+	    New File  		    4028	FaceDetectionHelper.dex
+	    New File  		    4476	FaceEmbeddingHelper.dex
+	    New File  		    7884	LivenessDetector.dex
+	    New File  		    3452	LivenessResult.dex
+	    New File  		    1268	MainActivity$createReactActivityDelegate$1.dex
+	    New File  		    2156	MainActivity.dex
+	    New File  		    2780	MainApplication$reactNativeHost$1.dex
+	    New File  		    2628	MainApplication.dex
+	    New File  		    2104	WifiModule$generateTestBSSID$1.dex
+	    New File  		   22536	WifiModule.dex
+	    New File  		    1904	WifiPackage.dex
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\facebook\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\facebook\react\
+	    New File  		    2540	PackageList.dex
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\letsbunk\
+	  New Dir         11	D:\bunk bssid old\android\app\build\intermediates\project_dex_archive\release\out\com\letsbunk\faceverification\
+	    New File  		    1176	FaceComparator$Companion.dex
+	    New File  		    3028	FaceComparator.dex
+	    New File  		    3348	FaceMatchResult.dex
+	    New File  		    1860	FaceVerificationActivity$onCreate$2.dex
+	    New File  		    2772	FaceVerificationActivity$onCreate$3.dex
+	    New File  		   17404	FaceVerificationActivity.dex
+	    New File  		    2436	FaceVerificationActivityKt.dex
+	    New File  		    2876	FaceVerificationModule$activityEventListener$1.dex
+	    New File  		    1200	FaceVerificationModule$Companion.dex
+	    New File  		    4204	FaceVerificationModule.dex
+	    New File  		    1956	FaceVerificationPackage.dex
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\runtime_symbol_list\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\runtime_symbol_list\release\
+	    New File  		  116455	R.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sdk_dependency_data\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\sdk_dependency_data\release\
+	    New File  		    9964	sdkDependencyData.pb
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\signing_config_versions\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\signing_config_versions\release\
+	    New File  		      96	signing-config-versions.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sourcemaps\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sourcemaps\react\
+	  New Dir          2	D:\bunk bssid old\android\app\build\intermediates\sourcemaps\react\release\
+	    New File  		   1.2 m	index.android.bundle.compiler.map
+	    New File  		   8.3 m	index.android.bundle.packager.map
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\source_set_path_map\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\source_set_path_map\release\
+	    New File  		   11005	file-map.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\stable_resource_ids_file\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\stable_resource_ids_file\release\
+	    New File  		  117638	stableIds.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\lib\
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\lib\arm64-v8a\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		 1038600	libexpo-modules-core.so
+	    New File  		   2.1 m	libfabricjni.so
+	    New File  		  185352	libfbjni.so
+	    New File  		  697888	libfolly_runtime.so
+	    New File  		  274856	libgifimage.so
+	    New File  		  143376	libglog.so
+	    New File  		   2.0 m	libhermes.so
+	    New File  		   93704	libhermesinstancejni.so
+	    New File  		  232120	libhermes_executor.so
+	    New File  		    8544	libimagepipeline.so
+	    New File  		   28944	libimage_processing_util_jni.so
+	    New File  		  121072	libjscinstance.so
+	    New File  		  101760	libjsi.so
+	    New File  		   35784	libjsijniprofiler.so
+	    New File  		  323152	libjsinspector.so
+	    New File  		   76576	libmapbufferjni.so
+	    New File  		  12.9 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   23624	libnative-filters.so
+	    New File  		  475392	libnative-imagetranscoder.so
+	    New File  		   47616	libreactnativeblob.so
+	    New File  		  930520	libreactnativejni.so
+	    New File  		    5840	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    5856	libreact_cxxreactpackage.so
+	    New File  		    4320	libreact_debug.so
+	    New File  		  119096	libreact_devsupportjni.so
+	    New File  		   54152	libreact_featureflags.so
+	    New File  		   60296	libreact_featureflagsjni.so
+	    New File  		  311240	libreact_nativemodule_core.so
+	    New File  		  182200	libreact_newarchdefaults.so
+	    New File  		  126624	libreact_render_componentregistry.so
+	    New File  		  179536	libreact_render_core.so
+	    New File  		    3768	libreact_render_debug.so
+	    New File  		   42304	libreact_render_graphics.so
+	    New File  		   48112	libreact_render_imagemanager.so
+	    New File  		   50872	libreact_render_mapbuffer.so
+	    New File  		   38360	libreact_utils.so
+	    New File  		  532168	librninstance.so
+	    New File  		  160552	librrc_image.so
+	    New File  		   90616	librrc_legacyviewmanagerinterop.so
+	    New File  		  378488	librrc_view.so
+	    New File  		    4048	libruntimeexecutor.so
+	    New File  		  610424	libstatic-webp.so
+	    New File  		   3.4 m	libtensorflowlite_gpu_jni.so
+	    New File  		   3.6 m	libtensorflowlite_jni.so
+	    New File  		  143536	libturbomodulejsijni.so
+	    New File  		  125504	libuimanagerjni.so
+	    New File  		  190856	libyoga.so
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\lib\armeabi-v7a\
+	    New File  		   1.0 m	libc++_shared.so
+	    New File  		  738368	libexpo-modules-core.so
+	    New File  		   1.5 m	libfabricjni.so
+	    New File  		  124756	libfbjni.so
+	    New File  		  485160	libfolly_runtime.so
+	    New File  		  140440	libgifimage.so
+	    New File  		   82112	libglog.so
+	    New File  		   1.2 m	libhermes.so
+	    New File  		   52052	libhermesinstancejni.so
+	    New File  		  145004	libhermes_executor.so
+	    New File  		    5776	libimagepipeline.so
+	    New File  		   21692	libimage_processing_util_jni.so
+	    New File  		   64184	libjscinstance.so
+	    New File  		   53520	libjsi.so
+	    New File  		    8568	libjsijniprofiler.so
+	    New File  		  222964	libjsinspector.so
+	    New File  		   38992	libmapbufferjni.so
+	    New File  		   7.7 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   12616	libnative-filters.so
+	    New File  		  271720	libnative-imagetranscoder.so
+	    New File  		   13932	libreactnativeblob.so
+	    New File  		  658820	libreactnativejni.so
+	    New File  		    3920	libreactperfloggerjni.so
+	    New File  		  820252	libreact_codegen_rncore.so
+	    New File  		    3920	libreact_cxxreactpackage.so
+	    New File  		    3008	libreact_debug.so
+	    New File  		   71416	libreact_devsupportjni.so
+	    New File  		   22004	libreact_featureflags.so
+	    New File  		   26952	libreact_featureflagsjni.so
+	    New File  		  200992	libreact_nativemodule_core.so
+	    New File  		  120296	libreact_newarchdefaults.so
+	    New File  		   78076	libreact_render_componentregistry.so
+	    New File  		  107652	libreact_render_core.so
+	    New File  		    2572	libreact_render_debug.so
+	    New File  		   16024	libreact_render_graphics.so
+	    New File  		   15568	libreact_render_imagemanager.so
+	    New File  		   18700	libreact_render_mapbuffer.so
+	    New File  		    8912	libreact_utils.so
+	    New File  		  362720	librninstance.so
+	    New File  		   98140	librrc_image.so
+	    New File  		   49772	librrc_legacyviewmanagerinterop.so
+	    New File  		  260928	librrc_view.so
+	    New File  		    2580	libruntimeexecutor.so
+	    New File  		  431224	libstatic-webp.so
+	    New File  		   2.1 m	libtensorflowlite_gpu_jni.so
+	    New File  		   2.6 m	libtensorflowlite_jni.so
+	    New File  		   88488	libturbomodulejsijni.so
+	    New File  		   72804	libuimanagerjni.so
+	    New File  		  122196	libyoga.so
+	  New Dir         49	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\lib\x86\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		  977088	libexpo-modules-core.so
+	    New File  		   2.0 m	libfabricjni.so
+	    New File  		  173016	libfbjni.so
+	    New File  		  693908	libfolly_runtime.so
+	    New File  		  249240	libgifimage.so
+	    New File  		  134652	libglog.so
+	    New File  		   2.2 m	libhermes.so
+	    New File  		   84344	libhermesinstancejni.so
+	    New File  		  214636	libhermes_executor.so
+	    New File  		    6972	libimagepipeline.so
+	    New File  		   35372	libimage_processing_util_jni.so
+	    New File  		  113304	libjscinstance.so
+	    New File  		   97164	libjsi.so
+	    New File  		   34024	libjsijniprofiler.so
+	    New File  		  312392	libjsinspector.so
+	    New File  		   71448	libmapbufferjni.so
+	    New File  		  19.8 m	libmediapipe_tasks_vision_jni.so
+	    New File  		   22404	libnative-filters.so
+	    New File  		  557632	libnative-imagetranscoder.so
+	    New File  		   42180	libreactnativeblob.so
+	    New File  		  876116	libreactnativejni.so
+	    New File  		    4732	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    4748	libreact_cxxreactpackage.so
+	    New File  		    3340	libreact_debug.so
+	    New File  		  108448	libreact_devsupportjni.so
+	    New File  		   51052	libreact_featureflags.so
+	    New File  		   55976	libreact_featureflagsjni.so
+	    New File  		  300448	libreact_nativemodule_core.so
+	    New File  		  165936	libreact_newarchdefaults.so
+	    New File  		  117572	libreact_render_componentregistry.so
+	    New File  		  172104	libreact_render_core.so
+	    New File  		    2908	libreact_render_debug.so
+	    New File  		   42608	libreact_render_graphics.so
+	    New File  		   43460	libreact_render_imagemanager.so
+	    New File  		   50776	libreact_render_mapbuffer.so
+	    New File  		   34584	libreact_utils.so
+	    New File  		  508200	librninstance.so
+	    New File  		  150532	librrc_image.so
+	    New File  		   81460	librrc_legacyviewmanagerinterop.so
+	    New File  		  397016	librrc_view.so
+	    New File  		    2916	libruntimeexecutor.so
+	    New File  		  777332	libstatic-webp.so
+	    New File  		   4.1 m	libtensorflowlite_gpu_jni.so
+	    New File  		   4.3 m	libtensorflowlite_jni.so
+	    New File  		  133304	libturbomodulejsijni.so
+	    New File  		  113924	libuimanagerjni.so
+	    New File  		  225400	libyoga.so
+	  New Dir         48	D:\bunk bssid old\android\app\build\intermediates\stripped_native_libs\release\out\lib\x86_64\
+	    New File  		   1.2 m	libc++_shared.so
+	    New File  		 1012184	libexpo-modules-core.so
+	    New File  		   2.1 m	libfabricjni.so
+	    New File  		  180552	libfbjni.so
+	    New File  		  711824	libfolly_runtime.so
+	    New File  		  278688	libgifimage.so
+	    New File  		  144792	libglog.so
+	    New File  		   2.0 m	libhermes.so
+	    New File  		   89592	libhermesinstancejni.so
+	    New File  		  226200	libhermes_executor.so
+	    New File  		    8440	libimagepipeline.so
+	    New File  		   46200	libimage_processing_util_jni.so
+	    New File  		  119512	libjscinstance.so
+	    New File  		   99664	libjsi.so
+	    New File  		   35240	libjsijniprofiler.so
+	    New File  		  323880	libjsinspector.so
+	    New File  		   75696	libmapbufferjni.so
+	    New File  		   29064	libnative-filters.so
+	    New File  		  621000	libnative-imagetranscoder.so
+	    New File  		   44496	libreactnativeblob.so
+	    New File  		  918584	libreactnativejni.so
+	    New File  		    5920	libreactperfloggerjni.so
+	    New File  		   1.0 m	libreact_codegen_rncore.so
+	    New File  		    5920	libreact_cxxreactpackage.so
+	    New File  		    4368	libreact_debug.so
+	    New File  		  114632	libreact_devsupportjni.so
+	    New File  		   52904	libreact_featureflags.so
+	    New File  		   59064	libreact_featureflagsjni.so
+	    New File  		  312000	libreact_nativemodule_core.so
+	    New File  		  178608	libreact_newarchdefaults.so
+	    New File  		  124832	libreact_render_componentregistry.so
+	    New File  		  178128	libreact_render_core.so
+	    New File  		    3816	libreact_render_debug.so
+	    New File  		   42472	libreact_render_graphics.so
+	    New File  		   45040	libreact_render_imagemanager.so
+	    New File  		   51448	libreact_render_mapbuffer.so
+	    New File  		   35480	libreact_utils.so
+	    New File  		  532664	librninstance.so
+	    New File  		  159240	librrc_image.so
+	    New File  		   87496	librrc_legacyviewmanagerinterop.so
+	    New File  		  383584	librrc_view.so
+	    New File  		    3848	libruntimeexecutor.so
+	    New File  		  809584	libstatic-webp.so
+	    New File  		   3.9 m	libtensorflowlite_gpu_jni.so
+	    New File  		   4.7 m	libtensorflowlite_jni.so
+	    New File  		  141616	libturbomodulejsijni.so
+	    New File  		  121104	libuimanagerjni.so
+	    New File  		  203200	libyoga.so
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sub_project_dex_archive\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sub_project_dex_archive\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\sub_project_dex_archive\release\out\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\symbol_list_with_package_name\
+	  New Dir          1	D:\bunk bssid old\android\app\build\intermediates\symbol_list_with_package_name\release\
+	    New File  		   66427	package-aware-r.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\validate_signing_config\
+	  New Dir          0	D:\bunk bssid old\android\app\build\intermediates\validate_signing_config\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\kotlin\
+	  New Dir          0	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\
+	  New Dir          1	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\
+	    New File  		      18	last-build.bin
+	  New Dir          0	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\caches-jvm\
+	  New Dir          7	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\caches-jvm\inputs\
+	    New File  		    4096	source-to-output.tab
+	    New File  		    4096	source-to-output.tab.keystream
+	    New File  		       8	source-to-output.tab.keystream.len
+	    New File  		       8	source-to-output.tab.len
+	    New File  		    2608	source-to-output.tab.values.at
+	    New File  		   32768	source-to-output.tab_i
+	    New File  		       8	source-to-output.tab_i.len
+	  New Dir          0	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\caches-jvm\jvm\
+	  New Dir         70	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\caches-jvm\jvm\kotlin\
+	    New File  		    4096	class-attributes.tab
+	    New File  		    4096	class-attributes.tab.keystream
+	    New File  		       8	class-attributes.tab.keystream.len
+	    New File  		       8	class-attributes.tab.len
+	    New File  		     100	class-attributes.tab.values.at
+	    New File  		   32768	class-attributes.tab_i
+	    New File  		       8	class-attributes.tab_i.len
+	    New File  		    4096	class-fq-name-to-source.tab
+	    New File  		    4096	class-fq-name-to-source.tab.keystream
+	    New File  		       8	class-fq-name-to-source.tab.keystream.len
+	    New File  		       8	class-fq-name-to-source.tab.len
+	    New File  		    1221	class-fq-name-to-source.tab.values.at
+	    New File  		   32768	class-fq-name-to-source.tab_i
+	    New File  		       8	class-fq-name-to-source.tab_i.len
+	    New File  		    4096	constants.tab
+	    New File  		    4096	constants.tab.keystream
+	    New File  		       8	constants.tab.keystream.len
+	    New File  		       8	constants.tab.len
+	    New File  		     137	constants.tab.values.at
+	    New File  		   32768	constants.tab_i
+	    New File  		       8	constants.tab_i.len
+	    New File  		    4096	internal-name-to-source.tab
+	    New File  		    4096	internal-name-to-source.tab.keystream
+	    New File  		       8	internal-name-to-source.tab.keystream.len
+	    New File  		       8	internal-name-to-source.tab.len
+	    New File  		    1542	internal-name-to-source.tab.values.at
+	    New File  		   32768	internal-name-to-source.tab_i
+	    New File  		       8	internal-name-to-source.tab_i.len
+	    New File  		    4096	java-sources-proto-map.tab
+	    New File  		    4096	java-sources-proto-map.tab.keystream
+	    New File  		       8	java-sources-proto-map.tab.keystream.len
+	    New File  		       8	java-sources-proto-map.tab.len
+	    New File  		    1244	java-sources-proto-map.tab.values.at
+	    New File  		   32768	java-sources-proto-map.tab_i
+	    New File  		       8	java-sources-proto-map.tab_i.len
+	    New File  		    4096	package-parts.tab
+	    New File  		    4096	package-parts.tab.keystream
+	    New File  		       8	package-parts.tab.keystream.len
+	    New File  		       8	package-parts.tab.len
+	    New File  		      52	package-parts.tab.values.at
+	    New File  		   32768	package-parts.tab_i
+	    New File  		       8	package-parts.tab_i.len
+	    New File  		    4096	proto.tab
+	    New File  		    4096	proto.tab.keystream
+	    New File  		       8	proto.tab.keystream.len
+	    New File  		       8	proto.tab.len
+	    New File  		   10251	proto.tab.values.at
+	    New File  		   32768	proto.tab_i
+	    New File  		       8	proto.tab_i.len
+	    New File  		    4096	source-to-classes.tab
+	    New File  		    4096	source-to-classes.tab.keystream
+	    New File  		       8	source-to-classes.tab.keystream.len
+	    New File  		       8	source-to-classes.tab.len
+	    New File  		    1430	source-to-classes.tab.values.at
+	    New File  		   32768	source-to-classes.tab_i
+	    New File  		       8	source-to-classes.tab_i.len
+	    New File  		    4096	subtypes.tab
+	    New File  		    4096	subtypes.tab.keystream
+	    New File  		       8	subtypes.tab.keystream.len
+	    New File  		       8	subtypes.tab.len
+	    New File  		     406	subtypes.tab.values.at
+	    New File  		   32768	subtypes.tab_i
+	    New File  		       8	subtypes.tab_i.len
+	    New File  		    4096	supertypes.tab
+	    New File  		    4096	supertypes.tab.keystream
+	    New File  		       8	supertypes.tab.keystream.len
+	    New File  		       8	supertypes.tab.len
+	    New File  		     367	supertypes.tab.values.at
+	    New File  		   32768	supertypes.tab_i
+	    New File  		       8	supertypes.tab_i.len
+	  New Dir         22	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\cacheable\caches-jvm\lookups\
+	    New File  		       4	counters.tab
+	    New File  		    4096	file-to-id.tab
+	    New File  		    4096	file-to-id.tab.keystream
+	    New File  		       8	file-to-id.tab.keystream.len
+	    New File  		       8	file-to-id.tab.len
+	    New File  		     115	file-to-id.tab.values.at
+	    New File  		   32768	file-to-id.tab_i
+	    New File  		       8	file-to-id.tab_i.len
+	    New File  		    4096	id-to-file.tab
+	    New File  		    4096	id-to-file.tab.keystream
+	    New File  		       8	id-to-file.tab.keystream.len
+	    New File  		       8	id-to-file.tab.len
+	    New File  		     779	id-to-file.tab.values.at
+	    New File  		   32768	id-to-file.tab_i
+	    New File  		       8	id-to-file.tab_i.len
+	    New File  		   28672	lookups.tab
+	    New File  		  167936	lookups.tab.keystream
+	    New File  		       8	lookups.tab.keystream.len
+	    New File  		       8	lookups.tab.len
+	    New File  		   21857	lookups.tab.values.at
+	    New File  		   32768	lookups.tab_i
+	    New File  		       8	lookups.tab_i.len
+	  New Dir          1	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\classpath-snapshot\
+	    New File  		   82739	shrunk-classpath-snapshot.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\kotlin\compileReleaseKotlin\local-state\
+	    New File  		      31	build-history.bin
+	  New Dir          1	D:\bunk bssid old\android\app\build\kotlinToolingMetadata\
+	    New File  		     624	kotlin-tooling-metadata.json
+	  New Dir          0	D:\bunk bssid old\android\app\build\outputs\
+	  New Dir          0	D:\bunk bssid old\android\app\build\outputs\apk\
+	  New Dir          2	D:\bunk bssid old\android\app\build\outputs\apk\release\
+	    New File  		 143.8 m	app-release.apk
+	    New File  		     378	output-metadata.json
+	  New Dir          1	D:\bunk bssid old\android\app\build\outputs\logs\
+	    New File  		  180276	manifest-merger-release-report.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\outputs\native-debug-symbols\
+	  New Dir          1	D:\bunk bssid old\android\app\build\outputs\native-debug-symbols\release\
+	    New File  		   1.2 m	native-debug-symbols.zip
+	  New Dir          0	D:\bunk bssid old\android\app\build\outputs\sdk-dependencies\
+	  New Dir          1	D:\bunk bssid old\android\app\build\outputs\sdk-dependencies\release\
+	    New File  		   68484	sdkDependencies.txt
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\
+	  New Dir          1	D:\bunk bssid old\android\app\build\tmp\compileReleaseJavaWithJavac\
+	    New File  		   95084	previous-compilation-data.bin
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\com\
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\com\countdowntimer\
+	  New Dir         11	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\com\countdowntimer\app\
+	    New File  		    5989	FaceDetectionHelper.class
+	    New File  		    6368	FaceEmbeddingHelper.class
+	    New File  		   10799	LivenessDetector.class
+	    New File  		    3713	LivenessResult.class
+	    New File  		    1171	MainActivity$createReactActivityDelegate$1.class
+	    New File  		    2396	MainActivity.class
+	    New File  		    2622	MainApplication$reactNativeHost$1.class
+	    New File  		    2831	MainApplication.class
+	    New File  		    1875	WifiModule$generateTestBSSID$1.class
+	    New File  		   27445	WifiModule.class
+	    New File  		    1897	WifiPackage.class
+	  New Dir          0	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\com\letsbunk\
+	  New Dir         11	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\com\letsbunk\faceverification\
+	    New File  		     938	FaceComparator$Companion.class
+	    New File  		    3488	FaceComparator.class
+	    New File  		    3598	FaceMatchResult.class
+	    New File  		    1761	FaceVerificationActivity$onCreate$2.class
+	    New File  		    2593	FaceVerificationActivity$onCreate$3.class
+	    New File  		   19787	FaceVerificationActivity.class
+	    New File  		    2597	FaceVerificationActivityKt.class
+	    New File  		    3166	FaceVerificationModule$activityEventListener$1.class
+	    New File  		     970	FaceVerificationModule$Companion.class
+	    New File  		    5093	FaceVerificationModule.class
+	    New File  		    1966	FaceVerificationPackage.class
+	  New Dir          1	D:\bunk bssid old\android\app\build\tmp\kotlin-classes\release\META-INF\
+	    New File  		      85	app_release.kotlin_module
+	  New Dir          0	D:\bunk bssid old\android\app\src\
+	  New Dir          1	D:\bunk bssid old\android\app\src\debug\
+	    New File  		     381	AndroidManifest.xml
+	  New Dir          1	D:\bunk bssid old\android\app\src\main\
+	    New File  		    4980	AndroidManifest.xml
+	  New Dir          3	D:\bunk bssid old\android\app\src\main\assets\
+	    New File  		  229746	face_detection_short_range.tflite
+	    New File  		   7.4 m	index.android.bundle.map
+	    New File  		   4.9 m	mobile_face_net.tflite
+	  New Dir          0	D:\bunk bssid old\android\app\src\main\java\
+	  New Dir          0	D:\bunk bssid old\android\app\src\main\java\com\
+	  New Dir          0	D:\bunk bssid old\android\app\src\main\java\com\countdowntimer\
+	  New Dir          7	D:\bunk bssid old\android\app\src\main\java\com\countdowntimer\app\
+	    New File  		    1726	FaceDetectionHelper.kt
+	    New File  		    3914	FaceEmbeddingHelper.kt
+	    New File  		    8798	LivenessDetector.kt
+	    New File  		    2253	MainActivity.kt
+	    New File  		    2362	MainApplication.kt
+	    New File  		   37365	WifiModule.kt
+	    New File  		     562	WifiPackage.kt
+	  New Dir          0	D:\bunk bssid old\android\app\src\main\java\com\letsbunk\
+	  New Dir          4	D:\bunk bssid old\android\app\src\main\java\com\letsbunk\faceverification\
+	    New File  		    3393	FaceComparator.kt
+	    New File  		   12343	FaceVerificationActivity.kt
+	    New File  		    3376	FaceVerificationModule.kt
+	    New File  		     595	FaceVerificationPackage.kt
+	  New Dir          0	D:\bunk bssid old\android\app\src\main\res\
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\drawable\
+	    New File  		    1954	rn_edit_text_material.xml
+	    New File  		     204	splashscreen.xml
+	  New Dir          1	D:\bunk bssid old\android\app\src\main\res\layout\
+	    New File  		    2438	activity_face_verification.xml
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\mipmap-hdpi\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\mipmap-mdpi\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\mipmap-xhdpi\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\mipmap-xxhdpi\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          2	D:\bunk bssid old\android\app\src\main\res\mipmap-xxxhdpi\
+	    New File  		  528264	ic_launcher.png
+	    New File  		  528264	ic_launcher_round.png
+	  New Dir          3	D:\bunk bssid old\android\app\src\main\res\values\
+	    New File  		     121	colors.xml
+	    New File  		      70	strings.xml
+	    New File  		     876	styles.xml
+	  New Dir          1	D:\bunk bssid old\android\app\src\main\res\values-night\
+	    New File  		      12	colors.xml
+	  New Dir          0	D:\bunk bssid old\android\gradle\
+	  New Dir          2	D:\bunk bssid old\android\gradle\wrapper\
+	    New File  		   43453	gradle-wrapper.jar
+	    New File  		     257	gradle-wrapper.properties
+	  New Dir          1	D:\bunk bssid old\android\react-settings-plugin\
+	    New File  		     392	build.gradle.kts
+	  New Dir          0	D:\bunk bssid old\android\react-settings-plugin\src\
+	  New Dir          0	D:\bunk bssid old\android\react-settings-plugin\src\main\
+	  New Dir          0	D:\bunk bssid old\android\react-settings-plugin\src\main\kotlin\
+	  New Dir          0	D:\bunk bssid old\android\react-settings-plugin\src\main\kotlin\expo\
+	  New Dir          1	D:\bunk bssid old\android\react-settings-plugin\src\main\kotlin\expo\plugins\
+	    New File  		     249	ReactSettingsPlugin.kt
+	  New Dir          2	D:\bunk bssid old\assets\
+	    New File  		  528264	favicon.png
+	    New File  		  528264	icon.png
+	  New Dir          5	D:\bunk bssid old\bssid_permissions\
+	    New File  		    2111	AndroidManifest.xml
+	    New File  		   73817	MainActivity.kt
+	    New File  		    2827	PermissionHelper.kt
+	    New File  		    3018	PERMISSIONS_SUMMARY.md
+	    New File  		    4906	README.md
+	  New Dir          9	D:\bunk bssid old\enrollment-app\
+	    New File  		     145	build.gradle.kts
+	    New File  		     916	BUILD_ENROLLMENT_APK.bat
+	    New File  		    4718	ENROLLMENT_APP_INSTALLED.md
+	    New File  		     135	gradle.properties
+	    New File  		    2838	gradlew.bat
+	    New File  		     956	INSTALL_ENROLLMENT_APK.bat
+	    New File  		      57	local.properties
+	    New File  		    5610	README.md
+	    New File  		     351	settings.gradle.kts
+	  New Dir          1	D:\bunk bssid old\enrollment-app\app\
+	    New File  		    1742	build.gradle.kts
+	  New Dir          0	D:\bunk bssid old\enrollment-app\app\src\
+	  New Dir          1	D:\bunk bssid old\enrollment-app\app\src\main\
+	    New File  		    1131	AndroidManifest.xml
+	  New Dir          4	D:\bunk bssid old\enrollment-app\app\src\main\assets\
+	    New File  		      90	.gitkeep
+	    New File  		  229746	face_detection_short_range.tflite
+	    New File  		   4.9 m	mobile_face_net.tflite
+	    New File  		    1052	README.md
+	  New Dir          0	D:\bunk bssid old\enrollment-app\app\src\main\java\
+	  New Dir          0	D:\bunk bssid old\enrollment-app\app\src\main\java\com\
+	  New Dir          0	D:\bunk bssid old\enrollment-app\app\src\main\java\com\example\
+	  New Dir          6	D:\bunk bssid old\enrollment-app\app\src\main\java\com\example\enrollmentapp\
+	    New File  		    9798	ApiService.kt
+	    New File  		    9562	CameraActivity.kt
+	    New File  		    1729	FaceDetectionHelper.kt
+	    New File  		    3917	FaceEmbeddingHelper.kt
+	    New File  		    8801	LivenessDetector.kt
+	    New File  		    8041	MainActivity.kt
+	  New Dir          0	D:\bunk bssid old\enrollment-app\app\src\main\res\
+	  New Dir          2	D:\bunk bssid old\enrollment-app\app\src\main\res\layout\
+	    New File  		    2383	activity_camera.xml
+	    New File  		    3229	activity_main.xml
+	  New Dir          2	D:\bunk bssid old\enrollment-app\app\src\main\res\values\
+	    New File  		     248	config.xml
+	    New File  		     120	strings.xml
+	  New Dir          1	D:\bunk bssid old\enrollment-app\app\src\main\res\xml\
+	    New File  		     861	network_security_config.xml
+	  New Dir          0	D:\bunk bssid old\enrollment-app\gradle\
+	  New Dir          2	D:\bunk bssid old\enrollment-app\gradle\wrapper\
+	    New File  		   48966	gradle-wrapper.jar
+	    New File  		     227	gradle-wrapper.properties
+	  New Dir          0	D:\bunk bssid old\face-verification-module\
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\main\
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\main\java\
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\main\java\com\
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\main\java\com\letsbunk\
+	  New Dir          4	D:\bunk bssid old\face-verification-module\src\main\java\com\letsbunk\faceverification\
+	    New File  		    3286	FaceComparator.kt
+	    New File  		   11826	FaceVerificationActivity.kt
+	    New File  		    3293	FaceVerificationModule.kt
+	    New File  		     579	FaceVerificationPackage.kt
+	  New Dir          0	D:\bunk bssid old\face-verification-module\src\main\res\
+	  New Dir          1	D:\bunk bssid old\face-verification-module\src\main\res\layout\
+	    New File  		    2369	activity_face_verification.xml
+	  New Dir         12	D:\bunk bssid old\scripts\
+	    New File  		    6176	ATTENDANCE_SESSION_REMOVAL.md
+	    New File  		    6344	backup-database.js
+	    New File  		   10159	BACKUP_DOCUMENTATION.md
+	    New File  		    2347	BACKUP_QUICK_REFERENCE.md
+	    New File  		    6083	drop-attendance-session.js
+	    New File  		    9767	INDEX_VERIFICATION_GUIDE.md
+	    New File  		   31151	migrate-to-period-based.js
+	    New File  		   10677	MIGRATION_GUIDE.md
+	    New File  		    3193	MIGRATION_QUICK_START.md
+	    New File  		    9195	README.md
+	    New File  		    7372	restore-database.js
+	    New File  		   17693	verify-indexes.js
+	  New Dir          6	D:\bunk bssid old\services\
+	    New File  		    8273	dailyAttendanceCalculation.js
+	    New File  		    3504	faceVerificationService.js
+	    New File  		    4112	faceVerificationService.test.js
+	    New File  		    9655	notificationService.js
+	    New File  		    5800	wifiVerificationService.js
+	    New File  		    6486	wifiVerificationService.test.js
+	  New Dir          0	D:\bunk bssid old\uploads\
+
+------------------------------------------------------------------------------
+
+               Total    Copied   Skipped  Mismatch    FAILED    Extras
+    Dirs :       407       405         2         0         0         0
+   Files :      1474      1474         0         0         0         0
+   Bytes :   1.042 g   1.042 g         0         0         0         0
+   Times :   0:00:02   0:00:02                       0:00:00   0:00:00
+
+
+   Speed :           495,434,833 Bytes/sec.
+   Speed :            28,349.008 MegaBytes/min.
+   Ended : Thursday, March 19, 2026 12:18:02 AM
+

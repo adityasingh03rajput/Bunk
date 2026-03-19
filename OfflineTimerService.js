@@ -670,11 +670,17 @@ class OfflineTimerService {
 
   /**
    * Resume timer
+   * @param {string} reason - reason for resuming
+   * @param {number} extraSeconds - extra seconds to add back (e.g. paused duration during random ring)
    */
-  async resumeTimer(reason) {
+  async resumeTimer(reason, extraSeconds = 0) {
     if (!this.isRunning || !this.isPaused) return;
     
-    console.log('▶️ Resuming offline timer, reason:', reason);
+    console.log('▶️ Resuming offline timer, reason:', reason, 'extraSeconds:', extraSeconds);
+    
+    if (extraSeconds > 0) {
+      this.timerSeconds += Math.floor(extraSeconds);
+    }
     
     this.isPaused = false;
     this.startCounting();

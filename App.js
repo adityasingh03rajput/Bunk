@@ -1360,22 +1360,27 @@ export default function App() {
       if (selectedRole === 'student' && studentId === data.enrollmentNo) {
         console.log('✅ Random Ring is for this student!');
 
+        const ringPauseTime = Date.now();
+
+        // Pause the offline timer immediately
+        OfflineTimerService.pauseTimer('random_ring');
+        console.log('⏸️ Timer paused for random ring at', ringPauseTime);
+
         // Store random ring data for verification submission
         setRandomRingData({
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
           timestamp: data.timestamp,
           expiresAt: data.expiresAt,
+          ringPauseTime,
         });
-
-        // Show alert to student
-        alert(`🔔 Random Ring!\n\nYour teacher is verifying attendance.\nRespond before the timer expires!`);
 
         // 240s timeout — matches server auto-absent window
         setTimeout(() => {
           setRandomRingData(prev => {
             if (prev && prev.randomRingId === data.randomRingId) {
-              console.log('⏰ Random ring verification timeout');
+              console.log('⏰ Random ring verification timeout — resuming timer');
+              OfflineTimerService.resumeTimer('random_ring_timeout');
               return null;
             }
             return prev;
@@ -1390,8 +1395,15 @@ export default function App() {
     socketRef.current.on('random_ring_teacher_accepted', (data) => {
       console.log('✅ Teacher accepted your presence:', data);
       if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+        setRandomRingData(prev => {
+          if (prev) {
+            const pausedSeconds = prev.ringPauseTime ? (Date.now() - prev.ringPauseTime) / 1000 : 0;
+            console.log(`▶️ Resuming timer after teacher accept, adding back ${pausedSeconds.toFixed(1)}s`);
+            OfflineTimerService.resumeTimer('random_ring_accepted', pausedSeconds);
+          }
+          return null;
+        });
         alert('✅ Teacher verified your presence!');
-        setRandomRingData(null);
       }
     });
 
@@ -1399,13 +1411,15 @@ export default function App() {
     socketRef.current.on('random_ring_teacher_rejected', (data) => {
       console.log('❌ Teacher rejected your presence:', data);
       if (selectedRole === 'student' && studentId === data.enrollmentNo) {
-        alert('❌ Teacher rejected your presence.\n\nYou have 5 minutes to verify your face.');
-        setRandomRingData({
+        // Keep ringPauseTime from original ring so we can compensate on face verify success
+        setRandomRingData(prev => ({
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
           expiresAt: data.expiresAt,
-          isRejection: true
-        });
+          isRejection: true,
+          ringPauseTime: prev?.ringPauseTime || Date.now(),
+        }));
+        alert('❌ Teacher rejected your presence.\n\nYou have 5 minutes to verify your face.');
       }
     });
 
@@ -1431,8 +1445,15 @@ export default function App() {
     socketRef.current.on('random_ring_face_verification_success', (data) => {
       console.log('✅ Face verification successful:', data);
       if (selectedRole === 'student' && studentId === data.enrollmentNo) {
-        alert('✅ Face Verification Successful!');
-        setRandomRingData(null);
+        setRandomRingData(prev => {
+          if (prev) {
+            const pausedSeconds = prev.ringPauseTime ? (Date.now() - prev.ringPauseTime) / 1000 : 0;
+            console.log(`▶️ Resuming timer after face verify success, adding back ${pausedSeconds.toFixed(1)}s`);
+            OfflineTimerService.resumeTimer('random_ring_face_verified', pausedSeconds);
+          }
+          return null;
+        });
+        alert('✅ Face Verification Successful! Timer resumed.');
       }
     });
 
@@ -2544,6 +2565,73 @@ export default function App() {
         alert('❌ Verification Cancelled\n\nFace verification was cancelled.');
       } else {
         alert(`❌ Face Verification Error\n\n${error.message}\n\nPlease try again or contact support if the issue persists.`);
+      }
+    }
+  };
+
+  // Face verify after teacher rejection during random ring
+  const handleRandomRingFaceVerify = async () => {
+    if (!randomRingData) return;
+
+    console.log('🔒 Random Ring face verification triggered, isRejection:', randomRingData.isRejection);
+
+    try {
+      // Get stored face embedding
+      const storedEmbedding = await SecureStorage.getFaceEmbedding();
+      if (!storedEmbedding || storedEmbedding.length !== 192) {
+        alert('❌ Face Data Not Found\n\nYour face data is not enrolled on this device.\n\nPlease contact your teacher.');
+        return;
+      }
+
+      // Run face verification
+      const verificationResult = await FaceVerification.verifyFace(storedEmbedding);
+      console.log('🔍 Random Ring face result:', verificationResult);
+
+      if (!verificationResult.success || !verificationResult.isMatch) {
+        alert(`❌ Face Verification Failed\n\nSimilarity: ${verificationResult.similarityPercentage}%\n\nPlease try again.`);
+        return; // Keep banner open — multiple chances
+      }
+
+      // Face passed — get current BSSID
+      let currentBSSID = null;
+      try {
+        const wifiResult = await NativeWiFiService.validateWiFiWithPermissions();
+        if (wifiResult && wifiResult.bssid) {
+          currentBSSID = wifiResult.bssid;
+        }
+      } catch (wifiErr) {
+        console.warn('⚠️ WiFi check failed:', wifiErr.message);
+      }
+
+      // Choose endpoint based on flow path
+      const endpoint = randomRingData.isRejection
+        ? `${SOCKET_URL}/api/random-ring/verify-after-rejection`
+        : `${SOCKET_URL}/api/random-ring/verify-direct`;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          randomRingId: randomRingData.randomRingId,
+          studentId,
+          bssid: currentBSSID,
+        }),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        // Timer resume + compensation handled by random_ring_face_verification_success socket event
+        console.log('✅ Face verify accepted by server via', endpoint);
+      } else {
+        alert('❌ Verification failed: ' + (result.error || 'Unknown error'));
+      }
+
+    } catch (error) {
+      console.error('❌ Random Ring face verify error:', error);
+      if (error.message === 'VERIFICATION_CANCELLED') {
+        alert('❌ Verification Cancelled. You can try again.');
+      } else {
+        alert(`❌ Error: ${error.message}\n\nPlease try again.`);
       }
     }
   };
@@ -5017,38 +5105,54 @@ export default function App() {
               <Text style={{ fontSize: 12, color: '#e0d7ff', textAlign: 'center', marginBottom: 12 }}>
                 {randomRingData.isRejection
                   ? 'Teacher rejected your presence. Face verification required within 5 minutes.'
-                  : 'Your teacher is verifying attendance. Tap to confirm you are present.'}
+                  : 'Your teacher is verifying attendance. Confirm presence or verify your face.'}
               </Text>
               {!randomRingData.isRejection && (
-                <TouchableOpacity
-                  style={{ backgroundColor: '#ffffff', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 28 }}
-                  onPress={async () => {
-                    try {
-                      const res = await fetch(`${SOCKET_URL}/api/attendance/random-ring-response`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          studentId,
-                          randomRingId: randomRingData.randomRingId,
-                          responseTime: new Date().toISOString(),
-                        })
-                      });
-                      const result = await res.json();
-                      if (result.success) {
-                        setRandomRingData(prev => prev ? { ...prev, responded: true } : null);
-                      } else {
-                        alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#ffffff', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20, flex: 1, alignItems: 'center' }}
+                    onPress={async () => {
+                      try {
+                        const res = await fetch(`${SOCKET_URL}/api/attendance/random-ring-response`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            studentId,
+                            randomRingId: randomRingData.randomRingId,
+                            responseTime: new Date().toISOString(),
+                          })
+                        });
+                        const result = await res.json();
+                        if (result.success) {
+                          setRandomRingData(prev => prev ? { ...prev, responded: true } : null);
+                        } else {
+                          alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                        }
+                      } catch (e) {
+                        alert('❌ Network error. Try again.');
                       }
-                    } catch (e) {
-                      alert('❌ Network error. Try again.');
-                    }
-                  }}
-                >
-                  <Text style={{ color: '#4c1d95', fontWeight: 'bold', fontSize: 14 }}>✋ I'm Here</Text>
-                </TouchableOpacity>
+                    }}
+                  >
+                    <Text style={{ color: '#4c1d95', fontWeight: 'bold', fontSize: 13 }}>✋ I'm Here</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#7c3aed', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 20, flex: 1, alignItems: 'center' }}
+                    onPress={handleRandomRingFaceVerify}
+                  >
+                    <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 13 }}>📸 Verify Face</Text>
+                  </TouchableOpacity>
+                </View>
               )}
               {randomRingData.responded && (
                 <Text style={{ color: '#86efac', fontSize: 12, marginTop: 8 }}>✅ Response sent — waiting for teacher</Text>
+              )}
+              {randomRingData.isRejection && (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#ef4444', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 28, marginTop: 4 }}
+                  onPress={handleRandomRingFaceVerify}
+                >
+                  <Text style={{ color: '#ffffff', fontWeight: 'bold', fontSize: 14 }}>📸 Verify Face</Text>
+                </TouchableOpacity>
               )}
             </View>
           )}

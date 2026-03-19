@@ -7244,6 +7244,74 @@ app.post('/api/random-ring/verify', async (req, res) => {
     }
 });
 
+// Student verifies face directly (Path A — no teacher accept/reject needed)
+app.post('/api/random-ring/verify-direct', async (req, res) => {
+    try {
+        const { randomRingId, studentId, bssid } = req.body;
+
+        console.log('🔔 Random Ring direct face verify:', { randomRingId, studentId });
+
+        if (!randomRingId || !studentId) {
+            return res.status(400).json({ success: false, error: 'Random Ring ID and Student ID required' });
+        }
+
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).json({ success: false, error: 'Database unavailable' });
+        }
+
+        const randomRing = await RandomRing.findOne({ ringId: randomRingId });
+        if (!randomRing) {
+            return res.status(404).json({ success: false, error: 'Random ring not found' });
+        }
+
+        const studentIndex = randomRing.selectedStudents.findIndex(
+            s => s.studentId === studentId || s.enrollmentNo === studentId
+        );
+        if (studentIndex === -1) {
+            return res.status(404).json({ success: false, error: 'Student not found in this random ring' });
+        }
+
+        const enrollmentNo = randomRing.selectedStudents[studentIndex].enrollmentNo;
+        const classRoom = `class:${randomRing.semester}:${randomRing.branch}`;
+        const now = new Date();
+
+        randomRing.selectedStudents[studentIndex].responded = true;
+        randomRing.selectedStudents[studentIndex].responseTime = now;
+        randomRing.selectedStudents[studentIndex].faceVerifiedDirect = true;
+        randomRing.selectedStudents[studentIndex].faceVerificationTime = now;
+        randomRing.selectedStudents[studentIndex].teacherAction = 'accepted';
+        await randomRing.save();
+
+        // Keep student active in liveTimerState
+        const live = liveTimerState.get(enrollmentNo);
+        if (live) {
+            liveTimerState.set(enrollmentNo, { ...live, status: 'active' });
+            io.to(classRoom).emit('timer_broadcast', { ...live, status: 'active' });
+        }
+
+        // Notify teacher dashboard
+        io.to(classRoom).emit('random_ring_teacher_action_update', {
+            randomRingId: randomRing.ringId,
+            enrollmentNo,
+            action: 'accepted'
+        });
+
+        // Notify student — triggers timer resume + compensation on client
+        io.to(classRoom).emit('random_ring_face_verification_success', {
+            enrollmentNo,
+            randomRingId: randomRing.ringId,
+            message: 'Face verification successful. Timer resumed.'
+        });
+
+        console.log(`✅ Student ${studentId} direct face verified for ring ${randomRingId}`);
+        res.json({ success: true, message: 'Face verification successful' });
+
+    } catch (error) {
+        console.error('❌ Error in random ring direct verify:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Student verifies face after teacher rejection
 app.post('/api/random-ring/verify-after-rejection', async (req, res) => {
     try {

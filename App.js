@@ -4592,7 +4592,26 @@ export default function App() {
                   shadowRadius: 3.84,
                   elevation: 5,
                 }}
-                onPress={handleTimerStartStop}
+                onPress={async () => {
+                  try {
+                    if (offlineTimerState.isRunning) {
+                      await OfflineTimerService.stopTimer('manual');
+                    } else {
+                      if (!currentClassInfo) return;
+                      await OfflineTimerService.startTimer({
+                        subject: currentClassInfo.currentLecture,
+                        room: currentClassInfo.room,
+                        startTime: currentClassInfo.startTime,
+                        endTime: currentClassInfo.endTime,
+                        semester,
+                        branch,
+                      });
+                    }
+                  } catch (e) {
+                    console.error('❌ Timer toggle error:', e);
+                    alert('Timer error: ' + e.message);
+                  }
+                }}
                 disabled={!currentClassInfo || currentClassInfo.currentLecture === 'Break'}
               >
                 <Text style={{

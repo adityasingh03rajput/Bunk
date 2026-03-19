@@ -8,7 +8,7 @@ const StudentList = ({ theme, students = [], onStudentPress, activeRandomRing = 
   // status values set by server: 'present' | 'active' | 'absent'
   const filteredStudents = students.filter((student) => {
     if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'active') return student.isRunning === true && student.status !== 'present';
+    if (selectedFilter === 'active') return student.status === 'active';
     if (selectedFilter === 'present') return student.status === 'present';
     if (selectedFilter === 'absent') return student.status === 'absent';
     return true;
@@ -16,7 +16,7 @@ const StudentList = ({ theme, students = [], onStudentPress, activeRandomRing = 
 
   const filterCounts = {
     all: students.length,
-    active: students.filter(s => s.isRunning === true && s.status !== 'present').length,
+    active: students.filter(s => s.status === 'active').length,
     present: students.filter(s => s.status === 'present').length,
     absent: students.filter(s => s.status === 'absent').length,
   };
@@ -82,12 +82,10 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (student.status === 'absent') { setElapsedTime('00:00'); return; }
-    if (student.timerValue !== undefined && student.timerValue !== null) {
-      const m = Math.floor(student.timerValue / 60);
-      const s = student.timerValue % 60;
-      setElapsedTime(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-    }
+    if (!student.timerValue) { setElapsedTime('00:00'); return; }
+    const m = Math.floor(student.timerValue / 60);
+    const s = student.timerValue % 60;
+    setElapsedTime(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
   }, [student.timerValue, student.status]);
 
   const getStatusStyle = (status) => {

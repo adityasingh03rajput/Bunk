@@ -2870,12 +2870,16 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                     } else if (Boolean(isRunning)) {
                         computedStatus = 'active';
                     }
+                } else if (Boolean(isRunning)) {
+                    // lectureDurationSeconds is 0 or invalid — still mark active if running
+                    computedStatus = 'active';
                 }
             } else if (Boolean(isRunning)) {
                 computedStatus = 'active';
             }
         } catch (statusErr) {
             console.warn('⚠️ Could not compute status:', statusErr.message);
+            if (Boolean(isRunning)) computedStatus = 'active';
         }
 
         // Update status in DB

@@ -126,8 +126,7 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
 
   const handleAction = async (action) => {
     if (actionLoading || !onTeacherAction || !randomRingId) return;
-    // Always use enrollmentNo — that's what liveTimerState stores as studentId
-    const studentIdToUse = student.enrollmentNo;
+    const studentIdToUse = (student._id ? student._id.toString() : null) || student.enrollmentNo;
     setActionLoading(true);
     try {
       await onTeacherAction(randomRingId, studentIdToUse, action);
@@ -152,12 +151,7 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
           style={styles.profileImage}
         />
         <View style={styles.studentInfo}>
-          <View style={styles.nameRow}>
-            <Text style={[styles.studentName, { color: theme.text }]} numberOfLines={1}>{student.name}</Text>
-            {randomRingStudent && randomRingStudent.teacherAction === 'pending' && !randomRingStudent.verified && (
-              <Text style={styles.ringPendingBadge}>🔔</Text>
-            )}
-          </View>
+          <Text style={[styles.studentName, { color: theme.text }]} numberOfLines={1}>{student.name}</Text>
           <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
             <Text style={[styles.statusText, { color: statusStyle.text }]}>{getStatusLabel(student.status)}</Text>
           </View>
@@ -213,9 +207,7 @@ const styles = StyleSheet.create({
   studentContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   profileImage: { width: 56, height: 56, borderRadius: 28 },
   studentInfo: { flex: 1, minWidth: 0 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  studentName: { fontSize: 16, fontWeight: '500', flexShrink: 1 },
-  ringPendingBadge: { fontSize: 14 },
+  studentName: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
   statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4 },
   statusText: { fontSize: 12, fontWeight: '600' },
   timerContainer: { alignItems: 'flex-end' },

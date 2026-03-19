@@ -844,6 +844,12 @@ export default function App() {
                   
                 case 'sync_successful':
                   console.log('✅ Timer sync successful');
+                  setOfflineTimerState(prev => ({
+                    ...prev,
+                    attendanceStatus: event.attendanceStatus,
+                    thresholdSeconds: event.thresholdSeconds,
+                    attendanceThreshold: event.attendanceThreshold
+                  }));
                   break;
                   
                 case 'sync_failed':
@@ -1728,9 +1734,14 @@ export default function App() {
               if (enrollmentNo) {
                 const validateRes = await fetch(`${SOCKET_URL}/api/student/validate?enrollmentNo=${enrollmentNo}`);
                 const validateData = await validateRes.json();
-                if (validateData.success && validateData.valid === false) {
+                if (validateData.valid === false) {
                   console.log('🚫 Enrollment invalid on app start — clearing session');
                   await AsyncStorage.multiRemove([USER_DATA_KEY, LOGIN_ID_KEY, ROLE_KEY, STUDENT_NAME_KEY, STUDENT_ID_KEY, DAILY_VERIFICATION_KEY]);
+                  // Reset all state back to logged-out
+                  setUserData(null);
+                  setLoginId(null);
+                  setSelectedRole(null);
+                  setShowLogin(true);
                   Alert.alert(
                     'Enrollment Invalid',
                     'Your enrollment is no longer valid. Please contact administration.',
@@ -5045,7 +5056,46 @@ export default function App() {
                 </Text>
               </View>
 
-              {/* Timer Status */}
+              {/* Attendance Threshold Progress */}
+              {offlineTimerState.thresholdSeconds > 0 && (
+                <View style={{
+                  backgroundColor: theme.background,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 15,
+                }}>
+                  {(() => {
+                    const pct = Math.min(100, Math.round((offlineTimerState.timerSeconds / offlineTimerState.thresholdSeconds) * 100));
+                    const reached = offlineTimerState.attendanceStatus === 'present';
+                    const remaining = Math.max(0, offlineTimerState.thresholdSeconds - offlineTimerState.timerSeconds);
+                    return (
+                      <>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                            Attendance ({offlineTimerState.attendanceThreshold}% required)
+                          </Text>
+                          <Text style={{ fontSize: 12, fontWeight: 'bold', color: reached ? '#22c55e' : '#f59e0b' }}>
+                            {reached ? '✅ Present' : `${pct}%`}
+                          </Text>
+                        </View>
+                        <View style={{ height: 8, backgroundColor: theme.border, borderRadius: 4, overflow: 'hidden' }}>
+                          <View style={{
+                            height: 8,
+                            width: `${pct}%`,
+                            backgroundColor: reached ? '#22c55e' : '#f59e0b',
+                            borderRadius: 4,
+                          }} />
+                        </View>
+                        {!reached && remaining > 0 && (
+                          <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
+                            {Math.ceil(remaining / 60)} min more to mark present
+                          </Text>
+                        )}
+                      </>
+                    );
+                  })()}
+                </View>
+              )}
               <View style={{
                 backgroundColor: theme.background,
                 borderRadius: 10,

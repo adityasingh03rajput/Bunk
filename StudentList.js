@@ -14,74 +14,24 @@ const StudentList = ({ theme, students = [], onStudentPress, activeRandomRing = 
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   // Filter students based on selected filter
+  // status values set by server: 'present' | 'active' | 'absent'
   const filteredStudents = students.filter((student) => {
     if (selectedFilter === 'all') return true;
-    
-    // Active: Timer is currently running
-    if (selectedFilter === 'active') {
-      return student.isRunning === true;
-    }
-    
-    // Present: Timer has crossed the attendance threshold (set in admin panel)
-    // This is determined by the server based on time attended vs total class time
-    if (selectedFilter === 'present') {
-      return student.status === 'present';
-    }
-    
-    // Absent: Timer not started OR inactive for 30+ minutes
-    if (selectedFilter === 'absent') {
-      // Check if timer is not running
-      if (!student.isRunning) {
-        return true;
-      }
-      
-      // Check if inactive for 30+ minutes (1800 seconds)
-      const lastUpdate = student.lastUpdated ? new Date(student.lastUpdated) : null;
-      if (lastUpdate) {
-        const inactiveSeconds = (Date.now() - lastUpdate.getTime()) / 1000;
-        if (inactiveSeconds >= 1800) { // 30 minutes = 1800 seconds
-          return true;
-        }
-      }
-      
-      return false;
-    }
-    
-    // Fallback to status-based filtering
-    return student.status === selectedFilter;
+    if (selectedFilter === 'active') return student.isRunning === true && student.status !== 'present';
+    if (selectedFilter === 'present') return student.status === 'present';
+    if (selectedFilter === 'absent') return student.status === 'absent';
+    return true;
   });
 
   // Calculate counts for each filter
   const filterCounts = {
     all: students.length,
-    
-    // Active: Students with timer currently running
-    active: students.filter((s) => s.isRunning === true).length,
-    
-    // Present: Students who have crossed the attendance threshold
-    present: students.filter((s) => s.status === 'present').length,
-    
-    // Absent: Students with timer not running OR inactive for 30+ minutes
-    absent: students.filter((s) => {
-      // Timer not running
-      if (!s.isRunning) return true;
-      
-      // Check if inactive for 30+ minutes
-      const lastUpdate = s.lastUpdated ? new Date(s.lastUpdated) : null;
-      if (lastUpdate) {
-        const inactiveSeconds = (Date.now() - lastUpdate.getTime()) / 1000;
-        if (inactiveSeconds >= 1800) return true; // 30 minutes
-      }
-      
-      return false;
-    }).length,
-    
-    left: students.filter((s) => s.status === 'left').length,
+    active: students.filter(s => s.isRunning === true && s.status !== 'present').length,
+    present: students.filter(s => s.status === 'present').length,
+    absent: students.filter(s => s.status === 'absent').length,
   };
 
-  const presentCount = students.filter(
-    (s) => s.isRunning === true || s.status === 'present'
-  ).length;
+  const presentCount = students.filter(s => s.status === 'present').length;
 
   const handleStudentPress = (student) => {
     setSelectedStudent(student);

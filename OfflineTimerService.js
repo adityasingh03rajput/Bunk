@@ -1184,6 +1184,17 @@ class OfflineTimerService {
         this.hasInternetConnection = true;
         this.lastSyncTime = Date.now();
         
+        // Store server-computed attendance status
+        if (result.attendanceStatus) {
+          this.attendanceStatus = result.attendanceStatus;
+        }
+        if (result.thresholdSeconds !== null && result.thresholdSeconds !== undefined) {
+          this.thresholdSeconds = result.thresholdSeconds;
+        }
+        if (result.attendanceThreshold) {
+          this.attendanceThreshold = result.attendanceThreshold;
+        }
+        
         // Check for missed random rings
         if (result.missedRandomRing) {
           console.log('🔔 Missed random ring detected!');
@@ -1204,7 +1215,10 @@ class OfflineTimerService {
         this.notifyListeners({
           type: 'sync_successful',
           timerSeconds: this.timerSeconds,
-          lastSyncTime: this.lastSyncTime
+          lastSyncTime: this.lastSyncTime,
+          attendanceStatus: this.attendanceStatus || 'absent',
+          thresholdSeconds: this.thresholdSeconds || null,
+          attendanceThreshold: this.attendanceThreshold || 75
         });
         
         // Also notify connectivity change to update UI
@@ -1453,6 +1467,10 @@ class OfflineTimerService {
       lastSyncTime: this.lastSyncTime,
       queuedSyncs: this.syncQueue.length,
       pendingSyncCount: this.pendingSyncCount,
+      // Attendance status from server
+      attendanceStatus: this.attendanceStatus || 'absent',
+      thresholdSeconds: this.thresholdSeconds || null,
+      attendanceThreshold: this.attendanceThreshold || 75,
       // Disconnection state
       pausedDueToWiFiLoss: this.pausedDueToWiFiLoss,
       wasRunningBeforeDisconnect: this.wasRunningBeforeDisconnect,

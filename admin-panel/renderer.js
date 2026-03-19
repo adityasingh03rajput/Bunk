@@ -399,10 +399,7 @@ function switchSection(sectionName) {
                 updatePeriodStats();
             });
             break;
-        case 'dashboard':
-            loadDashboardData();
-            setTimeout(() => initCursorTracking(), 300);
-            break;
+        case 'settings': loadAttendanceThresholdSetting(); break;
     }
 }
 
@@ -10603,3 +10600,67 @@ switchSection = function(sectionName) {
             break;
     }
 };
+
+
+// ============================================
+// ATTENDANCE THRESHOLD SETTINGS
+// ============================================
+
+function setupThresholdSync() {
+    const slider = document.getElementById('attendanceThreshold');
+    const input = document.getElementById('attendanceThresholdValue');
+    if (!slider || !input) return;
+
+    slider.addEventListener('input', () => {
+        input.value = slider.value;
+        document.getElementById('currentThresholdDisplay').textContent = slider.value + '%';
+    });
+    input.addEventListener('input', () => {
+        const v = Math.min(100, Math.max(1, parseInt(input.value) || 75));
+        slider.value = v;
+        document.getElementById('currentThresholdDisplay').textContent = v + '%';
+    });
+}
+
+async function loadAttendanceThresholdSetting() {
+    try {
+        const res = await fetch(`${SERVER_URL}/api/settings/attendance-threshold`);
+        const data = await res.json();
+        if (data.success) {
+            const v = data.threshold;
+            const slider = document.getElementById('attendanceThreshold');
+            const input = document.getElementById('attendanceThresholdValue');
+            const display = document.getElementById('currentThresholdDisplay');
+            if (slider) slider.value = v;
+            if (input) input.value = v;
+            if (display) display.textContent = v + '%';
+        }
+    } catch (e) {
+        console.warn('Could not load threshold:', e.message);
+    }
+}
+
+async function saveAttendanceThreshold() {
+    const input = document.getElementById('attendanceThresholdValue');
+    const value = parseInt(input?.value);
+    if (isNaN(value) || value < 1 || value > 100) {
+        showNotification('Threshold must be between 1 and 100', 'error');
+        return;
+    }
+    try {
+        const res = await fetch(`${SERVER_URL}/api/settings/attendance-threshold`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ threshold: value })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('currentThresholdDisplay').textContent = value + '%';
+            showNotification(`Attendance threshold set to ${value}%`, 'success');
+        } else {
+            showNotification(data.error || 'Failed to save', 'error');
+        }
+    } catch (e) {
+        showNotification('Server error: ' + e.message, 'error');
+    }
+}

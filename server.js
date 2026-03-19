@@ -1359,29 +1359,20 @@ app.get('/api/teacher/current-class-students/:teacherId', async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         const studentsWithStatus = await Promise.all(students.map(async (student) => {
             try {
-                // Get current attendance session
-                const session = await AttendanceSession.findOne({
-                    studentId: student._id,
-                    date: today
-                });
-
-                // Get current attendance record
-                const record = await AttendanceRecord.findOne({
-                    studentId: student._id,
-                    date: today
-                });
+                const s = student.toObject();
+                const session = s.attendanceSession || {};
+                const timerSecs = session.totalAttendedSeconds || 0;
+                const isRunning = session.isRunning || false;
+                // Use server-computed status (set by offline-sync)
+                const status = session.status || 'absent';
 
                 return {
-                    ...student.toObject(),
-                    // Real-time status from session
-                    isRunning: session?.isActive || false,
-                    timerValue: session?.timerValue || 0,
-                    status: session?.isActive ? 'attending' : (record?.status || 'absent'),
-                    joinTime: session?.sessionStartTime || null,
-                    wifiConnected: session?.wifiConnected || false,
-                    // Session info
-                    sessionId: session?._id || null,
-                    totalAttendedSeconds: session?.totalAttendedSeconds || 0
+                    ...s,
+                    isRunning,
+                    timerValue: timerSecs,
+                    status,
+                    lastUpdated: session.lastSyncTime || null,
+                    totalAttendedSeconds: timerSecs
                 };
             } catch (error) {
                 console.error(`❌ Error getting status for student ${student.name}:`, error);
@@ -1390,8 +1381,8 @@ app.get('/api/teacher/current-class-students/:teacherId', async (req, res) => {
                     isRunning: false,
                     timerValue: 0,
                     status: 'absent',
-                    joinTime: null,
-                    wifiConnected: false
+                    lastUpdated: null,
+                    totalAttendedSeconds: 0
                 };
             }
         }));
@@ -1412,10 +1403,10 @@ app.get('/api/teacher/current-class-students/:teacherId', async (req, res) => {
             students: studentsWithStatus,
             totalStudents: studentsWithStatus.length,
             teacherName: teacherName,
-            // Additional stats for teacher dashboard
-            activeStudents: studentsWithStatus.filter(s => s.isRunning).length,
-            presentStudents: studentsWithStatus.filter(s => s.status === 'present' || s.isRunning).length,
-            absentStudents: studentsWithStatus.filter(s => s.status === 'absent' && !s.isRunning).length
+            activeStudents: studentsWithStatus.filter(s => s.isRunning && s.status !== 'present').length,
+            presentStudents: studentsWithStatus.filter(s => s.status === 'present').length,
+            absentStudents: studentsWithStatus.filter(s => s.status === 'absent').length,
+            attendanceThreshold: ATTENDANCE_THRESHOLD
         });
 
     } catch (error) {
@@ -2837,7 +2828,33 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
             console.error(`❌ [OFFLINE-SYNC] Error checking random rings:`, ringError);
         }
 
-        // 5. Broadcast updated timer data to teachers
+        // 5. Compute attendance status using threshold
+        let computedStatus = 'absent';
+        try {
+            if (lecture && lecture.startTime && lecture.endTime) {
+                const lectureDurationSeconds = (timeToMinutes(lecture.endTime) - timeToMinutes(lecture.startTime)) * 60;
+                if (lectureDurationSeconds > 0) {
+                    const attendedPct = (timerSeconds / lectureDurationSeconds) * 100;
+                    if (attendedPct >= ATTENDANCE_THRESHOLD) {
+                        computedStatus = 'present';
+                    } else if (Boolean(isRunning)) {
+                        computedStatus = 'active';
+                    }
+                }
+            } else if (Boolean(isRunning)) {
+                computedStatus = 'active';
+            }
+        } catch (statusErr) {
+            console.warn('⚠️ Could not compute status:', statusErr.message);
+        }
+
+        // Update status in DB
+        await StudentManagement.updateOne(
+            { enrollmentNo: studentId },
+            { $set: { 'attendanceSession.status': computedStatus } }
+        );
+
+        // 6. Broadcast updated timer data to teachers
         try {
             io.emit('timer_broadcast', {
                 studentId: student.enrollmentNo,
@@ -2850,13 +2867,13 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                 lectureTeacher: lecture?.teacher || 'Unknown',
                 lectureRoom: lecture?.room || 'Unknown',
                 lastSyncTime: new Date(timestamp).toISOString(),
-                status: isRunning ? (isPaused ? 'paused' : 'running') : 'stopped'
+                status: computedStatus
             });
         } catch (broadcastError) {
             console.error(`❌ [OFFLINE-SYNC] Error broadcasting timer data:`, broadcastError);
         }
 
-        // 6. Update AttendanceRecord with class duration
+        // 7. Update AttendanceRecord with class duration
         try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -2879,20 +2896,19 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                     semester: student.semester || 'Unknown',
                     branch: student.branch || 'Unknown',
                     date: today,
-                    status: isRunning ? 'present' : 'absent',
+                    status: computedStatus,
                     lectures: [],
                     totalAttended: attendedMinutes,
-                    totalClassTime: 0, // Will be calculated based on timetable
+                    totalClassTime: 0,
                     dayPercentage: 0,
                     timerValue: Math.floor(timerSeconds),
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
             } else {
-                // Update existing record with new duration
                 attendanceRecord.totalAttended = attendedMinutes;
                 attendanceRecord.timerValue = Math.floor(timerSeconds);
-                attendanceRecord.status = isRunning ? 'present' : 'absent';
+                attendanceRecord.status = computedStatus;
                 attendanceRecord.updatedAt = new Date();
                 
                 // Update percentage if total class time is available
@@ -2918,7 +2934,13 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
             syncedSeconds: Math.floor(timerSeconds),
             serverTime: new Date().toISOString(),
             missedRandomRing: missedRandomRing,
-            duration: duration
+            duration: duration,
+            // Tell student app their current status and how far to threshold
+            attendanceStatus: computedStatus,
+            attendanceThreshold: ATTENDANCE_THRESHOLD,
+            thresholdSeconds: lecture?.startTime && lecture?.endTime
+                ? Math.ceil((timeToMinutes(lecture.endTime) - timeToMinutes(lecture.startTime)) * 60 * ATTENDANCE_THRESHOLD / 100)
+                : null
         });
 
     } catch (error) {
@@ -6540,6 +6562,37 @@ async function loadAttendanceThreshold() {
 
 // Call on server start
 loadAttendanceThreshold();
+
+// GET /api/settings/attendance-threshold
+app.get('/api/settings/attendance-threshold', async (req, res) => {
+    try {
+        const setting = await SystemSettings.findOne({ settingKey: 'daily_threshold' });
+        res.json({ success: true, threshold: setting ? parseInt(setting.settingValue) : ATTENDANCE_THRESHOLD });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// PUT /api/settings/attendance-threshold
+app.put('/api/settings/attendance-threshold', async (req, res) => {
+    try {
+        const { threshold } = req.body;
+        const value = parseInt(threshold);
+        if (isNaN(value) || value < 1 || value > 100) {
+            return res.status(400).json({ success: false, error: 'Threshold must be between 1 and 100' });
+        }
+        await SystemSettings.findOneAndUpdate(
+            { settingKey: 'daily_threshold' },
+            { settingValue: value, lastModifiedAt: new Date(), lastModifiedBy: 'admin' },
+            { upsert: true, new: true }
+        );
+        ATTENDANCE_THRESHOLD = value;
+        console.log(`✅ Attendance threshold updated to ${value}%`);
+        res.json({ success: true, threshold: value });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // Config Schema - Store branches, semesters, and departments
 const configSchema = new mongoose.Schema({

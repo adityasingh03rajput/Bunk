@@ -2182,339 +2182,7 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
 
 
 
-
-
-
-// POST /api/attendance/random-ring/verify - Verify random ring response
-app.post('/api/attendance/random-ring/verify', async (req, res) => {
-    const startTime = Date.now();
-    const { ringId, enrollmentNo, faceEmbedding, wifiBSSID, timestamp } = req.body;
-    
-    console.log(`?? [RANDOM-RING-VERIFY] Verification attempt - Ring: ${ringId}, Student: ${enrollmentNo}, IP: ${req.ip}`);
-    
-    try {
-        // 1. Validate request body
-        if (!ringId || !enrollmentNo || !faceEmbedding || !wifiBSSID || !timestamp) {
-            const missingFields = [];
-            if (!ringId) missingFields.push('ringId');
-            if (!enrollmentNo) missingFields.push('enrollmentNo');
-            if (!faceEmbedding) missingFields.push('faceEmbedding');
-            if (!wifiBSSID) missingFields.push('wifiBSSID');
-            if (!timestamp) missingFields.push('timestamp');
-            
-            console.log(`? [RANDOM-RING-VERIFY] Missing required fields: ${missingFields.join(', ')}`);
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields',
-                missingFields
-            });
-        }
-
-        // Validate faceEmbedding is an array
-        if (!Array.isArray(faceEmbedding) || faceEmbedding.length === 0) {
-            console.log(`? [RANDOM-RING-VERIFY] Invalid faceEmbedding format`);
-            return res.status(400).json({
-                success: false,
-                error: 'faceEmbedding must be a non-empty array of numbers'
-            });
-        }
-
-        // 2. Find the random ring
-        const randomRing = await RandomRing.findOne({ ringId });
-        if (!randomRing) {
-            console.log(`? [RANDOM-RING-VERIFY] Ring not found: ${ringId}`);
-            return res.status(404).json({
-                success: false,
-                error: 'Random ring not found'
-            });
-        }
-
-        // 3. Validate ring is active and not expired
-        if (randomRing.status === 'expired') {
-            console.log(`? [RANDOM-RING-VERIFY] Ring expired: ${ringId}`);
-            return res.status(410).json({
-                success: false,
-                error: 'Random ring has expired',
-                expiresAt: randomRing.expiresAt
-            });
-        }
-
-        if (randomRing.status === 'completed') {
-            console.log(`? [RANDOM-RING-VERIFY] Ring already completed: ${ringId}`);
-            return res.status(410).json({
-                success: false,
-                error: 'Random ring has been completed'
-            });
-        }
-
-        // Check expiration time (10 minutes from trigger)
-        const now = new Date(timestamp);
-        if (now > randomRing.expiresAt) {
-            // Mark ring as expired
-            randomRing.status = 'expired';
-            await randomRing.save();
-            
-            console.log(`? [RANDOM-RING-VERIFY] Ring expired: ${ringId}`);
-            return res.status(410).json({
-                success: false,
-                error: 'Random ring has expired',
-                expiresAt: randomRing.expiresAt
-            });
-        }
-
-        // 4. Verify student is in the targeted students list
-        const studentResponse = randomRing.selectedStudents.find(
-            s => s.enrollmentNo === enrollmentNo
-        );
-
-        if (!studentResponse) {
-            console.log(`? [RANDOM-RING-VERIFY] Student not in ring: ${enrollmentNo}`);
-            return res.status(404).json({
-                success: false,
-                error: 'Student not found in this random ring'
-            });
-        }
-
-        // Check if student already responded
-        if (studentResponse.responded) {
-            console.log(`??  [RANDOM-RING-VERIFY] Student already responded: ${enrollmentNo}`);
-            return res.status(400).json({
-                success: false,
-                error: 'You have already responded to this random ring',
-                previousResponse: {
-                    verified: studentResponse.verified,
-                    responseTime: studentResponse.responseTime,
-                    faceVerified: studentResponse.faceVerified,
-                    wifiVerified: studentResponse.wifiVerified
-                }
-            });
-        }
-
-        // 5. Get student information
-        const student = await StudentManagement.findOne({ enrollmentNo });
-        if (!student) {
-            console.log(`? [RANDOM-RING-VERIFY] Student not found: ${enrollmentNo}`);
-            return res.status(404).json({
-                success: false,
-                error: 'Student not found'
-            });
-        }
-
-        // 6. Perform face verification
-        const { verifyStudentFace } = require('./services/faceVerificationService');
-        const faceVerificationResult = verifyStudentFace(student, faceEmbedding, 0.6);
-        
-        console.log(`?? [RANDOM-RING-VERIFY] Face verification - Student: ${enrollmentNo}, Match: ${faceVerificationResult.isMatch}, Similarity: ${faceVerificationResult.similarity}`);
-
-        // 7. Perform WiFi verification
-        const { verifyClassroomWiFi } = require('./services/wifiVerificationService');
-        
-        // Get classroom from random ring room
-        const classroom = await Classroom.findOne({ roomNumber: randomRing.room });
-        const wifiVerificationResult = verifyClassroomWiFi(wifiBSSID, classroom);
-        
-        console.log(`?? [RANDOM-RING-VERIFY] WiFi verification - Student: ${enrollmentNo}, Match: ${wifiVerificationResult.isMatch}, Room: ${randomRing.room}`);
-
-        // 8. Determine verification success (both must pass)
-        const verified = faceVerificationResult.isMatch && wifiVerificationResult.isMatch;
-        const faceVerified = faceVerificationResult.isMatch;
-        const wifiVerified = wifiVerificationResult.isMatch;
-
-        // 9. Get current period and lecture info
-        const lectureInfo = await getCurrentLectureInfo(randomRing.semester, randomRing.branch);
-        const currentPeriod = lectureInfo ? `P${lectureInfo.period}` : randomRing.period;
-
-        // 10. Update attendance based on verification result
-        const today = new Date(timestamp);
-        today.setHours(0, 0, 0, 0);
-
-        let markedPeriods = [];
-
-        if (verified) {
-            // SUCCESS CASE: Mark student present for current period and all future periods
-            console.log(`? [RANDOM-RING-VERIFY] Verification successful - Student: ${enrollmentNo}, Period: ${currentPeriod}`);
-
-            // Get all periods from timetable
-            const timetable = await Timetable.findOne({ 
-                semester: randomRing.semester, 
-                branch: randomRing.branch 
-            });
-
-            if (timetable) {
-                const currentPeriodNum = parseInt(currentPeriod.substring(1));
-                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                const currentDay = days[now.getDay()];
-                const daySchedule = timetable.timetable[currentDay];
-
-                // Mark present for current period onwards
-                for (let i = currentPeriodNum - 1; i < daySchedule.length; i++) {
-                    const periodData = daySchedule[i];
-                    if (periodData && !periodData.isBreak) {
-                        const periodId = `P${i + 1}`;
-                        markedPeriods.push(periodId);
-
-                        // Create or update PeriodAttendance record
-                        await PeriodAttendance.findOneAndUpdate(
-                            {
-                                enrollmentNo,
-                                date: today,
-                                period: periodId
-                            },
-                            {
-                                enrollmentNo,
-                                studentName: student.name,
-                                date: today,
-                                period: periodId,
-                                subject: periodData.subject,
-                                teacher: periodData.teacher,
-                                teacherName: periodData.teacherName,
-                                room: periodData.room,
-                                status: 'present',
-                                checkInTime: now,
-                                verificationType: 'random',
-                                wifiVerified: true,
-                                faceVerified: true,
-                                wifiBSSID: wifiBSSID
-                            },
-                            { upsert: true, new: true }
-                        );
-                    }
-                }
-            }
-
-            // Update RandomRing response
-            studentResponse.responded = true;
-            studentResponse.verified = true;
-            studentResponse.responseTime = now;
-            studentResponse.faceVerified = true;
-            studentResponse.wifiVerified = true;
-
-            // Increment successful verifications counter
-            randomRing.successfulVerifications = (randomRing.successfulVerifications || 0) + 1;
-
-        } else {
-            // FAILURE CASE: Mark student absent for current period ONLY
-            console.log(`? [RANDOM-RING-VERIFY] Verification failed - Student: ${enrollmentNo}, Period: ${currentPeriod}, Face: ${faceVerified}, WiFi: ${wifiVerified}`);
-
-            // Get period data from timetable
-            const timetable = await Timetable.findOne({ 
-                semester: randomRing.semester, 
-                branch: randomRing.branch 
-            });
-
-            if (timetable) {
-                const currentPeriodNum = parseInt(currentPeriod.substring(1));
-                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                const currentDay = days[now.getDay()];
-                const daySchedule = timetable.timetable[currentDay];
-                const periodData = daySchedule[currentPeriodNum - 1];
-
-                if (periodData && !periodData.isBreak) {
-                    markedPeriods.push(currentPeriod);
-
-                    // Create or update PeriodAttendance record for current period only
-                    await PeriodAttendance.findOneAndUpdate(
-                        {
-                            enrollmentNo,
-                            date: today,
-                            period: currentPeriod
-                        },
-                        {
-                            enrollmentNo,
-                            studentName: student.name,
-                            date: today,
-                            period: currentPeriod,
-                            subject: periodData.subject,
-                            teacher: periodData.teacher,
-                            teacherName: periodData.teacherName,
-                            room: periodData.room,
-                            status: 'absent',
-                            checkInTime: now,
-                            verificationType: 'random',
-                            wifiVerified: wifiVerified,
-                            faceVerified: faceVerified,
-                            wifiBSSID: wifiBSSID
-                        },
-                        { upsert: true, new: true }
-                    );
-                }
-            }
-
-            // Update RandomRing response
-            studentResponse.responded = true;
-            studentResponse.verified = false;
-            studentResponse.responseTime = now;
-            studentResponse.faceVerified = faceVerified;
-            studentResponse.wifiVerified = wifiVerified;
-
-            // Increment failed verifications counter
-            randomRing.failedVerifications = (randomRing.failedVerifications || 0) + 1;
-        }
-
-        // Update total responses counter
-        randomRing.totalResponses = (randomRing.totalResponses || 0) + 1;
-
-        // Save RandomRing updates
-        await randomRing.save();
-
-        // 11. Broadcast status update to teacher via WebSocket
-        if (io) {
-            io.to(`teacher_${randomRing.teacherId}`).emit('random_ring_response', {
-                ringId: randomRing.ringId,
-                enrollmentNo,
-                studentName: student.name,
-                verified,
-                faceVerified,
-                wifiVerified,
-                responseTime: now,
-                totalResponses: randomRing.totalResponses,
-                successfulVerifications: randomRing.successfulVerifications,
-                failedVerifications: randomRing.failedVerifications,
-                targetedStudents: randomRing.selectedStudents.length
-            });
-        }
-
-        // 12. Send response
-        const duration = Date.now() - startTime;
-        console.log(`? [RANDOM-RING-VERIFY] Completed in ${duration}ms - Student: ${enrollmentNo}, Verified: ${verified}`);
-
-        return res.json({
-            success: true,
-            verified,
-            currentPeriod,
-            markedPeriods,
-            faceVerified,
-            wifiVerified,
-            message: verified 
-                ? `Verification successful. Marked present for ${markedPeriods.length} period(s).`
-                : `Verification failed. Marked absent for current period. ${!faceVerified ? 'Face verification failed. ' : ''}${!wifiVerified ? 'WiFi verification failed.' : ''}`,
-            details: {
-                faceVerification: {
-                    success: faceVerified,
-                    similarity: faceVerificationResult.similarity,
-                    message: faceVerificationResult.message
-                },
-                wifiVerification: {
-                    success: wifiVerified,
-                    capturedBSSID: wifiBSSID,
-                    authorizedBSSIDs: classroom ? classroom.wifiBSSIDs : null,
-                    message: wifiVerificationResult.message
-                }
-            }
-        });
-
-    } catch (error) {
-        const duration = Date.now() - startTime;
-        console.error(`❌ [RANDOM-RING-VERIFY] Error after ${duration}ms:`, error);
-        
-        return res.status(500).json({
-            success: false,
-            error: 'Internal server error during verification',
-            message: error.message
-        });
-    }
-});
-
+// (old /api/attendance/random-ring/verify removed — use /api/random-ring/verify)
 // ============================================
 // OFFLINE TIMER SYNC ENDPOINTS
 // ============================================
@@ -2843,9 +2511,9 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                 const studentRing = ring.selectedStudents.find(s => s.enrollmentNo === studentId);
                 
                 // If student hasn't responded and ring is still active
-                if (studentRing && !studentRing.verified && !studentRing.teacherAction) {
+                if (studentRing && !studentRing.responded && studentRing.teacherAction === 'pending') {
                     missedRandomRing = {
-                        ringId: ring._id,
+                        ringId: ring.ringId,
                         teacherId: ring.teacherId,
                         createdAt: ring.createdAt,
                         expiresAt: ring.expiresAt,
@@ -3004,109 +2672,53 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
     }
 });
 
-// POST /api/attendance/random-ring-response - Handle random ring response from offline timer
+// POST /api/attendance/random-ring-response - Student responds to a random ring (offline sync path)
 app.post('/api/attendance/random-ring-response', async (req, res) => {
     const startTime = Date.now();
     const { studentId, randomRingId, responseTime, currentBSSID } = req.body;
-    
-    console.log(`🔔 [RANDOM-RING-RESPONSE] Response - Student: ${studentId}, Ring: ${randomRingId}, IP: ${req.ip}`);
-    
+
+    console.log(`🔔 [RANDOM-RING-RESPONSE] Student: ${studentId}, Ring: ${randomRingId}`);
+
     try {
-        // 1. Validate request body
-        if (!studentId || !randomRingId || !responseTime) {
-            const missingFields = [];
-            if (!studentId) missingFields.push('studentId');
-            if (!randomRingId) missingFields.push('randomRingId');
-            if (!responseTime) missingFields.push('responseTime');
-            
-            console.log(`❌ [RANDOM-RING-RESPONSE] Missing required fields: ${missingFields.join(', ')}`);
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields',
-                missingFields
-            });
+        if (!studentId || !randomRingId) {
+            return res.status(400).json({ success: false, error: 'studentId and randomRingId required' });
         }
 
-        // 2. Find the random ring
-        const randomRing = await RandomRing.findById(randomRingId);
+        // Find ring by string ringId
+        const randomRing = await RandomRing.findOne({ ringId: randomRingId });
         if (!randomRing) {
-            console.log(`❌ [RANDOM-RING-RESPONSE] Random ring not found: ${randomRingId}`);
-            return res.status(404).json({
-                success: false,
-                error: 'Random ring not found'
-            });
+            return res.status(404).json({ success: false, error: 'Random ring not found' });
         }
 
-        // 3. Check if ring is still active
         if (randomRing.status !== 'active' || new Date() > randomRing.expiresAt) {
-            console.log(`❌ [RANDOM-RING-RESPONSE] Random ring expired or inactive: ${randomRingId}`);
-            return res.status(400).json({
-                success: false,
-                error: 'Random ring has expired or is no longer active'
-            });
+            return res.status(400).json({ success: false, error: 'Random ring has expired' });
         }
 
-        // 4. Find student in the ring
         const studentIndex = randomRing.selectedStudents.findIndex(s => s.enrollmentNo === studentId);
         if (studentIndex === -1) {
-            console.log(`❌ [RANDOM-RING-RESPONSE] Student not in random ring: ${studentId}`);
-            return res.status(400).json({
-                success: false,
-                error: 'Student not selected for this random ring'
-            });
+            return res.status(400).json({ success: false, error: 'Student not in this random ring' });
         }
 
-        // 5. Check response time (within 1 minute deadline)
-        const responseDelay = new Date(responseTime) - randomRing.createdAt;
-        const isWithinDeadline = responseDelay <= 60000; // 1 minute = 60,000ms
-
-        // 6. Update student response
-        randomRing.selectedStudents[studentIndex].verified = isWithinDeadline;
-        randomRing.selectedStudents[studentIndex].responseTime = new Date(responseTime);
-        randomRing.selectedStudents[studentIndex].responseDelay = responseDelay;
-        randomRing.selectedStudents[studentIndex].currentBSSID = currentBSSID;
-        randomRing.selectedStudents[studentIndex].verificationMethod = 'offline_timer_response';
-
+        // Mark responded — teacher will accept/reject
+        randomRing.selectedStudents[studentIndex].responded = true;
+        randomRing.selectedStudents[studentIndex].responseTime = responseTime ? new Date(responseTime) : new Date();
         await randomRing.save();
 
-        // 7. Notify teacher
-        try {
-            io.emit('random_ring_student_verified', {
-                randomRingId: randomRingId,
-                teacherId: randomRing.teacherId,
-                studentId: studentId,
-                studentName: randomRing.selectedStudents[studentIndex].name,
-                verified: isWithinDeadline,
-                responseDelay: responseDelay,
-                verifiedCount: randomRing.selectedStudents.filter(s => s.verified).length,
-                totalCount: randomRing.selectedStudents.length
-            });
-        } catch (broadcastError) {
-            console.error(`❌ [RANDOM-RING-RESPONSE] Error broadcasting verification:`, broadcastError);
-        }
+        const classRoom = `class:${randomRing.semester}:${randomRing.branch}`;
+        io.to(classRoom).emit('random_ring_teacher_action_update', {
+            randomRingId: randomRing.ringId,
+            enrollmentNo: studentId,
+            action: 'responded'
+        });
 
         const duration = Date.now() - startTime;
-        console.log(`✅ [RANDOM-RING-RESPONSE] Response processed - Student: ${studentId}, Verified: ${isWithinDeadline}, Duration: ${duration}ms`);
+        console.log(`✅ [RANDOM-RING-RESPONSE] Responded - Student: ${studentId}, Duration: ${duration}ms`);
 
-        res.json({
-            success: true,
-            verified: isWithinDeadline,
-            responseDelay: responseDelay,
-            deadline: 60000,
-            message: isWithinDeadline ? 'Response verified successfully' : 'Response too late - deadline exceeded',
-            duration: duration
-        });
+        res.json({ success: true, message: 'Response recorded. Awaiting teacher action.', duration });
 
     } catch (error) {
-        const duration = Date.now() - startTime;
-        console.error(`❌ [RANDOM-RING-RESPONSE] Response failed - Student: ${studentId}, Error: ${error.message}, Duration: ${duration}ms`);
-        
-        res.status(500).json({
-            success: false,
-            error: 'Failed to process random ring response',
-            details: error.message,
-            duration: duration
-        });
+        console.error(`❌ [RANDOM-RING-RESPONSE] Error:`, error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -6759,35 +6371,42 @@ const Holiday = mongoose.model('Holiday', holidaySchema);
 
 // Random Ring Schema
 const randomRingSchema = new mongoose.Schema({
+    ringId: { type: String, required: true, unique: true },
     teacherId: { type: String, required: true },
     teacherName: String,
     semester: String,
     branch: String,
     subject: String,
     room: String,
-    bssid: String,
-    type: { type: String, enum: ['all', 'select'], required: true },
-    count: Number,
-    triggerTime: { type: Date, default: Date.now }, // When Random Ring was triggered
+    period: String,
+    targetType: { type: String, enum: ['all', 'select'], required: true },
+    studentCount: Number,
     selectedStudents: [{
         studentId: String,
         name: String,
         enrollmentNo: String,
-        notificationSent: Boolean,
-        notificationTime: Date,
-        verified: Boolean,
-        verificationTime: Date,
-        verificationPhoto: String,
-        teacherAccepted: Boolean, // Teacher manually accepted
-        teacherRejected: Boolean, // Teacher rejected
+        // Response tracking
+        responded: { type: Boolean, default: false },
+        verified: { type: Boolean, default: false },
+        responseTime: Date,
+        // Teacher action
+        teacherAction: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
         teacherActionTime: Date,
-        reVerified: Boolean, // Re-verified after rejection
-        reVerifyTime: Date,
-        failed: Boolean // Failed to verify within 5 minutes
+        // Face verify after rejection
+        faceVerifiedAfterRejection: { type: Boolean, default: false },
+        faceVerificationTime: Date,
+        // Auto-absent tracking
+        autoAbsent: { type: Boolean, default: false }
     }],
-    status: { type: String, enum: ['pending', 'completed', 'expired'], default: 'pending' },
-    createdAt: { type: Date, default: Date.now },
-    expiresAt: Date
+    triggeredAt: { type: Date, default: Date.now },
+    expiresAt: Date,          // 240s after trigger for no-response auto-absent
+    completedAt: Date,
+    status: { type: String, enum: ['active', 'expired'], default: 'active' },
+    totalResponses: { type: Number, default: 0 },
+    successfulVerifications: { type: Number, default: 0 },
+    failedVerifications: { type: Number, default: 0 },
+    noResponses: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
 });
 
 const RandomRing = mongoose.model('RandomRing', randomRingSchema);
@@ -6799,170 +6418,70 @@ const RandomRing = mongoose.model('RandomRing', randomRingSchema);
 const cron = require('node-cron');
 
 /**
- * Check for expired random rings and process non-responding students
- * Runs every minute to check for rings that have passed their expiration time
+ * Check for expired random rings and auto-absent non-responding students
+ * Runs every 30 seconds
  */
 async function checkExpiredRandomRings() {
     try {
         const now = new Date();
-        
-        // Find all active rings that have expired
-        const expiredRings = await RandomRing.find({
-            status: 'active',
-            expiresAt: { $lt: now }
-        });
+        const expiredRings = await RandomRing.find({ status: 'active', expiresAt: { $lt: now } });
+        if (expiredRings.length === 0) return;
 
-        if (expiredRings.length === 0) {
-            return; // No expired rings to process
-        }
-
-        console.log(`? [TIMEOUT] Found ${expiredRings.length} expired random ring(s)`);
+        console.log(`⏰ [TIMEOUT] Processing ${expiredRings.length} expired ring(s)`);
 
         for (const ring of expiredRings) {
-            // Skip if ring data is incomplete (check BEFORE logging to avoid undefined errors)
-            if (!ring.ringId || !ring.period || !ring.semester || !ring.branch) {
-                console.log(`??  [TIMEOUT] Skipping incomplete ring record - Deleting corrupted record`);
-                // Delete the corrupted record instead of trying to save it
-                try {
-                    await RandomRing.deleteOne({ _id: ring._id });
-                    console.log(`? [TIMEOUT] Deleted corrupted ring record`);
-                } catch (deleteError) {
-                    console.error(`? [TIMEOUT] Error deleting corrupted ring:`, deleteError.message);
-                }
-                continue;
-            }
+            const classRoom = `class:${ring.semester}:${ring.branch}`;
+            let autoAbsentCount = 0;
 
-            console.log(`? [TIMEOUT] Processing expired ring: ${ring.ringId}, Period: ${ring.period}`);
+            for (const s of ring.selectedStudents) {
+                // Only auto-absent students who never responded
+                if (!s.responded && !s.autoAbsent) {
+                    s.autoAbsent = true;
+                    s.responded = true;
+                    autoAbsentCount++;
 
-            // Get timetable for period information
-            const timetable = await Timetable.findOne({
-                semester: ring.semester,
-                branch: ring.branch
-            });
-
-            if (!timetable) {
-                console.log(`??  [TIMEOUT] Timetable not found for ${ring.branch} Semester ${ring.semester}`);
-                continue;
-            }
-
-            // Get current period from ring
-            const currentPeriod = ring.period;
-            const currentPeriodNum = parseInt(currentPeriod.substring(1));
-            
-            // Get day schedule
-            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const triggerDate = new Date(ring.triggeredAt);
-            const currentDay = days[triggerDate.getDay()];
-            const daySchedule = timetable.timetable[currentDay];
-
-            if (!daySchedule || !daySchedule[currentPeriodNum - 1]) {
-                console.log(`??  [TIMEOUT] Period ${currentPeriod} not found in timetable`);
-                continue;
-            }
-
-            const periodData = daySchedule[currentPeriodNum - 1];
-
-            // Process non-responding students
-            let nonRespondingCount = 0;
-            const today = new Date(ring.triggeredAt);
-            today.setHours(0, 0, 0, 0);
-
-            for (const studentResponse of ring.selectedStudents) {
-                // Check if student has not responded
-                if (!studentResponse.responded) {
-                    nonRespondingCount++;
-                    
-                    // Get student information
-                    const student = await StudentManagement.findOne({ 
-                        enrollmentNo: studentResponse.enrollmentNo 
-                    });
-
-                    if (!student) {
-                        console.log(`??  [TIMEOUT] Student not found: ${studentResponse.enrollmentNo}`);
-                        continue;
+                    // Flip liveTimerState to absent and stop timer
+                    const live = liveTimerState.get(s.enrollmentNo);
+                    if (live) {
+                        const updated = { ...live, status: 'absent', isRunning: false };
+                        liveTimerState.set(s.enrollmentNo, updated);
+                        // Broadcast status change to teacher room
+                        io.to(classRoom).emit('timer_broadcast', updated);
                     }
 
-                    console.log(`? [TIMEOUT] Marking ${student.name} (${studentResponse.enrollmentNo}) absent for ${currentPeriod} - No response`);
-
-                    // Mark student absent for current period ONLY
-                    await PeriodAttendance.findOneAndUpdate(
-                        {
-                            enrollmentNo: studentResponse.enrollmentNo,
-                            date: today,
-                            period: currentPeriod
-                        },
-                        {
-                            enrollmentNo: studentResponse.enrollmentNo,
-                            studentName: student.name,
-                            date: today,
-                            period: currentPeriod,
-                            subject: periodData.subject,
-                            teacher: periodData.teacher,
-                            teacherName: periodData.teacherName,
-                            room: periodData.room,
-                            status: 'absent',
-                            checkInTime: now,
-                            verificationType: 'random',
-                            wifiVerified: false,
-                            faceVerified: false,
-                            wifiBSSID: null,
-                            reason: 'No response to random ring (timeout)'
-                        },
-                        { upsert: true, new: true }
-                    );
-
-                    // Update student response in ring
-                    studentResponse.responded = true;
-                    studentResponse.verified = false;
-                    studentResponse.responseTime = now;
-                    studentResponse.faceVerified = false;
-                    studentResponse.wifiVerified = false;
-                    studentResponse.timeoutExpired = true;
+                    console.log(`🚫 [TIMEOUT] Auto-absent: ${s.enrollmentNo} (no response to ring ${ring.ringId})`);
                 }
             }
 
-            // Update ring status to expired
             ring.status = 'expired';
             ring.completedAt = now;
-            ring.noResponses = nonRespondingCount;
-            
-            // Update statistics
-            ring.totalResponses = ring.selectedStudents.filter(s => s.responded).length;
-            
+            ring.noResponses = autoAbsentCount;
             await ring.save();
 
-            console.log(`? [TIMEOUT] Ring ${ring.ringId} marked as expired - ${nonRespondingCount} non-responding student(s) marked absent`);
+            // Notify teacher room
+            if (autoAbsentCount > 0) {
+                io.to(classRoom).emit('random_ring_auto_absent', {
+                    ringId: ring.ringId,
+                    teacherId: ring.teacherId,
+                    autoAbsentStudents: ring.selectedStudents
+                        .filter(s => s.autoAbsent)
+                        .map(s => ({ enrollmentNo: s.enrollmentNo, name: s.name }))
+                });
+            }
 
-            // Notify teacher via WebSocket with final results
-            io.emit('random_ring_expired', {
-                ringId: ring.ringId,
-                period: ring.period,
-                subject: ring.subject,
-                teacherId: ring.teacherId,
-                teacherName: ring.teacherName,
-                expiresAt: ring.expiresAt,
-                completedAt: ring.completedAt,
-                totalStudents: ring.selectedStudents.length,
-                totalResponses: ring.totalResponses,
-                successfulVerifications: ring.successfulVerifications || 0,
-                failedVerifications: ring.failedVerifications || 0,
-                noResponses: nonRespondingCount,
-                timestamp: now
-            });
-
-            console.log(`?? [TIMEOUT] Notified teacher ${ring.teacherName} about expired ring ${ring.ringId}`);
+            console.log(`✅ [TIMEOUT] Ring ${ring.ringId} expired — ${autoAbsentCount} auto-absent`);
         }
-
     } catch (error) {
-        console.error('? [TIMEOUT] Error checking expired rings:', error);
+        console.error('❌ [TIMEOUT] Error checking expired rings:', error);
     }
 }
 
-// Schedule the timeout checker to run every minute
-// This checks for rings that have passed their 10-minute expiration time
+// Check every 30 seconds for expired rings (240s expiry needs timely processing)
 cron.schedule('* * * * *', () => {
     checkExpiredRandomRings();
 });
+// Also run on the 30-second mark
+setInterval(() => { checkExpiredRandomRings(); }, 30000);
 
 console.log('? [TIMEOUT] Random ring timeout handler initialized - checking every minute');
 
@@ -7545,173 +7064,125 @@ app.delete('/api/classrooms/:id', async (req, res) => {
 // Random Ring - Send notifications to selected students
 app.post('/api/random-ring', async (req, res) => {
     try {
-        const { type, count, teacherId, teacherName, semester, branch, subject, room, bssid } = req.body;
+        const { type, count, teacherId, teacherName, semester, branch, subject, room } = req.body;
 
         console.log('🔔 Random Ring initiated:', { type, count, teacherId, semester, branch });
 
-        if (!teacherId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Teacher ID required'
-            });
+        if (!teacherId || !semester || !branch) {
+            return res.status(400).json({ success: false, error: 'teacherId, semester and branch required' });
         }
 
-        // Get students for the class
-        let students = [];
-        if (mongoose.connection.readyState === 1) {
-            const query = {};
-            if (semester) query.semester = semester;
-            if (branch) query.course = branch;
+        // Use liveTimerState to find students who are currently ACTIVE (timer running, not yet present)
+        const activeStudents = [];
+        liveTimerState.forEach((state, enrollmentNo) => {
+            if (state.semester === semester && state.branch === branch && state.status === 'active') {
+                activeStudents.push({ enrollmentNo, name: state.name, studentId: state.studentId || enrollmentNo });
+            }
+        });
 
-            students = await StudentManagement.find(query);
-        } else {
-            students = studentManagementMemory;
-        }
-
-        // Get today's date (start of day)
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date();
-        todayEnd.setHours(23, 59, 59, 999);
-        
-        // Find students who have checked in today (have PeriodAttendance records for today)
-        let checkedInEnrollmentNos = [];
-        if (mongoose.connection.readyState === 1) {
-            checkedInEnrollmentNos = await PeriodAttendance.distinct('enrollmentNo', {
-                date: { $gte: todayStart, $lte: todayEnd },
-                status: 'present'
-            });
-        }
-        
-        console.log(`?? Students checked in today: ${checkedInEnrollmentNos.length}`);
-        
-        // Filter students who have checked in today and are active
-        const attendingStudents = students.filter(s => 
-            checkedInEnrollmentNos.includes(s.enrollmentNo) && 
-            (s.isActive === undefined || s.isActive === true)
-        );
-
-        console.log(`?? Found ${attendingStudents.length} checked-in students out of ${students.length} total`);
-
-        if (attendingStudents.length === 0) {
-            return res.json({
-                success: true,
-                message: 'No students have checked in today. Random ring requires at least one checked-in student.',
-                selectedStudents: []
-            });
+        if (activeStudents.length === 0) {
+            return res.json({ success: true, message: 'No active students right now.', selectedStudents: [] });
         }
 
         // Select students based on type
         let selectedStudents = [];
         if (type === 'all') {
-            selectedStudents = attendingStudents;
+            selectedStudents = activeStudents;
         } else if (type === 'select' && count) {
-            // Randomly select N students
-            const shuffled = [...attendingStudents].sort(() => 0.5 - Math.random());
-            selectedStudents = shuffled.slice(0, Math.min(count, attendingStudents.length));
+            const shuffled = [...activeStudents].sort(() => 0.5 - Math.random());
+            selectedStudents = shuffled.slice(0, Math.min(count, activeStudents.length));
         }
 
-        console.log(`✅ Selected ${selectedStudents.length} students for random ring`);
+        console.log(`✅ Selected ${selectedStudents.length} active students for random ring`);
 
-        // Create random ring record in database
-        // Get current period from timetable
+        // Get current period
         let currentPeriod = null;
         try {
             const lectureInfo = await getCurrentLectureInfo(semester, branch);
-            if (lectureInfo) {
-                currentPeriod = `P${lectureInfo.period}`;
-            }
-        } catch (error) {
-            console.error('??  Error getting current period:', error);
-        }
+            if (lectureInfo) currentPeriod = `P${lectureInfo.period}`;
+        } catch (e) { /* ignore */ }
 
-        let randomRingId = null;
-        const randomRingTimestamp = new Date();
+        const ringId = `ring_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 240 * 1000); // 240 seconds
 
-        if (mongoose.connection.readyState === 1) {
-            // Generate unique ringId
-            const ringId = `ring_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            
-            const randomRing = new RandomRing({
-                ringId: ringId,  // Unique identifier like "ring_abc123"
+        const randomRing = new RandomRing({
+            ringId,
+            teacherId,
+            teacherName: teacherName || 'Teacher',
+            semester,
+            branch,
+            period: currentPeriod,
+            subject,
+            room,
+            targetType: type,
+            studentCount: selectedStudents.length,
+            selectedStudents: selectedStudents.map(s => ({
+                studentId: s.studentId,
+                name: s.name,
+                enrollmentNo: s.enrollmentNo,
+                responded: false,
+                verified: false,
+                teacherAction: 'pending',
+                faceVerifiedAfterRejection: false,
+                autoAbsent: false
+            })),
+            triggeredAt: now,
+            expiresAt,
+            status: 'active',
+            totalResponses: 0,
+            successfulVerifications: 0,
+            failedVerifications: 0,
+            noResponses: 0
+        });
+
+        await randomRing.save();
+
+        // Notify each selected student via targeted socket (by enrollmentNo room)
+        const room_key = `class:${semester}:${branch}`;
+        selectedStudents.forEach(student => {
+            io.to(room_key).emit('random_ring_notification', {
+                randomRingId: ringId,
+                enrollmentNo: student.enrollmentNo,
+                studentId: student.studentId,
                 teacherId,
                 teacherName: teacherName || 'Teacher',
-                semester,
-                branch,
-                period: currentPeriod,  // Current period like "P4"
-                subject,
-                room,
-                targetType: type,  // Renamed from 'type'
-                targetedStudents: selectedStudents.map(s => s.enrollmentNo),  // Array of enrollment numbers only
-                studentCount: selectedStudents.length,  // Renamed from 'count'
-                
-                // Initialize responses array with proper structure
-                responses: selectedStudents.map(s => ({
-                    enrollmentNo: s.enrollmentNo,
-                    responded: false,
-                    verified: false,
-                    responseTime: null,
-                    faceVerified: false,
-                    wifiVerified: false
-                })),
-                
-                // Timing fields
-                triggeredAt: randomRingTimestamp,
-                expiresAt: new Date(randomRingTimestamp.getTime() + 10 * 60 * 1000),  // 10 minutes after trigger
-                completedAt: null,
-                
-                // Statistics tracking (initialize to 0)
-                totalResponses: 0,
-                successfulVerifications: 0,
-                failedVerifications: 0,
-                noResponses: 0,
-                
-                // Status
-                status: 'active',  // Must be 'active', not 'pending'
-                
-                // Timestamps
-                createdAt: randomRingTimestamp,
-                updatedAt: randomRingTimestamp
+                expiresAt: expiresAt.toISOString(),
+                timestamp: now.getTime()
             });
+        });
 
-            await randomRing.save();
-            randomRingId = ringId;  // Use the generated ringId
-            console.log(`?? Random ring record created: ${randomRingId}, Period: ${currentPeriod}, Students: ${selectedStudents.length}, Expires: ${randomRing.expiresAt.toISOString()}`);
-        }
-
-        // Send notifications via Socket.IO
-        selectedStudents.forEach(student => {
-            io.emit('random_ring_notification', {
-                randomRingId: randomRingId,
-                studentId: student._id || student.enrollmentNo,
-                enrollmentNo: student.enrollmentNo,
-                studentName: student.name,
-                message: 'Timer Paused - Verify your presence to resume!',
-                teacherId: teacherId,
-                teacherName: teacherName,
-                bssid: bssid,
-                timestamp: Date.now(),
-                timerPaused: true // Flag to indicate timer is paused
-            });
+        // Also emit to teacher room so teacher UI updates
+        io.to(room_key).emit('random_ring_triggered', {
+            randomRingId: ringId,
+            teacherId,
+            semester,
+            branch,
+            selectedStudents: selectedStudents.map(s => ({
+                studentId: s.studentId,
+                enrollmentNo: s.enrollmentNo,
+                name: s.name,
+                teacherAction: 'pending',
+                verified: false,
+                faceVerifiedAfterRejection: false
+            })),
+            expiresAt: expiresAt.toISOString()
         });
 
         res.json({
             success: true,
             message: `Random ring sent to ${selectedStudents.length} students`,
-            randomRingId: randomRingId,
+            randomRingId: ringId,
             selectedStudents: selectedStudents.map(s => ({
-                id: s._id || s.enrollmentNo,
-                name: s.name,
-                enrollmentNo: s.enrollmentNo
+                id: s.studentId,
+                enrollmentNo: s.enrollmentNo,
+                name: s.name
             }))
         });
 
     } catch (error) {
         console.error('❌ Error in random ring:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -7732,45 +7203,37 @@ app.post('/api/random-ring/verify', async (req, res) => {
         // Find the random ring record
         let randomRing = null;
         if (mongoose.connection.readyState === 1) {
-            randomRing = await RandomRing.findById(randomRingId);
+            randomRing = await RandomRing.findOne({ ringId: randomRingId });
 
             if (!randomRing) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Random ring not found'
-                });
+                return res.status(404).json({ success: false, error: 'Random ring not found' });
             }
 
-            // Update student verification status
             const studentIndex = randomRing.selectedStudents.findIndex(
                 s => s.studentId === studentId || s.enrollmentNo === studentId
             );
 
             if (studentIndex === -1) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Student not found in this random ring'
-                });
+                return res.status(404).json({ success: false, error: 'Student not found in this random ring' });
             }
 
-            randomRing.selectedStudents[studentIndex].verified = true;
-            randomRing.selectedStudents[studentIndex].verificationTime = new Date();
-            randomRing.selectedStudents[studentIndex].verificationPhoto = verificationPhoto;
-
-            // Check if all students have verified
-            const allVerified = randomRing.selectedStudents.every(s => s.verified);
-            if (allVerified) {
-                randomRing.status = 'completed';
-            }
+            randomRing.selectedStudents[studentIndex].responded = true;
+            randomRing.selectedStudents[studentIndex].responseTime = new Date();
+            if (verificationPhoto) randomRing.selectedStudents[studentIndex].verificationPhoto = verificationPhoto;
 
             await randomRing.save();
-            console.log(`✅ Student ${studentId} verified for random ring ${randomRingId}`);
+            console.log(`✅ Student ${studentId} responded to random ring ${randomRingId}`);
+
+            // Notify teacher room
+            const classRoom = `class:${randomRing.semester}:${randomRing.branch}`;
+            io.to(classRoom).emit('random_ring_teacher_action_update', {
+                randomRingId: randomRing.ringId,
+                enrollmentNo: randomRing.selectedStudents[studentIndex].enrollmentNo,
+                action: 'responded'
+            });
         }
 
-        res.json({
-            success: true,
-            message: 'Verification successful'
-        });
+        res.json({ success: true, message: 'Response recorded. Awaiting teacher action.' });
 
     } catch (error) {
         console.error('❌ Error in random ring verification:', error);
@@ -7798,101 +7261,63 @@ app.post('/api/random-ring/verify-after-rejection', async (req, res) => {
         // Find the random ring record
         let randomRing = null;
         if (mongoose.connection.readyState === 1) {
-            randomRing = await RandomRing.findById(randomRingId);
+            // randomRingId is the string ringId, not MongoDB _id
+            randomRing = await RandomRing.findOne({ ringId: randomRingId });
 
             if (!randomRing) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Random ring not found'
-                });
+                return res.status(404).json({ success: false, error: 'Random ring not found' });
             }
 
-            // Find student in selected students
-            const studentIndex = randomRing.selectedStudents.findIndex(s => {
-                if (s.studentId === studentId) return true;
-                if (s.enrollmentNo === studentId) return true;
-                if (s.studentId?.toString() === studentId?.toString()) return true;
-                if (s.enrollmentNo?.toString() === studentId?.toString()) return true;
-                return false;
-            });
+            const studentIndex = randomRing.selectedStudents.findIndex(s =>
+                s.studentId === studentId || s.enrollmentNo === studentId
+            );
 
             if (studentIndex === -1) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Student not found in this random ring'
-                });
+                return res.status(404).json({ success: false, error: 'Student not found in this random ring' });
             }
 
-            // Check if teacher already rejected this student
             if (randomRing.selectedStudents[studentIndex].teacherAction !== 'rejected') {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Face verification only allowed after teacher rejection'
-                });
+                return res.status(400).json({ success: false, error: 'Face verification only allowed after teacher rejection' });
             }
 
             const now = new Date();
+            const enrollmentNo = randomRing.selectedStudents[studentIndex].enrollmentNo;
+            const classRoom = `class:${randomRing.semester}:${randomRing.branch}`;
 
-            // Mark as face verified after rejection
             randomRing.selectedStudents[studentIndex].faceVerifiedAfterRejection = true;
             randomRing.selectedStudents[studentIndex].faceVerificationTime = now;
-            randomRing.selectedStudents[studentIndex].verificationPhoto = verificationPhoto;
+            if (verificationPhoto) randomRing.selectedStudents[studentIndex].verificationPhoto = verificationPhoto;
 
             await randomRing.save();
-            console.log(`✅ Student ${studentId} face verified after rejection for random ring ${randomRingId}`);
+            console.log(`✅ Student ${studentId} face verified after rejection for ring ${randomRingId}`);
 
-            // CRITICAL: Resume student timer - FULL TIME COUNTED (face verification successful)
-            const student = await StudentManagement.findOne({
-                $or: [{ _id: studentId }, { enrollmentNo: studentId }]
+            // Keep student active in liveTimerState
+            const live = liveTimerState.get(enrollmentNo);
+            if (live) {
+                liveTimerState.set(enrollmentNo, { ...live, status: 'active', faceVerifyWindow: null });
+                // Broadcast updated state to class room
+                io.to(classRoom).emit('timer_broadcast', { ...live, status: 'active' });
+            }
+
+            // Notify teacher (targeted to class room)
+            io.to(classRoom).emit('random_ring_face_verified_after_rejection', {
+                randomRingId: randomRing.ringId,
+                enrollmentNo,
+                studentName: randomRing.selectedStudents[studentIndex].name,
+                teacherId: randomRing.teacherId
             });
 
-            if (student && student.attendanceSession?.isPaused) {
-                const pausedDuration = student.attendanceSession.pausedDuration || 0;
-                const lastPauseTime = student.attendanceSession.lastPauseTime;
-                const additionalPausedTime = lastPauseTime
-                    ? Math.floor((Date.now() - lastPauseTime.getTime()) / 1000)
-                    : 0;
-
-                await StudentManagement.findByIdAndUpdate(student._id, {
-                    'attendanceSession.isPaused': false,
-                    'attendanceSession.pauseReason': null,
-                    'attendanceSession.pausedDuration': pausedDuration + additionalPausedTime,
-                    'attendanceSession.lastPauseTime': null,
-                    'attendanceSession.randomRingPassed': true, // PASSED - full time counted
-                    isRunning: true,
-                    status: 'attending',
-                    lastUpdated: new Date()
-                });
-
-                console.log(`▶️ Timer resumed for ${student.name} - Face verified after rejection - FULL TIME COUNTED`);
-
-                // Notify teacher about face verification
-                io.emit('random_ring_face_verified_after_rejection', {
-                    randomRingId: randomRingId,
-                    studentId: student._id.toString(),
-                    enrollmentNo: student.enrollmentNo,
-                    studentName: student.name,
-                    teacherId: randomRing.teacherId,
-                    message: `${student.name} verified face after rejection`
-                });
-
-                // Notify student
-                io.emit('random_ring_face_verification_success', {
-                    studentId: student._id.toString(),
-                    enrollmentNo: student.enrollmentNo,
-                    message: 'Face verification successful. Timer resumed with full time counted.',
-                    randomRingId: randomRingId
-                });
-            }
+            // Notify student (targeted to class room)
+            io.to(classRoom).emit('random_ring_face_verification_success', {
+                enrollmentNo,
+                randomRingId: randomRing.ringId,
+                message: 'Face verification successful. You remain active.'
+            });
         }
-
-        const responseTime = (Date.now() - new Date(req.body.timestamp || Date.now())) / 1000;
 
         res.json({
             success: true,
-            message: 'Face verification after rejection successful - Full time counted',
-            responseTime: responseTime,
-            fullTimeCounted: true
+            message: 'Face verification after rejection successful'
         });
 
     } catch (error) {
@@ -7949,119 +7374,78 @@ app.post('/api/random-ring/teacher-action', async (req, res) => {
         }
 
         if (mongoose.connection.readyState === 1) {
-            const randomRing = await RandomRing.findById(randomRingId);
+            // randomRingId is the string ringId, not MongoDB _id
+            const randomRing = await RandomRing.findOne({ ringId: randomRingId });
 
             if (!randomRing) {
-                return res.status(404).json({
-                    success: false,
-                    error: 'Random ring not found'
-                });
+                return res.status(404).json({ success: false, error: 'Random ring not found' });
             }
 
-            // Find student in selected students
-            const studentIndex = randomRing.selectedStudents.findIndex(s => {
-                if (s.studentId === studentId) return true;
-                if (s.enrollmentNo === studentId) return true;
-                if (s.studentId?.toString() === studentId?.toString()) return true;
-                if (s.enrollmentNo?.toString() === studentId?.toString()) return true;
-                return false;
-            });
+            const studentIndex = randomRing.selectedStudents.findIndex(s =>
+                s.studentId === studentId || s.enrollmentNo === studentId
+            );
 
             if (studentIndex === -1) {
-                console.error(`❌ Student not found in random ring`);
-                return res.status(404).json({
-                    success: false,
-                    error: 'Student not found in this random ring'
-                });
+                return res.status(404).json({ success: false, error: 'Student not found in this random ring' });
             }
 
             const now = new Date();
-
-            // Update teacher action
             randomRing.selectedStudents[studentIndex].teacherAction = action;
             randomRing.selectedStudents[studentIndex].teacherActionTime = now;
-            randomRing.selectedStudents[studentIndex].teacherActionReason = reason || '';
+
+            const enrollmentNo = randomRing.selectedStudents[studentIndex].enrollmentNo;
+            const classRoom = `class:${randomRing.semester}:${randomRing.branch}`;
 
             if (action === 'accepted') {
-                // Mark as verified and resume timer
                 randomRing.selectedStudents[studentIndex].verified = true;
-                randomRing.selectedStudents[studentIndex].verificationTime = now;
+                randomRing.selectedStudents[studentIndex].responded = true;
+                randomRing.successfulVerifications = (randomRing.successfulVerifications || 0) + 1;
 
-                // Resume student timer - FULL TIME COUNTED
-                const student = await StudentManagement.findOne({
-                    $or: [{ _id: studentId }, { enrollmentNo: studentId }]
+                // Keep student active in liveTimerState
+                const live = liveTimerState.get(enrollmentNo);
+                if (live) liveTimerState.set(enrollmentNo, { ...live, ringPending: false });
+
+                // Notify student (targeted to class room)
+                io.to(classRoom).emit('random_ring_teacher_accepted', {
+                    enrollmentNo,
+                    randomRingId: randomRing.ringId,
+                    message: 'Teacher verified your presence.'
                 });
 
-                if (student && student.attendanceSession?.isPaused) {
-                    const pausedDuration = student.attendanceSession.pausedDuration || 0;
-                    const lastPauseTime = student.attendanceSession.lastPauseTime;
-                    const additionalPausedTime = lastPauseTime
-                        ? Math.floor((Date.now() - lastPauseTime.getTime()) / 1000)
-                        : 0;
+                io.to(classRoom).emit('random_ring_teacher_action_update', {
+                    randomRingId: randomRing.ringId,
+                    enrollmentNo,
+                    action: 'accepted'
+                });
 
-                    await StudentManagement.findByIdAndUpdate(student._id, {
-                        'attendanceSession.isPaused': false,
-                        'attendanceSession.pauseReason': null,
-                        'attendanceSession.pausedDuration': pausedDuration + additionalPausedTime,
-                        'attendanceSession.lastPauseTime': null,
-                        'attendanceSession.randomRingPassed': true, // Mark as passed
-                        isRunning: true,
-                        status: 'attending',
-                        lastUpdated: new Date()
-                    });
+                console.log(`✅ Teacher accepted ${enrollmentNo}`);
 
-                    console.log(`▶️  Timer resumed for ${student.name} - Teacher accepted - FULL TIME COUNTED`);
-
-                    io.emit('random_ring_teacher_accepted', {
-                        studentId: student._id.toString(),
-                        enrollmentNo: student.enrollmentNo,
-                        message: 'Teacher verified your presence. Timer resumed.',
-                        randomRingId: randomRingId
-                    });
-                }
             } else if (action === 'rejected') {
-                // CRITICAL: Mark random ring as FAILED
-                // Timer will be cut off at random ring time
-                const student = await StudentManagement.findOne({
-                    $or: [{ _id: studentId }, { enrollmentNo: studentId }]
+                randomRing.selectedStudents[studentIndex].responded = true;
+                randomRing.failedVerifications = (randomRing.failedVerifications || 0) + 1;
+
+                // Keep active but open 5-min face verify window
+                const live = liveTimerState.get(enrollmentNo);
+                if (live) liveTimerState.set(enrollmentNo, { ...live, ringPending: false, faceVerifyWindow: Date.now() + 5 * 60 * 1000 });
+
+                io.to(classRoom).emit('random_ring_teacher_rejected', {
+                    enrollmentNo,
+                    randomRingId: randomRing.ringId,
+                    expiresAt: new Date(now.getTime() + 5 * 60 * 1000).toISOString(),
+                    message: 'Teacher rejected. Verify your face within 5 minutes to stay active.'
                 });
 
-                if (student) {
-                    // Mark random ring as failed - timer cutoff applied
-                    await StudentManagement.findByIdAndUpdate(student._id, {
-                        'attendanceSession.randomRingPassed': false, // FAILED - timer cutoff at random ring time
-                        'attendanceSession.isPaused': true, // Keep paused
-                        'attendanceSession.pauseReason': 'random_ring_failed'
-                    });
+                io.to(classRoom).emit('random_ring_teacher_action_update', {
+                    randomRingId: randomRing.ringId,
+                    enrollmentNo,
+                    action: 'rejected'
+                });
 
-                    console.log(`❌ Random ring FAILED for ${student.name} - Timer cutoff at ${student.attendanceSession.randomRingTime}`);
-
-                    io.emit('random_ring_teacher_rejected', {
-                        studentId: student._id.toString(),
-                        enrollmentNo: student.enrollmentNo,
-                        message: 'Teacher marked you absent. Verify your face within 5 minutes to resume timer.',
-                        randomRingId: randomRingId,
-                        expiresAt: new Date(now.getTime() + 5 * 60 * 1000),
-                        timerCutoff: true // Indicate timer is cut off
-                    });
-                }
+                console.log(`❌ Teacher rejected ${enrollmentNo} — 5min face verify window open`);
             }
 
             await randomRing.save();
-
-            // Notify all teachers about the action
-            io.emit('random_ring_teacher_action_update', {
-                randomRingId: randomRingId,
-                studentId: studentId,
-                action: action,
-                teacherActionTime: now
-            });
-
-            res.json({
-                success: true,
-                message: `Student ${action}`,
-                action: action
-            });
+            res.json({ success: true, action });
         } else {
             res.json({ success: true, message: 'Action recorded (in-memory)' });
         }

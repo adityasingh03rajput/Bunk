@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, ActivityIndicator,
-  Animated, TextInput, ScrollView, FlatList, AppState, useColorScheme, Image, Modal, RefreshControl, PermissionsAndroid, Platform, Alert
+  Animated, TextInput, ScrollView, AppState, useColorScheme, Image, Modal, RefreshControl, PermissionsAndroid, Platform, Alert
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 import OfflineTimerService from './OfflineTimerService';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { deactivateKeepAwake } from 'expo-keep-awake';
 import BottomNavigation from './BottomNavigation';
 import CalendarScreen from './CalendarScreen';
 import ProfileScreen from './ProfileScreen';
 import TimetableScreen from './TimetableScreen';
-import NotificationsScreen from './NotificationsScreen';
 import LanyardCard from './LanyardCard';
 import { SunIcon, MoonIcon, LogoutIcon, RefreshIcon } from './Icons';
 import { initializeServerTime, getServerTime } from './ServerTime';
@@ -24,7 +23,6 @@ import StudentList from './StudentList';
 import StudentProfileDialog from './StudentProfileDialog';
 import TeacherProfileDialog from './TeacherProfileDialog';
 import RandomRingDialog from './RandomRingDialog';
-import TimetableSelector from './TimetableSelector';
 import ViewRecords from './ViewRecords';
 import Notifications from './Notifications';
 import Updates from './Updates';
@@ -33,7 +31,6 @@ import Feedback from './Feedback';
 import SemesterSelector from './SemesterSelector';
 import WiFiManager from './WiFiManager';
 import TestBSSID from './TestBSSID';
-import SecurityStatusIndicator from './SecurityStatusIndicator';
 // WiFi BSSID Integration from LetsBunk
 import SecureStorage from './SecureStorage';
 import BSSIDStorage from './BSSIDStorage';
@@ -42,7 +39,7 @@ import FaceVerification from './FaceVerification';
 import CircularTimer from './CircularTimer';
 
 // Configuration - Import from centralized config
-import { SERVER_BASE_URL, API_URL as CONFIG_API_URL, SOCKET_URL as CONFIG_SOCKET_URL } from './config';
+import { API_URL as CONFIG_API_URL, SOCKET_URL as CONFIG_SOCKET_URL } from './config';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || CONFIG_API_URL;
 const SOCKET_URL = process.env.EXPO_PUBLIC_SOCKET_URL || CONFIG_SOCKET_URL;
@@ -153,9 +150,6 @@ export default function App() {
   const [semester, setSemester] = useState(null);
   const [branch, setBranch] = useState(null);
 
-  // Timer state (deprecated - kept for compatibility with period-based system)
-  const [isRunning] = useState(false); // Always false in period-based system
-
   // Offline Timer Service state
   const [offlineTimerState, setOfflineTimerState] = useState({
     isRunning: false,
@@ -193,6 +187,7 @@ export default function App() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [randomRingDialogOpen, setRandomRingDialogOpen] = useState(false);
   const [activeRandomRing, setActiveRandomRing] = useState(null); // Track active random ring for accept/reject
+  const [randomRingData, setRandomRingData] = useState(null); // Active ring notification for student
   const [selectedBranchForTimetable, setSelectedBranchForTimetable] = useState(null);
   const [showSemesterSelector, setShowSemesterSelector] = useState(false);
   const [manualSelection, setManualSelection] = useState({ semester: 'auto', branch: null });
@@ -230,36 +225,6 @@ export default function App() {
   // Bottom navigation state
   const [activeTab, setActiveTab] = useState('home');
   const [notificationBadge, setNotificationBadge] = useState(0);
-
-  // BSSID Test state
-  const [showBSSIDTest, setShowBSSIDTest] = useState(false);
-
-  // WiFi status tracking (internal use only - not displayed to students)
-  const [wifiDebugInfo, setWifiDebugInfo] = useState({
-    status: 'Not checked',
-    currentBSSID: 'N/A',
-    expectedBSSID: 'N/A',
-    room: 'N/A',
-    lastChecked: null
-  });
-
-  // Auto-check WiFi status (background only - no debug display)
-  useEffect(() => {
-    if (selectedRole === 'student' && !showLogin && currentClassInfo) {
-      // Initial check
-      const checkWiFi = async () => {
-        console.log('🔄 Auto-checking WiFi status...');
-        await isConnectedToClassroomWiFi();
-      };
-
-      checkWiFi();
-
-      // Check every 30 seconds for functionality (reduced frequency)
-      const wifiCheckInterval = setInterval(checkWiFi, 30000);
-
-      return () => clearInterval(wifiCheckInterval);
-    }
-  }, [selectedRole, showLogin, currentClassInfo]);
 
   // Lanyard state
   const [showLanyard, setShowLanyard] = useState(false);
@@ -715,6 +680,37 @@ export default function App() {
     };
   }, [selectedRole]);
 
+  // Handle WiFi reconnection events (defined before OfflineTimerService useEffect to avoid hoisting issues)
+  const handleWiFiReconnectionEvent = async (currentBSSID) => {
+    try {
+      console.log('📶 Handling WiFi reconnection event, BSSID:', currentBSSID);
+      if (!currentClassInfo) {
+        console.log('⚠️ No current class info available for reconnection');
+        return;
+      }
+      const lectureInfo = {
+        subject: currentClassInfo.subject || currentClassInfo.currentLecture,
+        teacher: currentClassInfo.teacher || 'Unknown',
+        room: currentClassInfo.room || 'Unknown',
+        startTime: currentClassInfo.startTime,
+        endTime: currentClassInfo.endTime
+      };
+      const result = await OfflineTimerService.handleWiFiReconnection(lectureInfo);
+      if (!result.success) {
+        let title = '📶 WiFi Reconnection Failed';
+        let message = result.error;
+        if (result.step === 'bssid_validation') {
+          title = '📶 WiFi Validation Failed';
+          message = 'Unable to validate WiFi connection. Please ensure you are connected to the authorized classroom WiFi.';
+        }
+        Alert.alert(title, message, [{ text: 'OK' }]);
+      }
+    } catch (error) {
+      console.error('❌ Error handling WiFi reconnection:', error);
+      Alert.alert('❌ Reconnection Error', `An error occurred: ${error.message}`, [{ text: 'OK' }]);
+    }
+  };
+
   // Initialize OfflineTimerService when student logs in
   useEffect(() => {
     if (selectedRole === 'student' && studentId && !showLogin && !offlineTimerInitialized) {
@@ -909,177 +905,6 @@ export default function App() {
     }
   }, [selectedRole, studentId, showLogin, userData, offlineTimerInitialized]);
 
-  // Handle WiFi reconnection events
-  const handleWiFiReconnectionEvent = async (currentBSSID) => {
-    try {
-      console.log('📶 Handling WiFi reconnection event');
-      console.log('   Current BSSID:', currentBSSID);
-      console.log('   Current class info:', currentClassInfo);
-      
-      if (!currentClassInfo) {
-        console.log('⚠️ No current class info available for reconnection');
-        return;
-      }
-      
-      // Create lecture info from current class
-      const lectureInfo = {
-        subject: currentClassInfo.subject || currentClassInfo.currentLecture,
-        teacher: currentClassInfo.teacher || 'Unknown',
-        room: currentClassInfo.room || 'Unknown',
-        startTime: currentClassInfo.startTime,
-        endTime: currentClassInfo.endTime
-      };
-      
-      console.log('📚 Attempting WiFi reconnection with lecture info:', lectureInfo);
-      
-      // Call OfflineTimerService to handle reconnection
-      const result = await OfflineTimerService.handleWiFiReconnection(lectureInfo);
-      
-      if (!result.success) {
-        console.error('❌ WiFi reconnection failed:', result.error);
-        
-        let title = '📶 WiFi Reconnection Failed';
-        let message = result.error;
-        
-        // Customize message based on failure reason
-        switch (result.step) {
-          case 'bssid_validation':
-            title = '📶 WiFi Validation Failed';
-            message = 'Unable to validate WiFi connection. Please ensure you are connected to the authorized classroom WiFi.';
-            break;
-          case 'face_verification':
-            title = '👤 Face Verification Failed';
-            message = 'Face verification failed during reconnection. Please try again.';
-            break;
-          default:
-            message = `WiFi reconnection failed: ${result.error}`;
-            break;
-        }
-        
-        Alert.alert(title, message, [{ text: 'OK' }]);
-      } else {
-        console.log('✅ WiFi reconnection handled successfully');
-        console.log('   Scenario:', result.scenario);
-        console.log('   Resumed:', result.resumed);
-        console.log('   Timer seconds:', result.timerSeconds);
-        
-        // Success message will be shown by the event listener for 
-        // 'timer_resumed_after_reconnection' or 'timer_started_after_reconnection'
-      }
-    } catch (error) {
-      console.error('❌ Error handling WiFi reconnection:', error);
-      Alert.alert(
-        '❌ Reconnection Error',
-        `An error occurred during WiFi reconnection: ${error.message}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  // Handle timer start/stop based on current class
-  const handleTimerStartStop = async () => {
-    if (!offlineTimerInitialized || !currentClassInfo) {
-      Alert.alert(
-        '⚠️ Timer Not Available',
-        'Timer is not available. Please ensure you are in a scheduled class period.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    
-    if (offlineTimerState.isRunning) {
-      // Stop timer
-      console.log('⏹️ Stopping timer manually');
-      const result = await OfflineTimerService.stopTimer('manual');
-      
-      if (!result.success) {
-        Alert.alert(
-          '❌ Error',
-          `Failed to stop timer: ${result.error}`,
-          [{ text: 'OK' }]
-        );
-      }
-    } else {
-      // Start timer with BSSID and face verification
-      console.log('▶️ Starting timer for current class');
-      
-      if (!currentClassInfo.currentLecture || currentClassInfo.currentLecture === 'Break') {
-        Alert.alert(
-          '⚠️ No Active Lecture',
-          'Timer can only be started during an active lecture period, not during breaks.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-      
-      // Show loading indicator for verification process
-      Alert.alert(
-        '🔐 Starting Verification',
-        'Please wait while we verify your location and identity...',
-        [],
-        { cancelable: false }
-      );
-      
-      // Extract current lecture info
-      const lectureInfo = {
-        subject: currentClassInfo.subject,
-        teacher: currentClassInfo.teacher || 'Unknown',
-        room: currentClassInfo.room || 'Unknown',
-        startTime: currentClassInfo.startTime,
-        endTime: currentClassInfo.endTime
-      };
-      
-      const result = await OfflineTimerService.startTimer(lectureInfo);
-      
-      // Dismiss loading alert
-      Alert.alert('', '', [], { cancelable: true });
-      
-      if (!result.success) {
-        let title = '❌ Cannot Start Timer';
-        let message = result.error || 'Failed to start timer';
-        
-        // Provide specific error messages based on the step that failed
-        switch (result.step) {
-          case 'bssid_validation':
-            title = '📶 WiFi Validation Failed';
-            message = result.error + '\n\nPlease ensure you are connected to the correct classroom WiFi network.';
-            break;
-          case 'face_verification':
-            title = '👤 Face Verification Failed';
-            if (result.reason === 'no_face_enrolled') {
-              message = 'Face not enrolled. Please use the Face Enrollment app to enroll your face first.';
-            } else if (result.reason === 'face_not_matched') {
-              message = result.error + '\n\nPlease ensure good lighting and look directly at the camera.';
-            } else {
-              message = result.error + '\n\nPlease try again or contact support if the issue persists.';
-            }
-            break;
-          default:
-            // Keep default message
-            break;
-        }
-        
-        Alert.alert(title, message, [
-          { text: 'OK' },
-          ...(result.step === 'face_verification' && result.reason === 'no_face_enrolled' 
-            ? [{ text: 'Open Enrollment App', onPress: () => {
-                // You could add logic here to open the enrollment app
-                console.log('User wants to open enrollment app');
-              }}]
-            : []
-          )
-        ]);
-      } else {
-        // Success - timer started
-        Alert.alert(
-          '✅ Timer Started',
-          `Timer started successfully!\n\n✅ WiFi: Authorized\n✅ Face: Verified (${result.faceVerified ? 'Match' : 'Unknown'})\n\nAttendance tracking is now active.`,
-          [{ text: 'OK' }]
-        );
-      }
-    }
-  };
-
   const setupSocket = () => {
     console.log('🔌🔌🔌 setupSocket() called - Initializing socket connection...');
     console.log('🔌 SOCKET_URL:', SOCKET_URL);
@@ -1151,7 +976,7 @@ export default function App() {
           const result = await response.json();
 
           if (result.success) {
-            if (result.randomRingMissed) {
+            if (result.missedRandomRing) {
               // Random Ring was missed during offline
               alert(`⚠️ Random Ring Missed\n\nA Random Ring was triggered while you were offline.\n\nYour attendance has been capped at ${result.cappedMinutes} minutes.`);
               // Timer removed - period-based attendance
@@ -1337,88 +1162,92 @@ export default function App() {
       fetchStudents();
     });
 
-    // Listen for Random Ring verification updates (teachers only)
+    // Listen for Random Ring verification updates (teachers only) — kept for legacy compat
     socketRef.current.on('random_ring_student_verified', (data) => {
       console.log('✅ Random Ring verification update:', data);
-      if (selectedRole === 'teacher' && loginId === data.teacherId) {
-        // Show notification to teacher
-        alert(`✅ Student Verified!\n\n${data.studentName} has verified their attendance.\n\nVerified: ${data.verifiedCount}/${data.totalCount}`);
-
-        // Refresh student list to show updated status
-        fetchStudents();
-      }
     });
 
     // Listen for Random Ring notifications (students only)
-    socketRef.current.on('random_ring', (data) => {
+    socketRef.current.on('random_ring_notification', (data) => {
       console.log('🔔 Random ring received:', data);
-      console.log('   Current role:', selectedRole);
-      console.log('   Current studentId:', studentId);
-      console.log('   Notification for:', data.studentId, data.enrollmentNo);
-      console.log('   Timer Paused:', data.timerPaused);
 
-      if (selectedRole === 'student' && (studentId === data.studentId || studentId === data.enrollmentNo)) {
+      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
         console.log('✅ Random Ring is for this student!');
 
-        // PAUSE TIMER IMMEDIATELY
-        if (data.timerPaused) {
-          console.log('⏸️  Pausing timer for Random Ring');
-          // Timer removed - period-based attendance
-        }
-
-        // Store random ring data for verification submission
         setRandomRingData({
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
           timestamp: data.timestamp,
-          bssid: data.bssid,
-          timerPaused: data.timerPaused
+          expiresAt: data.expiresAt
         });
 
-        // Show alert to student
-        alert(`🔔 Random Ring!\n\n⏸️  Your timer has been PAUSED.\n\nVerify your presence to resume!`);
-
-        // Set 5-minute timeout for verification
+        // 240s timeout — no response → auto-absent (server handles it, just clear UI)
         setTimeout(() => {
           setRandomRingData(prev => {
             if (prev && prev.randomRingId === data.randomRingId) {
-              console.log('⏰ Random ring verification timeout');
-              alert('⏰ Random Ring verification expired.\n\n❌ Your timer has been stopped.');
-              // Timer removed - period-based attendance
+              console.log('⏰ Random ring verification timeout (local)');
               return null;
             }
             return prev;
           });
-        }, 300000); // 5 minutes = 300,000 ms
-      } else {
-        console.log('❌ Random Ring not for this student (role or ID mismatch)');
+        }, 240000); // 240 seconds
       }
     });
 
     // Listen for teacher accept action
     socketRef.current.on('random_ring_teacher_accepted', (data) => {
       console.log('✅ Teacher accepted your presence:', data);
-      if (selectedRole === 'student' && (studentId === data.studentId || studentId === data.enrollmentNo)) {
-        alert('✅ Teacher verified your presence!\n\nYour timer has been resumed.');
-        setRandomRingData(null); // Clear random ring data
+      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+        setRandomRingData(null);
       }
     });
 
     // Listen for teacher reject action
     socketRef.current.on('random_ring_teacher_rejected', (data) => {
       console.log('❌ Teacher rejected your presence:', data);
-      if (selectedRole === 'student' && (studentId === data.studentId || studentId === data.enrollmentNo)) {
-        alert('❌ Teacher marked you absent!\n\nYou have 5 minutes to verify your face to resume your timer.');
-
-        // Store random ring data for face verification
+      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+        // Store for face verify flow
         setRandomRingData({
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
-          timestamp: new Date(),
           expiresAt: data.expiresAt,
           isRejection: true
         });
+      }
+    });
 
+    // Teacher: ring was triggered — set activeRandomRing
+    socketRef.current.on('random_ring_triggered', (data) => {
+      console.log('🔔 Random ring triggered:', data);
+      if (selectedRole === 'teacher') {
+        setActiveRandomRing({
+          _id: data.randomRingId,
+          selectedStudents: data.selectedStudents.map(s => ({
+            studentId: s.studentId,
+            enrollmentNo: s.enrollmentNo,
+            name: s.name,
+            teacherAction: 'pending',
+            verified: false,
+            faceVerifiedAfterRejection: false
+          }))
+        });
+      }
+    });
+
+    // Teacher: student auto-absented after no response
+    socketRef.current.on('random_ring_auto_absent', (data) => {
+      console.log('🚫 Auto-absent students:', data);
+      if (selectedRole === 'teacher') {
+        setActiveRandomRing(prev => {
+          if (!prev || prev._id !== data.ringId) return prev;
+          return {
+            ...prev,
+            selectedStudents: prev.selectedStudents.map(s => {
+              const wasAutoAbsent = data.autoAbsentStudents?.some(a => a.enrollmentNo === s.enrollmentNo);
+              return wasAutoAbsent ? { ...s, teacherAction: 'auto_absent', autoAbsent: true } : s;
+            })
+          };
+        });
       }
     });
 
@@ -1426,14 +1255,13 @@ export default function App() {
     socketRef.current.on('random_ring_teacher_action_update', (data) => {
       console.log('👨‍🏫 Teacher action update:', data);
       if (selectedRole === 'teacher') {
-        // Update active random ring state
         setActiveRandomRing(prev => {
           if (!prev || prev._id !== data.randomRingId) return prev;
           return {
             ...prev,
             selectedStudents: prev.selectedStudents.map(s =>
-              (s.studentId === data.studentId || s.enrollmentNo === data.studentId)
-                ? { ...s, teacherAction: data.action, teacherActionTime: data.teacherActionTime }
+              s.enrollmentNo === data.enrollmentNo
+                ? { ...s, teacherAction: data.action }
                 : s
             )
           };
@@ -1444,31 +1272,26 @@ export default function App() {
     // Listen for face verification success (students)
     socketRef.current.on('random_ring_face_verification_success', (data) => {
       console.log('✅ Face verification successful:', data);
-      if (selectedRole === 'student' && (studentId === data.studentId || studentId === data.enrollmentNo)) {
-        alert('✅ Face Verification Successful!\n\nYour timer has been resumed.');
-        setRandomRingData(null); // Clear random ring data
-        // Timer removed - period-based attendance // Resume timer
+      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+        setRandomRingData(null);
       }
     });
 
     // Listen for face verification after rejection (for teacher dashboard)
     socketRef.current.on('random_ring_face_verified_after_rejection', (data) => {
       console.log('✅ Student verified face after rejection:', data);
-      if (selectedRole === 'teacher' && loginId === data.teacherId) {
-        // Update active random ring state
+      if (selectedRole === 'teacher') {
         setActiveRandomRing(prev => {
           if (!prev || prev._id !== data.randomRingId) return prev;
           return {
             ...prev,
             selectedStudents: prev.selectedStudents.map(s =>
-              (s.studentId === data.studentId || s.enrollmentNo === data.studentId)
+              s.enrollmentNo === data.enrollmentNo
                 ? { ...s, faceVerifiedAfterRejection: true, verified: true }
                 : s
             )
           };
         });
-
-        alert(`✅ ${data.studentName} verified face after rejection. Timer resumed.`);
       }
     });
 
@@ -2237,289 +2060,12 @@ export default function App() {
     }
   };
 
-  // Timer runs continuously when started - no countdown logic needed
-  // Attendance is tracked per lecture based on actual class time
+  // Timer cleanup on unmount
   useEffect(() => {
     return () => clearInterval(intervalRef.current);
-  }, [isRunning]);
+  }, []);
 
-  useEffect(() => {
-    if (isRunning) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [isRunning]);
-
-  const updateTimerOnServer = async (timer, running, status = null) => {
-    // Legacy function - kept for compatibility but server handles all tracking
-    if (!studentId) {
-      console.log('⚠️ No studentId for timer update');
-      return;
-    }
-
-    if (!socketRef.current || !socketRef.current.connected) {
-      console.log('⚠️ Socket not connected, reconnecting...');
-      setupSocket();
-      return;
-    }
-
-    let finalStatus = status;
-    if (!finalStatus) {
-      if (running) finalStatus = 'attending';
-      else finalStatus = 'absent';
-    }
-
-    console.log('📡 Sending timer update:', { studentId, timer, running, status: finalStatus });
-
-    socketRef.current.emit('timer_update', {
-      studentId,
-      studentName: studentName,
-      timerValue: timer,
-      isRunning: running,
-      status: finalStatus,
-      enrollmentNo: userData?.enrollmentNo,
-      semester,
-      branch
-    });
-
-    // Save attendance record when timer completes or student marks present/absent
-    if (finalStatus === 'present' || finalStatus === 'absent') {
-      try {
-        // Get server date for validation
-        let clientDate;
-        try {
-          const serverTime = getServerTime();
-          clientDate = serverTime.nowDate().toISOString();
-        } catch {
-          clientDate = new Date().toISOString();
-        }
-
-        await fetch(`${SOCKET_URL}/api/attendance/record`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            studentId,
-            studentName,
-            enrollmentNo: userData?.enrollmentNo || 'N/A',
-            status: finalStatus,
-            timerValue: timer,
-            semester,
-            branch,
-            clientDate: clientDate // Send for server validation
-          })
-        });
-      } catch (error) {
-        console.log('Error saving attendance record:', error);
-      }
-    }
-  };
-
-  // WiFi validation function - SAFE IMPLEMENTATION WITH DEBUG INFO
-  const isConnectedToClassroomWiFi = async () => {
-    try {
-      console.log('📶 Starting WiFi validation...');
-
-      // Check for simulated bypass (for testing)
-      if (wifiDebugInfo.status === 'AUTHORIZED (SIMULATED)') {
-        console.log('🧪 Using simulated WiFi validation for testing');
-        return true;
-      }
-
-      // DEVELOPMENT MODE: Always allow bypass for testing
-      if (__DEV__) {
-        console.warn('⚠️ Development mode: Bypassing WiFi validation for testing');
-        setWifiDebugInfo({
-          status: 'AUTHORIZED (DEV MODE)',
-          currentBSSID: 'Development bypass',
-          expectedBSSID: 'Not required in dev',
-          room: currentClassInfo?.room || 'Dev room',
-          lastChecked: new Date().toLocaleTimeString()
-        });
-        return true;
-      }
-
-      // Check if we have current class info
-      if (!currentClassInfo || !currentClassInfo.room) {
-        console.log('❌ No classroom info available for WiFi check');
-        setWifiDebugInfo({
-          status: 'No classroom info',
-          currentBSSID: 'N/A',
-          expectedBSSID: 'N/A',
-          room: 'N/A',
-          lastChecked: new Date().toLocaleTimeString()
-        });
-
-        // In production, show user-friendly message
-        alert('⚠️ No Active Class\n\nNo classroom information available for WiFi validation.\n\nPlease ensure you have an active class scheduled.');
-        return false;
-      }
-
-      // Check if WiFiManager is available
-      if (!WiFiManager) {
-        console.error('❌ WiFiManager not available');
-
-        setWifiDebugInfo({
-          status: 'WiFiManager not available',
-          currentBSSID: 'N/A',
-          expectedBSSID: 'N/A',
-          room: currentClassInfo.room
-        });
-
-        // Show user-friendly error
-        alert('⚠️ WiFi System Error\n\nWiFi validation system is not available.\n\nPlease restart the app and try again.');
-        return false;
-      }
-
-      console.log('✅ WiFiManager available');
-
-      // Initialize WiFi manager with error handling
-      try {
-        const initResult = await WiFiManager.initialize();
-        console.log('✅ WiFiManager initialized:', initResult);
-      } catch (initError) {
-        console.error('❌ WiFiManager initialization failed:', initError);
-        setWifiDebugInfo({
-          status: 'INIT ERROR',
-          currentBSSID: 'Initialization failed',
-          expectedBSSID: 'N/A',
-          room: currentClassInfo.room,
-          lastChecked: new Date().toLocaleTimeString(),
-          reason: initError.message
-        });
-        return false;
-      }
-
-      // Load authorized BSSIDs for current student
-      try {
-        console.log('📥 Loading authorized BSSIDs with params:', {
-          serverUrl: SOCKET_URL,
-          semester,
-          course: branch,
-          enrollmentNo: studentId,
-          room: currentClassInfo.room
-        });
-
-        await WiFiManager.loadAuthorizedBSSIDs(SOCKET_URL, {
-          semester,
-          course: branch,
-          enrollmentNo: studentId
-        });
-        console.log('✅ Authorized BSSIDs loaded');
-
-        // Debug: Show what BSSIDs were loaded
-        const wifiStatus = WiFiManager.getStatus();
-        console.log(`📋 Loaded ${wifiStatus.authorizedBSSIDsCount} authorized BSSIDs`);
-
-      } catch (loadError) {
-        console.error('❌ Failed to load authorized BSSIDs:', loadError);
-        setWifiDebugInfo({
-          status: 'CONFIG ERROR',
-          currentBSSID: 'N/A',
-          expectedBSSID: 'Failed to load from server',
-          room: currentClassInfo.room,
-          lastChecked: new Date().toLocaleTimeString(),
-          reason: loadError.message
-        });
-        return false;
-      }
-
-      // Check if current BSSID is authorized for this room
-      let authResult;
-      try {
-        console.log(`🔍 Checking authorization for room: ${currentClassInfo.room}`);
-        authResult = await WiFiManager.isAuthorizedForRoom(currentClassInfo.room);
-
-        console.log('📶 === WiFi Authorization Result ===');
-        console.log('   Authorized:', authResult.authorized);
-        console.log('   Current BSSID:', authResult.currentBSSID);
-        console.log('   Expected BSSID:', authResult.expectedBSSID);
-        console.log('   Reason:', authResult.reason);
-        console.log('   Room Info:', authResult.roomInfo);
-        console.log('================================');
-
-        // Update debug info with actual values
-        setWifiDebugInfo({
-          status: authResult.authorized ? 'AUTHORIZED' : 'NOT AUTHORIZED',
-          currentBSSID: authResult.currentBSSID || 'Not detected',
-          expectedBSSID: authResult.expectedBSSID || 'Not configured',
-          room: currentClassInfo.room,
-          lastChecked: new Date().toLocaleTimeString(),
-          reason: authResult.reason || 'unknown'
-        });
-
-      } catch (authError) {
-        console.error('❌ WiFi authorization check failed:', authError);
-        setWifiDebugInfo({
-          status: 'ERROR',
-          currentBSSID: 'Error getting BSSID',
-          expectedBSSID: 'Error loading config',
-          room: currentClassInfo.room,
-          lastChecked: new Date().toLocaleTimeString(),
-          reason: authError.message
-        });
-        return false;
-      }
-
-      if (!authResult || !authResult.authorized) {
-        console.log(`❌ WiFi validation FAILED: ${authResult?.reason || 'unknown'}`);
-
-        // Provide user-friendly error messages based on the reason
-        let userMessage = '';
-        switch (authResult?.reason) {
-          case 'no_wifi':
-            userMessage = '📶 WiFi Not Connected\n\nYou are not connected to any WiFi network.\n\nPlease:\n1. Enable WiFi on your device\n2. Connect to the classroom WiFi\n3. Try again';
-            break;
-          case 'wrong_bssid':
-            userMessage = `📶 Wrong WiFi Network\n\nYou are connected to the wrong WiFi network.\n\nExpected: Classroom ${currentClassInfo.room}\nCurrent: ${authResult.currentBSSID || 'Unknown'}\n\nPlease connect to the correct classroom WiFi.`;
-            break;
-          case 'room_not_configured':
-            userMessage = `⚙️ Room Not Configured\n\nRoom ${currentClassInfo.room} is not configured for WiFi validation.\n\nPlease contact your administrator.`;
-            break;
-          default:
-            userMessage = `❌ WiFi Validation Failed\n\nReason: ${authResult?.reason || 'Unknown error'}\n\nPlease ensure you are connected to the classroom WiFi network.`;
-        }
-
-        // Don't show alert here - let the calling function handle it
-        console.log('📱 User message prepared:', userMessage);
-        return false;
-      }
-
-      console.log(`✅ WiFi validation PASSED - Connected to ${currentClassInfo.room}`);
-      return true;
-
-    } catch (error) {
-      console.error('❌ Critical error in WiFi validation:', error);
-      console.error('   Error message:', error.message);
-      console.error('   Error stack:', error.stack);
-
-      // Update debug info with error
-      setWifiDebugInfo({
-        status: 'CRITICAL ERROR',
-        currentBSSID: 'Error',
-        expectedBSSID: 'Error',
-        room: currentClassInfo?.room || 'Unknown',
-        lastChecked: new Date().toLocaleTimeString(),
-        reason: error.message
-      });
-
-      // CRITICAL: Any error in WiFi validation should block timer
-      return false;
-    }
-  };
+  // WiFi validation is handled by OfflineTimerService internally
 
   // Handle face verification trigger from CircularTimer
   const handleFaceVerification = async () => {
@@ -2561,171 +2107,6 @@ export default function App() {
       } else {
         alert(`❌ Face Verification Error\n\n${error.message}\n\nPlease try again or contact support if the issue persists.`);
       }
-    }
-  };
-
-  const handleStartPause = async () => {
-    // Only allow starting, no pausing
-    if (isRunning) {
-      // Already running, do nothing
-      return;
-    }
-
-    // Check if there's an active class
-    if (!currentClassInfo) {
-      alert('❌ No Active Class\n\nNo lecture is currently scheduled.\n\nPlease wait for the next lecture to start.');
-      return;
-    }
-
-    console.log('🔒 Starting attendance validation process...');
-
-    // Step 0: Check and request location permissions FIRST
-    console.log('🔐 Step 0: Checking location permissions...');
-    if (Platform.OS === 'android') {
-      // Use string constants directly to avoid null permission constants issue
-      const FINE_LOCATION = 'android.permission.ACCESS_FINE_LOCATION';
-      const COARSE_LOCATION = 'android.permission.ACCESS_COARSE_LOCATION';
-
-      const fineLocationGranted = await PermissionsAndroid.check(FINE_LOCATION);
-      const coarseLocationGranted = await PermissionsAndroid.check(COARSE_LOCATION);
-
-      console.log('🔐 Permission status:');
-      console.log('   Fine location:', fineLocationGranted);
-      console.log('   Coarse location:', coarseLocationGranted);
-
-      if (!fineLocationGranted && !coarseLocationGranted) {
-        console.log('🔐 Location permission not granted - requesting...');
-
-        // Request fine location permission with explanation
-        const granted = await PermissionsAndroid.request(
-          FINE_LOCATION,
-          {
-            title: 'Location Permission Required',
-            message: 'This app needs location permission to detect WiFi network details (BSSID) for attendance verification.\n\nThis is required by Android for security reasons.\n\nNo location data is collected or stored.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          }
-        );
-
-        console.log('🔐 Permission request result:', granted);
-
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('❌ Location permission denied');
-          alert('❌ Permission Required\n\nLocation permission is required for WiFi-based attendance verification.\n\nPlease grant permission in device settings to continue.');
-          return;
-        }
-
-        console.log('✅ Location permission granted');
-      } else {
-        console.log('✅ Location permission already granted');
-      }
-    }
-
-    // CRITICAL: WiFi + Face verification required to start timer
-    // This prevents students from faking attendance from home
-
-    // 1. Check WiFi connection first (ASYNC)
-    console.log('📶 Step 1: Validating WiFi connection...');
-    const wifiValid = await isConnectedToClassroomWiFi();
-    if (!wifiValid) {
-      // Check if it's a simulated bypass
-      if (wifiDebugInfo.status === 'AUTHORIZED (SIMULATED)') {
-        console.log('🧪 WiFi bypass is active, proceeding...');
-      } else {
-        alert('❌ WiFi Validation Failed\n\nYou must be connected to the classroom WiFi to start attendance tracking.\n\nPlease connect to the authorized classroom network and try again.\n\n💡 Tip: If you\'re having WiFi issues, use the "Bypass WiFi Check" button for testing.');
-        return;
-      }
-    }
-
-    // 2. Face Verification (ASYNC)
-    console.log('👤 Step 2: Starting face verification...');
-    try {
-      // Get stored face embedding from SecureStorage
-      const storedEmbedding = await SecureStorage.getFaceEmbedding();
-      
-      if (!storedEmbedding || storedEmbedding.length !== 192) {
-        console.log('❌ No face data found or invalid');
-        alert('❌ Face Data Not Found\n\nYour face data is not enrolled on this device.\n\nPlease login again to download your face data, or contact your teacher to enroll your face.');
-        return;
-      }
-
-      console.log('✅ Face data loaded from storage (192 floats)');
-      console.log('📸 Opening camera for face verification...');
-
-      // Start face verification using native module
-      const verificationResult = await FaceVerification.verifyFace(storedEmbedding);
-
-      console.log('🔍 Face verification result:', verificationResult);
-
-      if (!verificationResult.success || !verificationResult.isMatch) {
-        console.log('❌ Face verification failed');
-        alert(`❌ Face Verification Failed\n\n${verificationResult.message}\n\nSimilarity: ${verificationResult.similarityPercentage}%\n\nPlease try again or contact your teacher if you believe this is an error.`);
-        return;
-      }
-
-      console.log('✅ Face verified successfully!');
-      console.log(`   Similarity: ${verificationResult.similarityPercentage}%`);
-
-    } catch (error) {
-      console.error('❌ Face verification error:', error);
-      
-      if (error.message === 'VERIFICATION_CANCELLED') {
-        alert('❌ Verification Cancelled\n\nFace verification was cancelled.\n\nYou must complete face verification to start attendance tracking.');
-      } else {
-        alert(`❌ Face Verification Error\n\n${error.message}\n\nPlease try again or contact support if the issue persists.`);
-      }
-      return;
-    }
-
-    console.log('✅ All validations passed - Starting timer');
-    console.log('   ✅ WiFi: Connected to classroom network');
-    console.log('   ✅ Face: Verified successfully');
-    console.log('   ✅ Class: Active lecture in progress');
-
-    // Timer removed - period-based attendance
-
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit('start_timer', {
-        studentId,
-        enrollmentNo: userData?.enrollmentNo,
-        name: studentName,
-        semester,
-        branch,
-        currentClass: currentClassInfo?.subject,
-        lectureDuration: currentClassInfo?.duration || 60,
-        wifiValidated: true,
-        faceVerified: true,
-        validationTimestamp: new Date().toISOString()
-      });
-      console.log('⏱️ Sent start_timer to server with full validations');
-    } else {
-      console.warn('⚠️ Socket not connected, cannot start centralized timer');
-      // Don't allow offline timer without server validation
-      alert('❌ Server Connection Required\n\nServer connection is required for attendance tracking.\n\nPlease check your internet connection.');
-      // Timer removed - period-based attendance
-    }
-  };
-
-  // Face verification functions removed - no longer needed
-
-  const handleReset = () => {
-    // Reset stops the timer
-    // Timer removed - period-based attendance
-    // Face verification removed - no longer needed
-    clearInterval(intervalRef.current);
-
-    // Stop timer using server-side system
-    if (socketRef.current && socketRef.current.connected) {
-      console.log('⏹️  Stopping server-side timer...');
-      socketRef.current.emit('stop_timer', {
-        studentId: studentId,
-        enrollmentNo: userData?.enrollmentNo
-      });
-      console.log('⏹️ Sent stop_timer to server');
-    } else {
-      // Fallback to old method
-      updateTimerOnServer(0, false, 'absent');
     }
   };
 
@@ -2884,19 +2265,6 @@ export default function App() {
         AsyncStorage.multiSet(storageData).catch(error => {
           console.log('Error saving login data:', error);
         });
-
-        // Cache profile photo for face verification (students only)
-        if (normalizedUser.role === 'student' && normalizedUser.photoUrl) {
-          console.log('📥 Caching profile photo for face verification...');
-          cacheProfilePhoto(normalizedUser.photoUrl, normalizedUser._id).then(async (cachedPath) => {
-            if (cachedPath) {
-              console.log('✅ Photo cached successfully');
-              setPhotoCached(true);
-            } else {
-              console.log('⚠️ Failed to cache photo');
-            }
-          });
-        }
       } else {
         // Server returned an error message
         setLoginError(data.message || 'Login failed');
@@ -3443,6 +2811,33 @@ export default function App() {
     // Face verification removed - no longer needed
   };
 
+  // Student: respond to random ring (tap to confirm presence)
+  const handleRandomRingResponse = async () => {
+    if (!randomRingData) return;
+    try {
+      const response = await fetch(`${SOCKET_URL}/api/attendance/random-ring-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          randomRingId: randomRingData.randomRingId,
+          responseTime: new Date().toISOString()
+        })
+      });
+      const result = await response.json();
+      if (result.success) {
+        console.log('✅ Random ring response sent — awaiting teacher action');
+        // Keep randomRingData so student sees "waiting for teacher" state
+        setRandomRingData(prev => prev ? { ...prev, responded: true } : null);
+      } else {
+        alert('❌ Failed to respond: ' + (result.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('❌ Random ring response error:', err);
+      alert('❌ Network error. Please try again.');
+    }
+  };
+
   // Teacher action handler for random ring accept/reject
   const handleTeacherAction = async (randomRingId, studentId, action) => {
     try {
@@ -3609,35 +3004,6 @@ export default function App() {
                 <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Change</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {/* WiFi Status Display (Development/Testing) */}
-        {(__DEV__ || selectedRole === 'teacher') && currentClassInfo && (
-          <View style={{
-            backgroundColor: wifiDebugInfo.status.includes('AUTHORIZED') ? '#10b981' + '20' : '#ef4444' + '20',
-            padding: 8,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.border
-          }}>
-            <Text style={{
-              color: wifiDebugInfo.status.includes('AUTHORIZED') ? '#10b981' : '#ef4444',
-              fontSize: 11,
-              fontWeight: '600',
-              textAlign: 'center'
-            }}>
-              📶 WiFi: {wifiDebugInfo.status} • BSSID: {wifiDebugInfo.currentBSSID}
-            </Text>
-            {wifiDebugInfo.reason && (
-              <Text style={{
-                color: theme.textSecondary,
-                fontSize: 10,
-                textAlign: 'center',
-                marginTop: 2
-              }}>
-                {wifiDebugInfo.reason} • {wifiDebugInfo.lastChecked}
-              </Text>
-            )}
           </View>
         )}
 
@@ -4460,7 +3826,7 @@ export default function App() {
   const resetBtn = screen?.buttons?.[1] || getDefaultConfig().studentScreen.buttons[1];
 
   // Calculate current status based on running state
-  const currentStatus = isRunning ? 'attending' : 'absent';
+  const currentStatus = offlineTimerState.isRunning ? 'attending' : 'absent';
   const statusColor = currentStatus === 'present' ? (isDarkTheme ? '#00ff88' : '#059669') :
     currentStatus === 'attending' ? (isDarkTheme ? '#ffaa00' : '#d97706') :
       (isDarkTheme ? '#ff4444' : '#dc2626');
@@ -4803,13 +4169,6 @@ export default function App() {
                     }}
                     onPress={() => {
                       console.log('🧪 WiFi bypass button pressed');
-                      setWifiDebugInfo({
-                        status: 'AUTHORIZED (SIMULATED)',
-                        currentBSSID: 'Simulated for testing',
-                        expectedBSSID: 'Not required',
-                        room: currentClassInfo?.room || 'Test room',
-                        lastChecked: new Date().toLocaleTimeString()
-                      });
                       alert('✅ WiFi Bypass Activated\n\nWiFi validation has been bypassed for testing purposes.\n\nYou can now start attendance tracking.');
                     }}
                   >
@@ -4856,14 +4215,7 @@ export default function App() {
                         }
 
                         // Also update debug info
-                        setWifiDebugInfo({
-                          status: result.success ? 'DETECTED' : 'FAILED',
-                          currentBSSID: result.currentBSSID,
-                          expectedBSSID: 'Diagnostic mode',
-                          room: currentClassInfo?.room || 'Test',
-                          lastChecked: new Date().toLocaleTimeString(),
-                          reason: result.error || 'Diagnostic check'
-                        });
+                        // (wifiDebugInfo state removed)
 
                         alert(message);
 
@@ -4955,7 +4307,7 @@ export default function App() {
                 borderRadius: 12,
                 padding: 15,
                 borderWidth: 2,
-                borderColor: isRunning ? '#22c55e' : theme.border,
+                borderColor: offlineTimerState.isRunning ? '#22c55e' : theme.border,
                 marginBottom: 10,
                 alignItems: 'center',
               }}>
@@ -4967,7 +4319,7 @@ export default function App() {
                     fontSize: 36,
                     fontWeight: 'bold',
                     fontFamily: 'monospace',
-                    color: isRunning ? '#22c55e' : theme.text,
+                    color: offlineTimerState.isRunning ? '#22c55e' : theme.text,
                   }}
                 >
                   {Math.floor(currentClassInfo.remainingSeconds / 3600)}:{Math.floor((currentClassInfo.remainingSeconds % 3600) / 60).toString().padStart(2, '0')}
@@ -4984,7 +4336,7 @@ export default function App() {
                 padding: 10,
                 marginBottom: 8,
               }}>
-                {isRunning ? (
+                {offlineTimerState.isRunning ? (
                   <Text
                     style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'center', color: '#22c55e' }}
                   >
@@ -5007,9 +4359,44 @@ export default function App() {
                 <View style={{
                   height: '100%',
                   width: `${(currentClassInfo.elapsedMinutes / currentClassInfo.totalMinutes) * 100}%`,
-                  backgroundColor: isRunning ? '#22c55e' : theme.primary,
+                  backgroundColor: offlineTimerState.isRunning ? '#22c55e' : theme.primary,
                 }} />
               </View>
+            </View>
+          )}
+
+          {/* Random Ring Banner — student must respond */}
+          {randomRingData && (
+            <View style={{
+              width: '100%',
+              maxWidth: 400,
+              backgroundColor: randomRingData.responded ? '#1e3a5f' : '#7c3aed',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 12,
+              borderWidth: 2,
+              borderColor: randomRingData.responded ? '#3b82f6' : '#a78bfa',
+              alignItems: 'center',
+            }}>
+              <Text style={{ fontSize: 24, marginBottom: 6 }}>🔔</Text>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#ffffff', textAlign: 'center', marginBottom: 4 }}>
+                {randomRingData.isRejection ? 'Teacher Rejected — Verify Face' : 'Random Ring!'}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#e0d7ff', textAlign: 'center', marginBottom: 12 }}>
+                {randomRingData.responded
+                  ? '✅ Response sent — waiting for teacher action'
+                  : randomRingData.isRejection
+                    ? 'Your presence was rejected. Face verification required.'
+                    : 'Your teacher is verifying attendance. Tap to confirm you are present.'}
+              </Text>
+              {!randomRingData.responded && !randomRingData.isRejection && (
+                <TouchableOpacity
+                  style={{ backgroundColor: '#ffffff', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 28 }}
+                  onPress={handleRandomRingResponse}
+                >
+                  <Text style={{ color: '#7c3aed', fontWeight: 'bold', fontSize: 14 }}>✋ I'm Here</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 

@@ -126,7 +126,8 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
 
   const handleAction = async (action) => {
     if (actionLoading || !onTeacherAction || !randomRingId) return;
-    const studentIdToUse = (student._id ? student._id.toString() : null) || student.enrollmentNo;
+    // Always use enrollmentNo — matches what liveTimerState stores
+    const studentIdToUse = student.enrollmentNo;
     setActionLoading(true);
     try {
       await onTeacherAction(randomRingId, studentIdToUse, action);

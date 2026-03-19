@@ -304,6 +304,7 @@ export default function App() {
 
   const intervalRef = useRef(null);
   const socketRef = useRef(null);
+  const currentClassRoomRef = useRef(null); // tracks the room teacher is currently in
   const appState = useRef(AppState.currentState);
   const backgroundTimeRef = useRef(null);
 
@@ -1471,65 +1472,60 @@ export default function App() {
       }
     });
 
-    // Listen for centralized timer broadcasts from server
+    // Live timer broadcast from server (targeted to class room)
     socketRef.current.on('timer_broadcast', (data) => {
-      console.log('📡📡📡 TIMER BROADCAST RECEIVED 📡📡📡');
-      console.log('📡 Timestamp:', new Date().toISOString());
-      console.log('📡 Student Name:', data.name);
-      console.log('📡 Student ID:', data.studentId);
-      console.log('📡 Enrollment No:', data.enrollmentNo);
-      console.log('📡 Attended Seconds:', data.attendedSeconds);
-      console.log('📡 Is Running:', data.isRunning);
-      console.log('📡 Subject:', data.lectureSubject);
-      console.log('📡 Current Role:', selectedRole);
-      console.log('📡 Current Student ID:', studentId);
-
-      // Update timer data if this broadcast is for current student
-      if (selectedRole === 'student' && studentId) {
-        const isForThisStudent = data.studentId === studentId || data.enrollmentNo === studentId;
-        console.log('📡 Is for this student?', isForThisStudent);
-
-        if (isForThisStudent) {
-          console.log('✅✅✅ STUDENT DATA UPDATE ✅✅✅');
-          // Timer removed - period-based attendance now
-        } else {
-          console.log('⏭️  Broadcast not for this student, skipping');
-        }
-      } else {
-        console.log('⏭️  Not a student or no studentId, skipping update');
-        console.log('   selectedRole:', selectedRole);
-        console.log('   studentId:', studentId);
-      }
-
-      // Update teacher dashboard with all active students
-      if (selectedRole === 'teacher') {
-        setStudents(prevStudents => {
-          const updated = [...prevStudents];
-          const index = updated.findIndex(s =>
-            s._id?.toString() === data.studentId ||
-            s.enrollmentNo === data.enrollmentNo ||
-            s._id === data.studentId
-          );
-
-          if (index !== -1) {
-            console.log(`✅ Updating teacher view for student: ${updated[index].name}`);
-            updated[index] = {
-              ...updated[index],
-              timerValue: data.attendedSeconds,
+      if (selectedRole !== 'teacher') return;
+      setStudents(prevStudents => {
+        const updated = [...prevStudents];
+        const index = updated.findIndex(s =>
+          s._id?.toString() === data.studentId ||
+          s.enrollmentNo === data.enrollmentNo
+        );
+        if (index !== -1) {
+          updated[index] = {
+            ...updated[index],
+            timerValue: data.attendedSeconds,
+            isRunning: data.isRunning,
+            status: data.status,
+            attendanceSession: {
+              ...(updated[index].attendanceSession || {}),
               isRunning: data.isRunning,
               status: data.status,
-              currentClass: {
-                subject: data.lectureSubject,
-                teacher: data.lectureTeacher,
-                room: data.lectureRoom,
-                startTime: data.lectureStartTime,
-                endTime: data.lectureEndTime
-              }
+              attendedSeconds: data.attendedSeconds,
+            },
+          };
+        }
+        return updated;
+      });
+    });
+
+    // Snapshot of all live students when teacher joins a class room
+    socketRef.current.on('live_state_snapshot', ({ students: liveStudents }) => {
+      if (selectedRole !== 'teacher' || !liveStudents?.length) return;
+      setStudents(prevStudents => {
+        const updated = [...prevStudents];
+        liveStudents.forEach(live => {
+          const index = updated.findIndex(s =>
+            s._id?.toString() === live.studentId ||
+            s.enrollmentNo === live.enrollmentNo
+          );
+          if (index !== -1) {
+            updated[index] = {
+              ...updated[index],
+              timerValue: live.attendedSeconds,
+              isRunning: live.isRunning,
+              status: live.status,
+              attendanceSession: {
+                ...(updated[index].attendanceSession || {}),
+                isRunning: live.isRunning,
+                status: live.status,
+                attendedSeconds: live.attendedSeconds,
+              },
             };
           }
-          return updated;
         });
-      }
+        return updated;
+      });
     });
 
     // Listen for BSSID schedule updates (students only)
@@ -1866,6 +1862,19 @@ export default function App() {
     }
   };
 
+  const joinClassRoom = (sem, br) => {
+    if (!socketRef.current || !sem || !br) return;
+    // Leave old room first
+    if (currentClassRoomRef.current) {
+      const { semester: oldSem, branch: oldBr } = currentClassRoomRef.current;
+      if (oldSem !== sem || oldBr !== br) {
+        socketRef.current.emit('leave_class_room', { semester: oldSem, branch: oldBr });
+      }
+    }
+    socketRef.current.emit('join_class_room', { semester: sem, branch: br });
+    currentClassRoomRef.current = { semester: sem, branch: br };
+  };
+
   const fetchStudents = async (overrideSelection) => {
     try {
       // Use override (e.g. from filter dialog) or current state
@@ -1878,6 +1887,7 @@ export default function App() {
         if (manualData.success) {
           console.log(`✅ Filter: ${manualData.students?.length || 0} students for ${effectiveSelection.branch} Sem ${effectiveSelection.semester}`);
           setStudents(manualData.students || []);
+          joinClassRoom(effectiveSelection.semester, effectiveSelection.branch);
           setCurrentClassInfo({
             subject: 'Manual Selection',
             branch: effectiveSelection.branch,
@@ -1899,6 +1909,7 @@ export default function App() {
             console.log(`✅ Found ${data.students?.length || 0} students in current class`);
             console.log(`📚 Current class: ${data.currentClass?.subject} - ${data.currentClass?.branch} Sem ${data.currentClass?.semester}`);
             setStudents(data.students || []);
+            joinClassRoom(data.currentClass?.semester?.toString(), data.currentClass?.branch);
             setCurrentClassInfo(data.currentClass);
 
             // Update semester and branch to match current class (for other components)
@@ -1916,6 +1927,7 @@ export default function App() {
               if (manualData.success) {
                 console.log(`✅ Found ${manualData.students?.length || 0} students for manual selection`);
                 setStudents(manualData.students || []);
+                joinClassRoom(manualSelection.semester, manualSelection.branch);
                 // Don't override currentClassInfo if it's already set by manual selection
                 if (!currentClassInfo || !currentClassInfo.isManual) {
                   setCurrentClassInfo({
@@ -3784,23 +3796,22 @@ export default function App() {
               // Update global semester/branch for manual selection
               if (selection.semester !== 'auto') {
                 console.log(`📝 Manual selection: ${selection.branch} Semester ${selection.semester}`);
-                // Update global semester/branch so TimetableScreen can use them
                 setSemester(selection.semester);
                 setBranch(selection.branch);
-
-                // Create manual class info for banner display
                 setCurrentClassInfo({
                   subject: 'Manual Selection',
                   branch: selection.branch,
                   semester: selection.semester,
                   isManual: true
                 });
+                // Immediately fetch students for the selected class
+                fetchStudents(selection);
               } else {
                 console.log(`🔄 Switched to auto mode - will use current class from timetable`);
-                // Clear manual selection and let auto detection handle it
                 setSemester(null);
                 setBranch(null);
                 setCurrentClassInfo(null);
+                fetchStudents({ semester: 'auto', branch: null });
               }
             }}
             currentSelection={manualSelection}

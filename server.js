@@ -1350,7 +1350,7 @@ app.get('/api/teacher/current-class-students/:teacherId', async (req, res) => {
         // Get students for this class (semester + branch) with current attendance status
         const students = await StudentManagement.find({
             semester: currentClass.semester.toString(),
-            course: currentClass.branch
+            branch: currentClass.branch
         }).select('-password');
 
         console.log(`👥 Found ${students.length} students for ${currentClass.branch} Semester ${currentClass.semester}`);
@@ -1360,18 +1360,19 @@ app.get('/api/teacher/current-class-students/:teacherId', async (req, res) => {
         const studentsWithStatus = await Promise.all(students.map(async (student) => {
             try {
                 const s = student.toObject();
+                // Prefer live in-memory state, fall back to DB attendanceSession
+                const live = liveTimerState.get(s.enrollmentNo);
                 const session = s.attendanceSession || {};
-                const timerSecs = session.totalAttendedSeconds || 0;
-                const isRunning = session.isRunning || false;
-                // Use server-computed status (set by offline-sync)
-                const status = session.status || 'absent';
+                const timerSecs = live ? live.attendedSeconds : (session.totalAttendedSeconds || 0);
+                const isRunning = live ? live.isRunning : (session.isRunning || false);
+                const status = live ? live.status : (session.status || 'absent');
 
                 return {
                     ...s,
                     isRunning,
                     timerValue: timerSecs,
                     status,
-                    lastUpdated: session.lastSyncTime || null,
+                    lastUpdated: live ? live.lastSyncTime : (session.lastSyncTime || null),
                     totalAttendedSeconds: timerSecs
                 };
             } catch (error) {
@@ -1461,10 +1462,39 @@ function createDefaultTimetable(semester, branch) {
 }
 
 // Socket.IO for real-time updates
+// ============================================
+// LIVE TIMER STATE - in-memory, server as source of truth
+// key: enrollmentNo, value: { name, semester, branch, isRunning, timerSeconds, status, lecture, lastSeen }
+// ============================================
+const liveTimerState = new Map();
+
 io.on('connection', (socket) => {
-    console.log('📱 Client connected:', socket.id);
+    console.log('� Client connected:', socket.id);
 
+    // Teacher joins a class room to receive targeted broadcasts
+    socket.on('join_class_room', ({ semester, branch }) => {
+        if (!semester || !branch) return;
+        const room = `class:${semester}:${branch}`;
+        socket.join(room);
+        console.log(`👨‍🏫 Teacher joined room: ${room}`);
 
+        // Immediately send current live state for this class
+        const classStudents = [];
+        liveTimerState.forEach((state) => {
+            if (state.semester === semester && state.branch === branch) {
+                classStudents.push(state);
+            }
+        });
+        if (classStudents.length > 0) {
+            socket.emit('live_state_snapshot', { semester, branch, students: classStudents });
+        }
+    });
+
+    socket.on('leave_class_room', ({ semester, branch }) => {
+        const room = `class:${semester}:${branch}`;
+        socket.leave(room);
+        console.log(`👨‍🏫 Teacher left room: ${room}`);
+    });
 
     socket.on('disconnect', () => {
         console.log('📴 Client disconnected:', socket.id);
@@ -2854,21 +2884,35 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
             { $set: { 'attendanceSession.status': computedStatus } }
         );
 
-        // 6. Broadcast updated timer data to teachers
+        // 6. Update liveTimerState + broadcast to targeted class room
         try {
-            io.emit('timer_broadcast', {
+            const semester = student.semester || '';
+            const branch = student.branch || '';
+            const broadcastData = {
                 studentId: student.enrollmentNo,
                 enrollmentNo: student.enrollmentNo,
                 name: student.name,
+                semester,
+                branch,
                 attendedSeconds: Math.floor(timerSeconds),
+                timerValue: Math.floor(timerSeconds),
                 isRunning: Boolean(isRunning),
-                isPaused: Boolean(isPaused),
-                lectureSubject: lecture?.subject || 'Unknown',
-                lectureTeacher: lecture?.teacher || 'Unknown',
-                lectureRoom: lecture?.room || 'Unknown',
+                lectureSubject: lecture?.subject || '',
+                lectureTeacher: lecture?.teacher || '',
+                lectureRoom: lecture?.room || '',
                 lastSyncTime: new Date(timestamp).toISOString(),
                 status: computedStatus
+            };
+
+            // Update in-memory live state
+            liveTimerState.set(student.enrollmentNo, {
+                ...broadcastData,
+                lastSeen: Date.now()
             });
+
+            // Emit to targeted class room only
+            const room = `class:${semester}:${branch}`;
+            io.to(room).emit('timer_broadcast', broadcastData);
         } catch (broadcastError) {
             console.error(`❌ [OFFLINE-SYNC] Error broadcasting timer data:`, broadcastError);
         }
@@ -4922,6 +4966,7 @@ const studentManagementSchema = new mongoose.Schema({
         isRunning: { type: Boolean, default: false },
         isPaused: { type: Boolean, default: false },
         lastActivity: { type: Date },
+        status: { type: String, enum: ['present', 'active', 'absent'], default: 'absent' },
         currentLecture: {
             subject: String,
             teacher: String,
@@ -5253,20 +5298,20 @@ app.get('/api/view-records/students', async (req, res) => {
                         const present = records.filter(r => r.status === 'present').length;
                         const attendancePercentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
-                        // Use real-time data from StudentManagement (updated by timer_update socket)
-                        // This is the CORRECT source for live timer data
+                        // Use real-time data from attendanceSession (updated by offline-sync)
+                        const live = liveTimerState.get(student.enrollmentNo);
+                        const session = student.attendanceSession || {};
                         return {
                             ...student.toObject(),
-                            // Historical stats
                             attendancePercentage,
                             totalDays: total,
                             presentDays: present,
-                            // Real-time status from StudentManagement (updated by socket)
-                            isRunning: student.isRunning || false,
-                            timerValue: student.timerValue || 0,
-                            status: student.status || 'absent',
-                            lastUpdated: student.lastUpdated || null,
-                            _id: student._id.toString() // Ensure ID is string for matching
+                            isRunning: live ? live.isRunning : (session.isRunning || false),
+                            timerValue: live ? live.attendedSeconds : (session.totalAttendedSeconds || 0),
+                            status: live ? live.status : (session.status || 'absent'),
+                            lastUpdated: live ? live.lastSyncTime : (session.lastSyncTime || null),
+                            totalAttendedSeconds: live ? live.attendedSeconds : (session.totalAttendedSeconds || 0),
+                            _id: student._id.toString()
                         };
                     } catch (error) {
                         console.error(`❌ Error getting data for student ${student.name}:`, error);
@@ -5279,6 +5324,7 @@ app.get('/api/view-records/students', async (req, res) => {
                             timerValue: 0,
                             status: 'absent',
                             lastUpdated: null,
+                            totalAttendedSeconds: 0,
                             _id: student._id.toString()
                         };
                     }

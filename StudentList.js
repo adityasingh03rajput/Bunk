@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Image } from 'react-native';
 import FilterButtons from './FilterButtons';
 
@@ -77,16 +77,34 @@ const StudentList = ({ theme, students = [], onStudentPress, activeRandomRing = 
   );
 };
 
-const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherAction, randomRingId }) => {
-  const [elapsedTime, setElapsedTime] = useState('00:00');
-  const [actionLoading, setActionLoading] = useState(false);
+const fmt = (secs) => {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
 
+const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherAction, randomRingId }) => {
+  const [displaySecs, setDisplaySecs] = useState(student.timerValue || 0);
+  const [actionLoading, setActionLoading] = useState(false);
+  const intervalRef = useRef(null);
+  const baseRef = useRef({ secs: student.timerValue || 0, ts: Date.now() });
+
+  // When a new broadcast arrives, reset the base and restart ticking
   useEffect(() => {
-    if (!student.timerValue) { setElapsedTime('00:00'); return; }
-    const m = Math.floor(student.timerValue / 60);
-    const s = student.timerValue % 60;
-    setElapsedTime(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-  }, [student.timerValue, student.status]);
+    baseRef.current = { secs: student.timerValue || 0, ts: Date.now() };
+    setDisplaySecs(student.timerValue || 0);
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (student.isRunning && student.status !== 'present') {
+      intervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - baseRef.current.ts) / 1000);
+        setDisplaySecs(baseRef.current.secs + elapsed);
+      }, 1000);
+    }
+
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [student.timerValue, student.isRunning, student.status]);
 
   const getStatusStyle = (status) => {
     switch (status) {
@@ -139,7 +157,7 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
           </View>
         </View>
         <View style={styles.timerContainer}>
-          <Text style={[styles.timerText, { color: theme.text }]}>{elapsedTime}</Text>
+          <Text style={[styles.timerText, { color: theme.text }]}>{fmt(displaySecs)}</Text>
         </View>
       </View>
 

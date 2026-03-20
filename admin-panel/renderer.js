@@ -18,6 +18,8 @@ console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 let students = [];
 let teachers = [];
 let classrooms = [];
+let subjects = [];
+let selectedSubjects = new Set();
 let currentTimetable = null;
 
 // Dynamic dropdown data (fetched from server)
@@ -7507,8 +7509,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Subject Management
 // ========================================
 
-let subjects = [];
-
 async function loadSubjects() {
     try {
         const semester = document.getElementById('subjectSemesterFilter').value;
@@ -7583,9 +7583,7 @@ function attachSubjectButtonListeners() {
     }
 }
 
-// Track selected subjects
-let selectedSubjects = new Set();
-
+// Track selected subjects — declared at top of file
 function renderSubjectsTable() {
     const tbody = document.getElementById('subjectsTableBody');
 
@@ -10664,3 +10662,137 @@ async function saveAttendanceThreshold() {
         showNotification('Server error: ' + e.message, 'error');
     }
 }
+
+// ── Theme System ──────────────────────────────────────────────────────────────
+
+var THEME_META = {
+    dark:     { icon: '🌙', label: 'Dark' },
+    light:    { icon: '☀️', label: 'Light' },
+    slate:    { icon: '🩶', label: 'Slate' },
+    blossom:  { icon: '🌸', label: 'Blossom' },
+    matcha:   { icon: '🍵', label: 'Matcha' },
+    peach:    { icon: '🍑', label: 'Peach' },
+    clay:     { icon: '🧸', label: 'Clay' },
+};
+
+function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('adminTheme', theme);
+
+    const meta = THEME_META[theme] || THEME_META.dark;
+    const iconEl = document.getElementById('themeIcon');
+    const labelEl = document.getElementById('themeLabel');
+    if (iconEl) iconEl.textContent = meta.icon;
+    if (labelEl) labelEl.textContent = meta.label;
+
+    // Mark active option
+    document.querySelectorAll('.theme-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+    });
+
+    closeThemePicker();
+}
+
+function toggleThemePicker() {
+    const dropdown = document.getElementById('themeDropdown');
+    if (!dropdown) return;
+    dropdown.classList.toggle('open');
+}
+
+function closeThemePicker() {
+    const dropdown = document.getElementById('themeDropdown');
+    if (dropdown) dropdown.classList.remove('open');
+}
+
+// Close picker when clicking outside
+document.addEventListener('click', (e) => {
+    const picker = document.getElementById('themePicker');
+    if (picker && !picker.contains(e.target)) {
+        closeThemePicker();
+    }
+});
+
+// Load saved theme on startup
+(function initTheme() {
+    const saved = localStorage.getItem('adminTheme') || 'dark';
+    // Fall back to dark if a removed theme was saved
+    const valid = Object.keys(THEME_META);
+    applyTheme(valid.includes(saved) ? saved : 'dark');
+})();
+
+// ── Layout System ─────────────────────────────────────────────────────────────
+// NOTE: No top-level const/var for meta — defined inline to avoid TDZ issues
+
+function getLayoutMeta(layout) {
+    var map = {
+        default: { icon: '⬜', label: 'Default' },
+        compact: { icon: '▪️',  label: 'Compact' },
+    };
+    return map[layout] || map['default'];
+}
+
+var VALID_LAYOUTS = ['default', 'compact'];
+
+function applyLayout(layout) {
+    // Wipe any previous layout attribute
+    document.documentElement.removeAttribute('data-layout');
+
+    if (layout && layout !== 'default') {
+        document.documentElement.setAttribute('data-layout', layout);
+    }
+
+    localStorage.setItem('adminLayout', layout || 'default');
+
+    var meta = getLayoutMeta(layout);
+    var iconEl = document.getElementById('layoutIcon');
+    var labelEl = document.getElementById('layoutLabel');
+    if (iconEl) iconEl.textContent = meta.icon;
+    if (labelEl) labelEl.textContent = meta.label;
+
+    document.querySelectorAll('#layoutDropdown .theme-option').forEach(function(btn) {
+        btn.classList.toggle('active', btn.dataset.layout === layout);
+    });
+
+    closeLayoutPicker();
+}
+
+function toggleLayoutPicker() {
+    var dropdown = document.getElementById('layoutDropdown');
+    if (!dropdown) return;
+    closeThemePicker();
+    dropdown.classList.toggle('open');
+}
+
+function closeLayoutPicker() {
+    var dropdown = document.getElementById('layoutDropdown');
+    if (dropdown) dropdown.classList.remove('open');
+}
+
+document.addEventListener('click', function(e) {
+    var picker = document.getElementById('layoutPicker');
+    if (picker && !picker.contains(e.target)) closeLayoutPicker();
+});
+
+// Update top-bar breadcrumb title on section switch
+var _origSwitchSection = switchSection;
+switchSection = function(sectionName) {
+    _origSwitchSection(sectionName);
+    var titleEl = document.getElementById('topBarTitle');
+    if (titleEl) {
+        var labels = {
+            dashboard: 'Dashboard', students: 'Students', teachers: 'Teachers',
+            timetable: 'Timetable', subjects: 'Subjects', classrooms: 'Classrooms',
+            calendar: 'Calendar', attendance: 'Attendance History',
+            'period-reports': 'Period Reports', 'manual-marking': 'Manual Marking',
+            'audit-trail': 'Audit Trail', periods: 'Period Settings',
+            settings: 'Settings', 'coming-soon': 'Coming Soon',
+        };
+        titleEl.textContent = labels[sectionName] || sectionName;
+    }
+};
+
+// Init layout after DOM is ready — safe, no TDZ risk
+document.addEventListener('DOMContentLoaded', function() {
+    var saved = localStorage.getItem('adminLayout') || 'default';
+    applyLayout(VALID_LAYOUTS.indexOf(saved) !== -1 ? saved : 'default');
+});

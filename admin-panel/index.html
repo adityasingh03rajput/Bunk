@@ -18,59 +18,59 @@
             </div>
 
             <nav class="nav-menu">
-                <button class="nav-item active" data-section="dashboard">
+                <button class="nav-item active" data-section="dashboard" data-tooltip="Dashboard">
                     <span class="icon">📊</span>
                     <span>Dashboard</span>
                 </button>
-                <button class="nav-item" data-section="students">
+                <button class="nav-item" data-section="students" data-tooltip="Students">
                     <span class="icon">👨‍🎓</span>
                     <span>Students</span>
                 </button>
-                <button class="nav-item" data-section="teachers">
+                <button class="nav-item" data-section="teachers" data-tooltip="Teachers">
                     <span class="icon">👨‍🏫</span>
                     <span>Teachers</span>
                 </button>
-                <button class="nav-item" data-section="timetable">
+                <button class="nav-item" data-section="timetable" data-tooltip="Timetable">
                     <span class="icon">📅</span>
                     <span>Timetable</span>
                 </button>
-                <button class="nav-item" data-section="subjects">
+                <button class="nav-item" data-section="subjects" data-tooltip="Subjects">
                     <span class="icon">📚</span>
                     <span>Subjects</span>
                 </button>
-                <button class="nav-item" data-section="classrooms">
+                <button class="nav-item" data-section="classrooms" data-tooltip="Classrooms">
                     <span class="icon">🏫</span>
                     <span>Classrooms</span>
                 </button>
-                <button class="nav-item" data-section="calendar">
+                <button class="nav-item" data-section="calendar" data-tooltip="Calendar">
                     <span class="icon">📆</span>
                     <span>Calendar</span>
                 </button>
-                <button class="nav-item" data-section="attendance">
+                <button class="nav-item" data-section="attendance" data-tooltip="Attendance History">
                     <span class="icon">📊</span>
                     <span>Attendance History</span>
                 </button>
-                <button class="nav-item" data-section="period-reports">
+                <button class="nav-item" data-section="period-reports" data-tooltip="Period Reports">
                     <span class="icon">📈</span>
                     <span>Period Reports</span>
                 </button>
-                <button class="nav-item" data-section="manual-marking">
+                <button class="nav-item" data-section="manual-marking" data-tooltip="Manual Marking">
                     <span class="icon">✏️</span>
                     <span>Manual Marking</span>
                 </button>
-                <button class="nav-item" data-section="audit-trail">
+                <button class="nav-item" data-section="audit-trail" data-tooltip="Audit Trail">
                     <span class="icon">📝</span>
                     <span>Audit Trail</span>
                 </button>
-                <button class="nav-item" data-section="periods">
+                <button class="nav-item" data-section="periods" data-tooltip="Period Settings">
                     <span class="icon">⏰</span>
                     <span>Period Settings</span>
                 </button>
-                <button class="nav-item" data-section="settings">
+                <button class="nav-item" data-section="settings" data-tooltip="Settings">
                     <span class="icon">⚙️</span>
                     <span>Settings</span>
                 </button>
-                <button class="nav-item" data-section="coming-soon"
+                <button class="nav-item" data-section="coming-soon" data-tooltip="Coming Soon"
                     style="border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px;">
                     <span class="icon">🚀</span>
                     <span>Coming Soon</span>
@@ -90,10 +90,67 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-bar">
-                <div class="search-bar">
-                    <input type="text" placeholder="Search..." id="globalSearch">
+                <div class="top-bar-left">
+                    <!-- Breadcrumb / section title -->
+                    <span class="top-bar-title" id="topBarTitle">Dashboard</span>
                 </div>
                 <div class="user-info">
+                    <!-- Layout Picker -->
+                    <div class="theme-picker" id="layoutPicker">
+                        <button class="theme-toggle-btn" id="layoutToggleBtn" onclick="toggleLayoutPicker()">
+                            <span id="layoutIcon">⬜</span>
+                            <span id="layoutLabel">Default</span>
+                        </button>
+                        <div class="theme-picker-dropdown" id="layoutDropdown">
+                            <div class="theme-group-label">— Layout —</div>
+                            <button class="theme-option" data-layout="default" onclick="applyLayout('default')">
+                                <span style="font-size:15px">⬜</span> Default
+                            </button>
+                            <button class="theme-option" data-layout="compact" onclick="applyLayout('compact')">
+                                <span style="font-size:15px">▪️</span> Compact
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Theme Picker -->
+                    <div class="theme-picker" id="themePicker">
+                        <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleThemePicker()">
+                            <span id="themeIcon">🌙</span>
+                            <span id="themeLabel">Dark</span>
+                        </button>
+                        <div class="theme-picker-dropdown" id="themeDropdown">
+                            <div class="theme-group-label">— Classic —</div>
+                            <button class="theme-option" data-theme="dark" onclick="applyTheme('dark')">
+                                <span class="theme-swatch" style="background:#0a0e27;border-color:#00d9ff"></span>
+                                🌙 Dark
+                            </button>
+                            <button class="theme-option" data-theme="light" onclick="applyTheme('light')">
+                                <span class="theme-swatch" style="background:#f3f4f6;border-color:#3b82f6"></span>
+                                ☀️ Light
+                            </button>
+                            <div class="theme-group-label">— Soft —</div>
+                            <button class="theme-option" data-theme="slate" onclick="applyTheme('slate')">
+                                <span class="theme-swatch" style="background:#f1f5f9;border-color:#64748b"></span>
+                                🩶 Slate
+                            </button>
+                            <button class="theme-option" data-theme="blossom" onclick="applyTheme('blossom')">
+                                <span class="theme-swatch" style="background:#fff0f5;border-color:#f9a8d4"></span>
+                                🌸 Blossom
+                            </button>
+                            <button class="theme-option" data-theme="matcha" onclick="applyTheme('matcha')">
+                                <span class="theme-swatch" style="background:#f0faf0;border-color:#86efac"></span>
+                                🍵 Matcha
+                            </button>
+                            <button class="theme-option" data-theme="peach" onclick="applyTheme('peach')">
+                                <span class="theme-swatch" style="background:#fff7ed;border-color:#fdba74"></span>
+                                🍑 Peach
+                            </button>
+                            <div class="theme-group-label">— Clay —</div>
+                            <button class="theme-option" data-theme="clay" onclick="applyTheme('clay')">
+                                <span class="theme-swatch" style="background:#fce4ec;border-color:#ff6b9d"></span>
+                                🧸 Claymorphism
+                            </button>
+                        </div>
+                    </div>
                     <span class="user-name">Admin User</span>
                     <div class="user-avatar">A</div>
                 </div>

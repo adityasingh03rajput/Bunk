@@ -82,6 +82,7 @@ const normalizeStudentUserData = (user) => {
 
 // Theme colors
 const THEMES = {
+  // ── Cyber Dark family ──────────────────────────────────────────
   dark: {
     background: '#0a1628',
     cardBackground: '#0d1f3c',
@@ -90,17 +91,180 @@ const THEMES = {
     primary: '#00f5ff',
     border: '#00d9ff',
     statusBar: 'light',
+    label: 'Cyber Dark',
+    emoji: '🌌',
   },
+  cyberGold: {
+    background: '#0d0e0a',
+    cardBackground: '#1a1c10',
+    text: '#fff8dc',
+    textSecondary: '#c9a84c',
+    primary: '#ffd700',
+    border: '#8b6914',
+    statusBar: 'light',
+    label: 'Cyber Gold',
+    emoji: '⚡',
+  },
+  cyberRed: {
+    background: '#0f0808',
+    cardBackground: '#1e0f0f',
+    text: '#ffe8e8',
+    textSecondary: '#ff6b6b',
+    primary: '#ff2d55',
+    border: '#7f1d1d',
+    statusBar: 'light',
+    label: 'Cyber Red',
+    emoji: '�',
+  },
+
+  // ── Warm Light family ──────────────────────────────────────────
   light: {
-    background: '#fef3e2',      // Warm cream background
-    cardBackground: '#ffffff',   // Pure white cards
-    text: '#2c1810',            // Rich brown text
-    textSecondary: '#8b6f47',   // Warm brown secondary
-    primary: '#d97706',         // Vibrant amber/orange
-    border: '#f3d5a0',          // Light golden border
+    background: '#fef3e2',
+    cardBackground: '#ffffff',
+    text: '#2c1810',
+    textSecondary: '#8b6f47',
+    primary: '#d97706',
+    border: '#f3d5a0',
     statusBar: 'dark',
-  }
+    label: 'Warm Light',
+    emoji: '☀️',
+  },
+  skyBlue: {
+    background: '#eef6ff',
+    cardBackground: '#ffffff',
+    text: '#0c2340',
+    textSecondary: '#4a7fa5',
+    primary: '#2563eb',
+    border: '#bfdbfe',
+    statusBar: 'dark',
+    label: 'Sky Blue',
+    emoji: '�️',
+  },
+  mintFresh: {
+    background: '#f0fdf4',
+    cardBackground: '#ffffff',
+    text: '#052e16',
+    textSecondary: '#4a7c59',
+    primary: '#16a34a',
+    border: '#bbf7d0',
+    statusBar: 'dark',
+    label: 'Mint Fresh',
+    emoji: '🍃',
+  },
+
+  // ── Midnight Purple family ─────────────────────────────────────
+  midnight: {
+    background: '#0d0d1a',
+    cardBackground: '#1a1a2e',
+    text: '#e0d7ff',
+    textSecondary: '#9b8ec4',
+    primary: '#a78bfa',
+    border: '#4c3d8f',
+    statusBar: 'light',
+    label: 'Midnight Purple',
+    emoji: '🔮',
+  },
+  deepOcean: {
+    background: '#020b18',
+    cardBackground: '#071a2e',
+    text: '#cce8ff',
+    textSecondary: '#5b9bd5',
+    primary: '#38bdf8',
+    border: '#1e4d7a',
+    statusBar: 'light',
+    label: 'Deep Ocean',
+    emoji: '🌊',
+  },
+  cosmicPink: {
+    background: '#120a1e',
+    cardBackground: '#1e1030',
+    text: '#f5d0fe',
+    textSecondary: '#c084fc',
+    primary: '#e879f9',
+    border: '#6b21a8',
+    statusBar: 'light',
+    label: 'Cosmic Pink',
+    emoji: '💜',
+  },
+
+  // ── Forest Green family ────────────────────────────────────────
+  forest: {
+    background: '#0a1a0f',
+    cardBackground: '#0f2318',
+    text: '#d4f5d4',
+    textSecondary: '#6abf7b',
+    primary: '#4ade80',
+    border: '#2d6a3f',
+    statusBar: 'light',
+    label: 'Forest Green',
+    emoji: '🌿',
+  },
+  earthTone: {
+    background: '#1a1208',
+    cardBackground: '#2a1e0e',
+    text: '#fde8c8',
+    textSecondary: '#c49a5a',
+    primary: '#f59e0b',
+    border: '#78450f',
+    statusBar: 'light',
+    label: 'Earth Tone',
+    emoji: '🍂',
+  },
+  arcticMoss: {
+    background: '#071a1a',
+    cardBackground: '#0d2b2b',
+    text: '#ccfbf1',
+    textSecondary: '#5eead4',
+    primary: '#2dd4bf',
+    border: '#0f766e',
+    statusBar: 'light',
+    label: 'Arctic Moss',
+    emoji: '🧊',
+  },
+
+  // ── Sunset Rose family ─────────────────────────────────────────
+  sunset: {
+    background: '#1a0a0f',
+    cardBackground: '#2d1020',
+    text: '#ffe4e6',
+    textSecondary: '#f9a8b8',
+    primary: '#fb7185',
+    border: '#9f1239',
+    statusBar: 'light',
+    label: 'Sunset Rose',
+    emoji: '🌸',
+  },
+  volcanicOrange: {
+    background: '#180a00',
+    cardBackground: '#2a1200',
+    text: '#fff0e0',
+    textSecondary: '#fb923c',
+    primary: '#f97316',
+    border: '#9a3412',
+    statusBar: 'light',
+    label: 'Volcanic',
+    emoji: '🌋',
+  },
+  cherryBlossom: {
+    background: '#1a0a14',
+    cardBackground: '#2e1022',
+    text: '#fce7f3',
+    textSecondary: '#f472b6',
+    primary: '#ec4899',
+    border: '#831843',
+    statusBar: 'light',
+    label: 'Cherry Blossom',
+    emoji: '🌺',
+  },
 };
+
+const THEME_GROUPS = [
+  { label: '🌌 Cyber Dark', keys: ['dark', 'cyberGold', 'cyberRed'] },
+  { label: '☀️ Warm Light', keys: ['light', 'skyBlue', 'mintFresh'] },
+  { label: '🔮 Midnight', keys: ['midnight', 'deepOcean', 'cosmicPink'] },
+  { label: '🌿 Forest', keys: ['forest', 'earthTone', 'arcticMoss'] },
+  { label: '🌸 Sunset', keys: ['sunset', 'volcanicOrange', 'cherryBlossom'] },
+];
 
 const getDefaultConfig = () => ({
   roleSelection: {
@@ -216,11 +380,12 @@ export default function App() {
     }
   }, [userData, selectedRole]);
 
-  // Theme state - sync with system theme
+  // Theme state
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('system'); // 'system', 'dark', 'light'
-  const isDarkTheme = themeMode === 'system' ? systemColorScheme === 'dark' : themeMode === 'dark';
-  const theme = isDarkTheme ? THEMES.dark : THEMES.light;
+  const [themeMode, setThemeMode] = useState('dark'); // 'dark' | 'light' | 'midnight' | 'forest' | 'sunset'
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const isDarkTheme = !['light', 'skyBlue', 'mintFresh'].includes(themeMode);
+  const theme = THEMES[themeMode] || THEMES.dark;
 
   // Loading state for better UX
   const [isInitializing, setIsInitializing] = useState(true);
@@ -246,21 +411,16 @@ export default function App() {
 
   // Auto-check WiFi status (background only - no debug display)
   useEffect(() => {
-    if (selectedRole === 'student' && !showLogin && currentClassInfo) {
-      // Initial check
-      const checkWiFi = async () => {
-        console.log('🔄 Auto-checking WiFi status...');
-        await isConnectedToClassroomWiFi();
-      };
-
-      checkWiFi();
-
-      // Check every 30 seconds for functionality (reduced frequency)
-      const wifiCheckInterval = setInterval(checkWiFi, 30000);
+    if (selectedRole === 'student' && !showLogin) {
+      const wifiCheckInterval = setInterval(async () => {
+        if (currentClassInfo) {
+          await isConnectedToClassroomWiFi();
+        }
+      }, 60000); // Check every 60s — background only, no display
 
       return () => clearInterval(wifiCheckInterval);
     }
-  }, [selectedRole, showLogin, currentClassInfo]);
+  }, [selectedRole, showLogin]); // removed currentClassInfo from deps — avoids re-registering interval on every class change
 
   // Lanyard state
   const [showLanyard, setShowLanyard] = useState(false);
@@ -310,14 +470,13 @@ export default function App() {
   const selectedRoleRef = useRef(null); // always current role for socket handlers
   const semesterRef = useRef(null);    // always current semester for socket handlers
   const branchRef = useRef(null);      // always current branch for socket handlers
+  const shownMissedRingIds = useRef(new Set()); // prevent duplicate "missed ring" alerts
 
   // Keep refs in sync with state so socket handlers always read current values
   useEffect(() => { studentIdRef.current = studentId; }, [studentId]);
   useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   useEffect(() => { semesterRef.current = semester; }, [semester]);
   useEffect(() => { branchRef.current = branch; }, [branch]);
-  const appState = useRef(AppState.currentState);
-  const backgroundTimeRef = useRef(null);
 
   // Animations
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -532,11 +691,10 @@ export default function App() {
       // Initial fetch
       fetchStudents();
 
-      // Refresh every 30 seconds as backup (socket provides real-time updates)
+      // Refresh every 60 seconds as backup (socket provides real-time updates)
       const refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing student list (backup)...');
         fetchStudents();
-      }, 30000); // 30 seconds - socket events provide instant updates
+      }, 60000); // 60 seconds — socket events provide instant updates
 
       return () => clearInterval(refreshInterval);
     }
@@ -634,12 +792,27 @@ export default function App() {
         }
       }
 
-      // Update class info (display only - server handles all timing)
-      setCurrentClassInfo(foundClass);
+      // Update class info only when it actually changes (avoid re-render every second)
+      setCurrentClassInfo(prev => {
+        if (!foundClass && !prev) return prev;
+        if (!foundClass) return null;
+        if (!prev) return foundClass;
+        // Only update if meaningful fields changed (not every second for elapsed/remaining)
+        if (
+          prev.subject !== foundClass.subject ||
+          prev.currentLecture !== foundClass.currentLecture ||
+          prev.startTime !== foundClass.startTime ||
+          prev.endTime !== foundClass.endTime ||
+          prev.elapsedMinutes !== foundClass.elapsedMinutes
+        ) {
+          return foundClass;
+        }
+        return prev;
+      });
     };
 
     updateClassProgress();
-    const progressInterval = setInterval(updateClassProgress, 1000); // Update every second for real-time display
+    const progressInterval = setInterval(updateClassProgress, 30000); // Check every 30s — period boxes removed, no per-second display needed
 
     return () => clearInterval(progressInterval);
   }, [timetable, currentDay, selectedRole]);
@@ -807,13 +980,18 @@ export default function App() {
                   );
                   break;
                   
-                case 'missed_random_ring':
-                  Alert.alert(
-                    '🔔 Random Ring Missed',
-                    'A random ring was triggered while you were offline. Please respond immediately.',
-                    [{ text: 'OK' }]
-                  );
+                case 'missed_random_ring': {
+                  const missedRingId = event.ringId || 'unknown';
+                  if (!shownMissedRingIds.current.has(missedRingId)) {
+                    shownMissedRingIds.current.add(missedRingId);
+                    Alert.alert(
+                      '🔔 Random Ring Missed',
+                      'A random ring was triggered while you were offline. Please respond immediately.',
+                      [{ text: 'OK' }]
+                    );
+                  }
                   break;
+                }
                   
                 case 'wifi_reconnected':
                   // WiFi reconnected - check if we need to handle reconnection
@@ -1170,8 +1348,12 @@ export default function App() {
 
           if (result.success) {
             if (result.missedRandomRing) {
-              // Random Ring was missed during offline
-              alert(`⚠️ Random Ring Missed\n\nA Random Ring was triggered while you were offline.\n\nYour attendance has been capped at ${result.cappedMinutes} minutes.`);
+              // Random Ring was missed during offline — show only once
+              const missedId = result.ringId || 'offline_sync';
+              if (!shownMissedRingIds.current.has(missedId)) {
+                shownMissedRingIds.current.add(missedId);
+                alert(`⚠️ Random Ring Missed\n\nA Random Ring was triggered while you were offline.\n\nYour attendance has been capped at ${result.cappedMinutes} minutes.`);
+              }
               // Timer removed - period-based attendance
             } else if (result.teacherAccepted) {
               // Teacher accepted during offline
@@ -1292,16 +1474,15 @@ export default function App() {
 
     // Test socket communication with ping/pong
     socketRef.current.on('pong', (latency) => {
-      console.log('🏓 Pong received - Latency:', latency, 'ms');
+      // pong received — latency tracked silently
     });
 
-    // Send a test ping every 10 seconds to verify connection
+    // Send a keep-alive ping every 60 seconds
     const pingInterval = setInterval(() => {
       if (socketRef.current && socketRef.current.connected) {
-        console.log('🏓 Sending ping to server...');
         socketRef.current.emit('ping');
       }
-    }, 10000);
+    }, 60000);
 
     // Store interval ref for cleanup
     socketRef.current.pingInterval = pingInterval;
@@ -1494,17 +1675,20 @@ export default function App() {
 
     // Listen for teacher action updates (for teacher dashboard)
     socketRef.current.on('random_ring_teacher_action_update', (data) => {
-      console.log('👨‍🏫 Teacher action update:', data);
       if (selectedRole === 'teacher') {
         setActiveRandomRing(prev => {
           if (!prev || prev._id !== data.randomRingId) return prev;
           return {
             ...prev,
-            selectedStudents: prev.selectedStudents.map(s =>
-              s.enrollmentNo === data.enrollmentNo
-                ? { ...s, teacherAction: data.action }
-                : s
-            )
+            selectedStudents: prev.selectedStudents.map(s => {
+              if (s.enrollmentNo !== data.enrollmentNo) return s;
+              // 'responded' means student tapped "I'm Here" — keep teacherAction as 'pending'
+              // so accept/reject buttons stay visible. Just mark responded flag.
+              if (data.action === 'responded') {
+                return { ...s, responded: true };
+              }
+              return { ...s, teacherAction: data.action };
+            })
           };
         });
       }
@@ -1779,7 +1963,7 @@ export default function App() {
 
       // Load theme preference
       if (savedTheme !== null) {
-        setThemeMode(savedTheme); // 'system', 'dark', or 'light'
+        setThemeMode(THEMES[savedTheme] ? savedTheme : 'dark');
       }
 
       // Check for saved login data
@@ -1893,24 +2077,12 @@ export default function App() {
     }
   };
 
-  const toggleTheme = async () => {
-    // Cycle through: system -> light -> dark -> system
-    let newMode = 'system';
-    if (themeMode === 'system') {
-      newMode = 'light';
-    } else if (themeMode === 'light') {
-      newMode = 'dark';
-    } else {
-      newMode = 'system';
-    }
+  const toggleTheme = () => setShowThemePicker(true);
 
-    // Update state immediately for instant UI feedback
-    setThemeMode(newMode);
-
-    // Save to storage in background
-    AsyncStorage.setItem(THEME_KEY, newMode).catch(error => {
-      console.log('Error saving theme:', error);
-    });
+  const selectTheme = async (mode) => {
+    setThemeMode(mode);
+    setShowThemePicker(false);
+    AsyncStorage.setItem(THEME_KEY, mode).catch(() => {});
   };
 
   const fetchConfig = async () => {
@@ -2226,9 +2398,8 @@ export default function App() {
   useEffect(() => {
     if (selectedRole === 'student' && semester && branch && !showLogin) {
       const refreshInterval = setInterval(() => {
-        console.log('Auto-refreshing timetable...');
         fetchTimetable(semester, branch);
-      }, 60000); // Refresh every 60 seconds
+      }, 5 * 60 * 1000); // Refresh every 5 minutes — timetable rarely changes
 
       return () => clearInterval(refreshInterval);
     }
@@ -3847,6 +4018,60 @@ export default function App() {
             onTeacherAction={handleTeacherAction}
           />
         </ScrollView>
+        {/* Theme Picker Modal */}
+        <Modal
+          visible={showThemePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowThemePicker(false)}
+        >
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setShowThemePicker(false)}
+          >
+            <View style={{ backgroundColor: theme.cardBackground, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 }}
+              onStartShouldSetResponder={() => true}
+            >
+              <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>🎨 Choose Theme</Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 16 }}>Pick a look that feels right</Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                {THEME_GROUPS.map((group) => (
+                  <View key={group.label} style={{ marginBottom: 16 }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+                      {group.label}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      {group.keys.map((key) => {
+                        const t = THEMES[key];
+                        const isActive = themeMode === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            onPress={() => selectTheme(key)}
+                            style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: isActive ? 2 : 1, borderColor: isActive ? t.primary : t.border }}
+                          >
+                            <View style={{ backgroundColor: t.background, padding: 8, alignItems: 'center' }}>
+                              <View style={{ width: '100%', backgroundColor: t.cardBackground, borderRadius: 6, padding: 5, marginBottom: 5, borderWidth: 1, borderColor: t.border }}>
+                                <View style={{ width: '65%', height: 5, backgroundColor: t.primary, borderRadius: 3, marginBottom: 3 }} />
+                                <View style={{ width: '45%', height: 3, backgroundColor: t.textSecondary, borderRadius: 2 }} />
+                              </View>
+                              <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
+                            </View>
+                            <View style={{ backgroundColor: t.cardBackground, paddingVertical: 6, paddingHorizontal: 4, alignItems: 'center' }}>
+                              <Text style={{ color: t.text, fontSize: 10, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{t.label}</Text>
+                              {isActive && <Text style={{ color: t.primary, fontSize: 9, marginTop: 1 }}>✓ Active</Text>}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
         <BottomNavigation
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -4126,7 +4351,7 @@ export default function App() {
               </View>
               <TouchableOpacity onPress={toggleTheme} style={{ padding: 8 }}>
                 <Text style={{ fontSize: 20 }}>
-                  {themeMode === 'system' ? '🔄' : isDarkTheme ? '☀️' : '🌙'}
+                  {THEMES[themeMode]?.emoji || '🎨'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -4832,13 +5057,7 @@ export default function App() {
                 borderColor: theme.border,
               }}
             >
-              {themeMode === 'system' ? (
-                <RefreshIcon size={20} color={theme.primary} />
-              ) : isDarkTheme ? (
-                <SunIcon size={20} color={theme.primary} />
-              ) : (
-                <MoonIcon size={20} color={theme.primary} />
-              )}
+              <Text style={{ fontSize: 20 }}>{THEMES[themeMode]?.emoji || '🎨'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -4897,56 +5116,6 @@ export default function App() {
           {/* Show current period information */}
           {currentClassInfo ? (
             <>
-              {/* Period Information Card */}
-              <View style={{
-                backgroundColor: theme.cardBackground,
-                borderRadius: 20,
-                padding: 20,
-                marginBottom: 20,
-                borderWidth: 2,
-                borderColor: theme.border,
-              }}>
-                <Text style={{
-                  fontSize: 24,
-                  fontWeight: 'bold',
-                  color: theme.primary,
-                  textAlign: 'center',
-                  marginBottom: 10
-                }}>
-                  Period {currentClassInfo.period}
-                </Text>
-                <Text style={{
-                  fontSize: 18,
-                  color: theme.text,
-                  textAlign: 'center',
-                  marginBottom: 5
-                }}>
-                  {currentClassInfo.subject}
-                </Text>
-                <Text style={{
-                  fontSize: 14,
-                  color: theme.textSecondary,
-                  textAlign: 'center',
-                  marginBottom: 5
-                }}>
-                  {currentClassInfo.teacher}
-                </Text>
-                <Text style={{
-                  fontSize: 14,
-                  color: theme.textSecondary,
-                  textAlign: 'center',
-                  marginBottom: 5
-                }}>
-                  Room: {currentClassInfo.room}
-                </Text>
-                <Text style={{
-                  fontSize: 12,
-                  color: theme.textSecondary,
-                  textAlign: 'center'
-                }}>
-                  {currentClassInfo.startTime} - {currentClassInfo.endTime}
-                </Text>
-              </View>
 
               {/* WiFi Bypass Button (Development/Testing) */}
               {(__DEV__ || selectedRole === 'teacher') && (
@@ -5077,100 +5246,7 @@ export default function App() {
             </View>
           )}
 
-          {/* Current Class Progress Card - Matches frontend_home.md */}
-          {currentClassInfo && (
-            <View style={{
-              width: '100%',
-              maxWidth: 400,
-              backgroundColor: theme.cardBackground,
-              borderRadius: 12,
-              padding: 14,
-              borderWidth: 2,
-              borderColor: theme.primary,
-              marginTop: 10,
-            }}>
-              {/* A. Class Header */}
-              <Text style={{
-                fontSize: 14,
-                fontWeight: 'bold',
-                color: theme.primary,
-                marginBottom: 8,
-              }}>
-                📚 Lecture Period: {currentClassInfo.startTime} - {currentClassInfo.endTime}
-              </Text>
 
-              {/* B. Current Lecture Details */}
-              <Text style={{
-                fontSize: 11,
-                color: theme.textSecondary,
-                marginBottom: 10,
-              }}>
-                {currentClassInfo.currentLecture}{currentClassInfo.room ? ` • ${currentClassInfo.room}` : ''}
-              </Text>
-
-              {/* C. Countdown Timer Display */}
-              <View style={{
-                backgroundColor: theme.background,
-                borderRadius: 12,
-                padding: 15,
-                borderWidth: 2,
-                borderColor: isRunning ? '#22c55e' : theme.border,
-                marginBottom: 10,
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 5 }}>
-                  Lecture Remaining
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 36,
-                    fontWeight: 'bold',
-                    fontFamily: 'monospace',
-                    color: isRunning ? '#22c55e' : theme.text,
-                  }}
-                >
-                  {Math.floor(currentClassInfo.remainingSeconds / 3600)}:{Math.floor((currentClassInfo.remainingSeconds % 3600) / 60).toString().padStart(2, '0')}
-                </Text>
-                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 5 }}>
-                  {Math.floor(currentClassInfo.elapsedMinutes / 60)}h {currentClassInfo.elapsedMinutes % 60}m elapsed • {Math.floor(currentClassInfo.totalMinutes / 60)}h {currentClassInfo.totalMinutes % 60}m total
-                </Text>
-              </View>
-
-              {/* D. Attendance Status */}
-              <View style={{
-                backgroundColor: theme.background,
-                borderRadius: 8,
-                padding: 10,
-                marginBottom: 8,
-              }}>
-                {isRunning ? (
-                  <Text
-                    style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'center', color: '#22c55e' }}
-                  >
-                    ✅ Period-based attendance active
-                  </Text>
-                ) : (
-                  <Text style={{ fontSize: 12, fontWeight: 'bold', textAlign: 'center', color: '#ef4444' }}>
-                    ⏸️ Attendance paused
-                  </Text>
-                )}
-              </View>
-
-              {/* E. Progress Bar */}
-              <View style={{
-                height: 6,
-                backgroundColor: theme.border,
-                borderRadius: 3,
-                overflow: 'hidden',
-              }}>
-                <View style={{
-                  height: '100%',
-                  width: `${(currentClassInfo.elapsedMinutes / currentClassInfo.totalMinutes) * 100}%`,
-                  backgroundColor: isRunning ? '#22c55e' : theme.primary,
-                }} />
-              </View>
-            </View>
-          )}
 
           {/* Random Ring Banner — student must respond */}
           {randomRingData && (
@@ -5773,6 +5849,61 @@ export default function App() {
             </View>
           </Animated.View>
         )}
+
+        {/* Theme Picker Modal */}
+        <Modal
+          visible={showThemePicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowThemePicker(false)}
+        >
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setShowThemePicker(false)}
+          >
+            <View style={{ backgroundColor: theme.cardBackground, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 }}
+              onStartShouldSetResponder={() => true}
+            >
+              <Text style={{ color: theme.text, fontSize: 18, fontWeight: 'bold', marginBottom: 4 }}>🎨 Choose Theme</Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 16 }}>Pick a look that feels right</Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+                {THEME_GROUPS.map((group) => (
+                  <View key={group.label} style={{ marginBottom: 16 }}>
+                    <Text style={{ color: theme.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+                      {group.label}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      {group.keys.map((key) => {
+                        const t = THEMES[key];
+                        const isActive = themeMode === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            onPress={() => selectTheme(key)}
+                            style={{ flex: 1, borderRadius: 14, overflow: 'hidden', borderWidth: isActive ? 2 : 1, borderColor: isActive ? t.primary : t.border }}
+                          >
+                            <View style={{ backgroundColor: t.background, padding: 8, alignItems: 'center' }}>
+                              <View style={{ width: '100%', backgroundColor: t.cardBackground, borderRadius: 6, padding: 5, marginBottom: 5, borderWidth: 1, borderColor: t.border }}>
+                                <View style={{ width: '65%', height: 5, backgroundColor: t.primary, borderRadius: 3, marginBottom: 3 }} />
+                                <View style={{ width: '45%', height: 3, backgroundColor: t.textSecondary, borderRadius: 2 }} />
+                              </View>
+                              <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
+                            </View>
+                            <View style={{ backgroundColor: t.cardBackground, paddingVertical: 6, paddingHorizontal: 4, alignItems: 'center' }}>
+                              <Text style={{ color: t.text, fontSize: 10, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{t.label}</Text>
+                              {isActive && <Text style={{ color: t.primary, fontSize: 9, marginTop: 1 }}>✓ Active</Text>}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Bottom Navigation */}
         <BottomNavigation

@@ -163,21 +163,28 @@ const StudentItem = ({ student, theme, onPress, randomRingStudent, onTeacherActi
       </View>
 
       {randomRingStudent && randomRingStudent.teacherAction === 'pending' && !randomRingStudent.verified && (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.acceptButton, { opacity: actionLoading ? 0.5 : 1 }]}
-            onPress={() => handleAction('accepted')}
-            disabled={actionLoading}
-          >
-            <Text style={styles.acceptButtonText}>✓ Accept</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.rejectButton, { opacity: actionLoading ? 0.5 : 1 }]}
-            onPress={() => handleAction('rejected')}
-            disabled={actionLoading}
-          >
-            <Text style={styles.rejectButtonText}>✕ Reject</Text>
-          </TouchableOpacity>
+        <View style={styles.actionSection}>
+          {randomRingStudent.responded && (
+            <Text style={styles.respondedHint}>
+              ✋ Student responded — Accept or Reject
+            </Text>
+          )}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.acceptButton, { opacity: actionLoading ? 0.5 : 1 }]}
+              onPress={() => handleAction('accepted')}
+              disabled={actionLoading}
+            >
+              <Text style={styles.acceptButtonText}>✓ Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.rejectButton, { opacity: actionLoading ? 0.5 : 1 }]}
+              onPress={() => handleAction('rejected')}
+              disabled={actionLoading}
+            >
+              <Text style={styles.rejectButtonText}>✕ Reject</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -215,7 +222,9 @@ const styles = StyleSheet.create({
   timerText: { fontSize: 16, fontWeight: '600', fontVariant: ['tabular-nums'] },
   emptyContainer: { borderRadius: 8, padding: 32, borderWidth: 1, alignItems: 'center', marginTop: 16 },
   emptyText: { fontSize: 14 },
-  actionButtons: { flexDirection: 'row', gap: 8, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+  actionButtons: { flexDirection: 'row', gap: 8 },
+  actionSection: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+  respondedHint: { color: '#22c55e', fontSize: 11, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
   acceptButton: { flex: 1, backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center' },
   acceptButtonText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
   rejectButton: { flex: 1, backgroundColor: '#dc2626', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, alignItems: 'center' },

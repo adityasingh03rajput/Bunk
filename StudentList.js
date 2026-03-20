@@ -39,7 +39,7 @@ const StudentList = ({ theme, students = [], onStudentPress, activeRandomRing = 
         onPress={() => onStudentPress && onStudentPress(student)}
         randomRingStudent={randomRingStudent}
         onTeacherAction={onTeacherAction || (() => {})}
-        randomRingId={activeRandomRing?._id}
+        randomRingId={activeRandomRing?.ringId || activeRandomRing?._id}
       />
     );
   };

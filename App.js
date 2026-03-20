@@ -306,6 +306,12 @@ export default function App() {
   const intervalRef = useRef(null);
   const socketRef = useRef(null);
   const currentClassRoomRef = useRef(null); // tracks the room teacher is currently in
+  const studentIdRef = useRef(null);   // always current studentId for socket handlers
+  const selectedRoleRef = useRef(null); // always current role for socket handlers
+
+  // Keep refs in sync with state so socket handlers always read current values
+  useEffect(() => { studentIdRef.current = studentId; }, [studentId]);
+  useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
   const appState = useRef(AppState.currentState);
   const backgroundTimeRef = useRef(null);
 
@@ -1203,6 +1209,10 @@ export default function App() {
       // Re-send current status if student is active (period-based attendance)
       if (selectedRole === 'student' && studentId) {
         console.log('📡 Re-sending student status after reconnect');
+        // Rejoin class room so student keeps receiving random ring notifications
+        if (semester && branch) {
+          joinClassRoom(semester?.toString(), branch);
+        }
       }
     });
 
@@ -1229,15 +1239,14 @@ export default function App() {
     socketRef.current.on('reconnect', async (attemptNumber) => {
       console.log(`✅ Socket reconnected after ${attemptNumber} attempts`);
       
-      // Refresh timetable and BSSID schedule on reconnection
-      // This ensures students get latest data if changes were made while they were offline
       if (selectedRole === 'student') {
         console.log('🔄 Refreshing data after reconnection...');
         
-        // Refresh timetable
         if (semester && branch) {
           console.log('📅 Fetching latest timetable...');
           await fetchTimetable(semester, branch);
+          // Rejoin class room on reconnect
+          joinClassRoom(semester?.toString(), branch);
         }
         
         // Refresh BSSID schedule - get enrollment number from storage
@@ -1353,29 +1362,27 @@ export default function App() {
     // Listen for Random Ring notifications (students only)
     socketRef.current.on('random_ring_notification', (data) => {
       console.log('🔔 Random ring received:', data);
-      console.log('   Current role:', selectedRole);
-      console.log('   Current studentId:', studentId);
+      console.log('   Current role:', selectedRoleRef.current);
+      console.log('   Current studentId:', studentIdRef.current);
       console.log('   Notification for:', data.enrollmentNo);
 
-      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+      if (selectedRoleRef.current === 'student' && studentIdRef.current === data.enrollmentNo) {
         console.log('✅ Random Ring is for this student!');
 
         const ringPauseTime = Date.now();
-
-        // Pause the offline timer immediately
         OfflineTimerService.pauseTimer('random_ring');
         console.log('⏸️ Timer paused for random ring at', ringPauseTime);
 
-        // Store random ring data for verification submission
-        setRandomRingData({
+        const ringInfo = {
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
           timestamp: data.timestamp,
           expiresAt: data.expiresAt,
           ringPauseTime,
-        });
+        };
 
-        // 240s timeout — matches server auto-absent window
+        setRandomRingData(ringInfo);
+
         setTimeout(() => {
           setRandomRingData(prev => {
             if (prev && prev.randomRingId === data.randomRingId) {
@@ -1386,6 +1393,54 @@ export default function App() {
             return prev;
           });
         }, 240000);
+
+        // Auto-open face verification camera immediately
+        console.log('📸 Auto-launching face verification for random ring...');
+        (async () => {
+          try {
+            const storedEmbedding = await SecureStorage.getFaceEmbedding();
+            if (!storedEmbedding || storedEmbedding.length !== 192) {
+              console.warn('❌ No face embedding — student must tap manually');
+              return;
+            }
+
+            const verificationResult = await FaceVerification.verifyFace(storedEmbedding);
+            console.log('🔍 Auto face verify result:', verificationResult);
+
+            if (!verificationResult.success || !verificationResult.isMatch) {
+              console.log('❌ Auto face verify failed — banner stays open for retry');
+              return;
+            }
+
+            let currentBSSID = null;
+            try {
+              const wifiResult = await NativeWiFiService.validateWiFiWithPermissions();
+              if (wifiResult && wifiResult.bssid) currentBSSID = wifiResult.bssid;
+            } catch (e) { console.warn('⚠️ WiFi check failed:', e.message); }
+
+            const res = await fetch(`${SOCKET_URL}/api/random-ring/verify-direct`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                randomRingId: ringInfo.randomRingId,
+                studentId: studentIdRef.current,
+                bssid: currentBSSID,
+              }),
+            });
+            const result = await res.json();
+            if (result.success) {
+              console.log('✅ Auto face verify accepted by server');
+            } else {
+              console.warn('❌ Auto face verify rejected:', result.error);
+            }
+          } catch (err) {
+            if (err.message === 'VERIFICATION_CANCELLED') {
+              console.log('📸 Auto face verify cancelled by student');
+            } else {
+              console.error('❌ Auto face verify error:', err.message);
+            }
+          }
+        })();
       } else {
         console.log('❌ Random Ring not for this student (role or ID mismatch)');
       }
@@ -1394,7 +1449,7 @@ export default function App() {
     // Listen for teacher accept action
     socketRef.current.on('random_ring_teacher_accepted', (data) => {
       console.log('✅ Teacher accepted your presence:', data);
-      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+      if (selectedRoleRef.current === 'student' && studentIdRef.current === data.enrollmentNo) {
         setRandomRingData(prev => {
           if (prev) {
             const pausedSeconds = prev.ringPauseTime ? (Date.now() - prev.ringPauseTime) / 1000 : 0;
@@ -1410,8 +1465,7 @@ export default function App() {
     // Listen for teacher reject action
     socketRef.current.on('random_ring_teacher_rejected', (data) => {
       console.log('❌ Teacher rejected your presence:', data);
-      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
-        // Keep ringPauseTime from original ring so we can compensate on face verify success
+      if (selectedRoleRef.current === 'student' && studentIdRef.current === data.enrollmentNo) {
         setRandomRingData(prev => ({
           randomRingId: data.randomRingId,
           teacherId: data.teacherId,
@@ -1444,7 +1498,7 @@ export default function App() {
     // Listen for face verification success (students)
     socketRef.current.on('random_ring_face_verification_success', (data) => {
       console.log('✅ Face verification successful:', data);
-      if (selectedRole === 'student' && studentId === data.enrollmentNo) {
+      if (selectedRoleRef.current === 'student' && studentIdRef.current === data.enrollmentNo) {
         setRandomRingData(prev => {
           if (prev) {
             const pausedSeconds = prev.ringPauseTime ? (Date.now() - prev.ringPauseTime) / 1000 : 0;
@@ -1728,6 +1782,8 @@ export default function App() {
             setStudentId(userData.enrollmentNo || userData._id);
             setSemester(userData.semester);
             setBranch(userData.branch);
+            // Join class socket room so student receives random ring notifications
+            joinClassRoom(userData.semester?.toString(), userData.branch);
 
             // Validate enrollment on every app start
             try {
@@ -2913,6 +2969,8 @@ export default function App() {
           setStudentId(studentIdValue);
           setSemester(normalizedUser.semester);
           setBranch(normalizedUser.branch);
+          // Join class socket room so student receives random ring notifications
+          joinClassRoom(normalizedUser.semester?.toString(), normalizedUser.branch);
 
           // Fetch timetable for student
           fetchTimetable(normalizedUser.semester, normalizedUser.branch);

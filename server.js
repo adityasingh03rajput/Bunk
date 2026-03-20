@@ -1,4 +1,4 @@
-// Azure deployment trigger - Updated December 14, 2024 - v2.9 - Fix rate limiting for concurrent student logins.
+// Deployment trigger - Updated March 20, 2026 - v2.10 - Fix student socket room rejoin after server restart.
 const path = require('path');
 const fs = require('fs');
 const os = require('os');

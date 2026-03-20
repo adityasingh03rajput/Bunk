@@ -308,10 +308,14 @@ export default function App() {
   const currentClassRoomRef = useRef(null); // tracks the room teacher is currently in
   const studentIdRef = useRef(null);   // always current studentId for socket handlers
   const selectedRoleRef = useRef(null); // always current role for socket handlers
+  const semesterRef = useRef(null);    // always current semester for socket handlers
+  const branchRef = useRef(null);      // always current branch for socket handlers
 
   // Keep refs in sync with state so socket handlers always read current values
   useEffect(() => { studentIdRef.current = studentId; }, [studentId]);
   useEffect(() => { selectedRoleRef.current = selectedRole; }, [selectedRole]);
+  useEffect(() => { semesterRef.current = semester; }, [semester]);
+  useEffect(() => { branchRef.current = branch; }, [branch]);
   const appState = useRef(AppState.currentState);
   const backgroundTimeRef = useRef(null);
 
@@ -678,13 +682,20 @@ export default function App() {
         backgroundTimeRef.current = null;
         
         // Refresh data for students when app comes to foreground
-        if (selectedRole === 'student') {
+        if (selectedRoleRef.current === 'student') {
           console.log('🔄 Refreshing data after app came to foreground...');
           
+          // Rejoin class room in case socket reconnected while in background
+          const currentSem = semesterRef.current;
+          const currentBranch = branchRef.current;
+          if (currentSem && currentBranch) {
+            joinClassRoom(currentSem?.toString(), currentBranch);
+          }
+
           // Refresh timetable
-          if (semester && branch) {
+          if (currentSem && currentBranch) {
             console.log('📅 Fetching latest timetable...');
-            await fetchTimetable(semester, branch);
+            await fetchTimetable(currentSem, currentBranch);
           }
           
           // Refresh BSSID schedule - get enrollment number from storage
@@ -1180,13 +1191,13 @@ export default function App() {
 
       // Refresh timetable and BSSID schedule on reconnection
       // This ensures students get latest data if changes were made while they were offline
-      if (selectedRole === 'student') {
+      if (selectedRoleRef.current === 'student') {
         console.log('🔄 Refreshing data after reconnection...');
         
         // Refresh timetable
-        if (semester && branch) {
+        if (semesterRef.current && branchRef.current) {
           console.log('📅 Fetching latest timetable...');
-          await fetchTimetable(semester, branch);
+          await fetchTimetable(semesterRef.current, branchRef.current);
         }
         
         // Refresh BSSID schedule - get enrollment number from storage
@@ -1207,11 +1218,13 @@ export default function App() {
       }
 
       // Re-send current status if student is active (period-based attendance)
-      if (selectedRole === 'student' && studentId) {
+      if (selectedRoleRef.current === 'student' && studentIdRef.current) {
         console.log('📡 Re-sending student status after reconnect');
         // Rejoin class room so student keeps receiving random ring notifications
-        if (semester && branch) {
-          joinClassRoom(semester?.toString(), branch);
+        const currentSem = semesterRef.current;
+        const currentBranch = branchRef.current;
+        if (currentSem && currentBranch) {
+          joinClassRoom(currentSem?.toString(), currentBranch);
         }
       }
     });
@@ -1239,14 +1252,16 @@ export default function App() {
     socketRef.current.on('reconnect', async (attemptNumber) => {
       console.log(`✅ Socket reconnected after ${attemptNumber} attempts`);
       
-      if (selectedRole === 'student') {
+      if (selectedRoleRef.current === 'student') {
         console.log('🔄 Refreshing data after reconnection...');
         
-        if (semester && branch) {
+        const currentSem = semesterRef.current;
+        const currentBranch = branchRef.current;
+        if (currentSem && currentBranch) {
           console.log('📅 Fetching latest timetable...');
-          await fetchTimetable(semester, branch);
+          await fetchTimetable(currentSem, currentBranch);
           // Rejoin class room on reconnect
-          joinClassRoom(semester?.toString(), branch);
+          joinClassRoom(currentSem?.toString(), currentBranch);
         }
         
         // Refresh BSSID schedule - get enrollment number from storage
@@ -2216,6 +2231,20 @@ export default function App() {
       }, 60000); // Refresh every 60 seconds
 
       return () => clearInterval(refreshInterval);
+    }
+  }, [selectedRole, semester, branch, showLogin]);
+
+  // Periodically rejoin class room to survive server restarts and silent socket drops
+  useEffect(() => {
+    if (selectedRole === 'student' && semester && branch && !showLogin) {
+      const rejoinInterval = setInterval(() => {
+        if (socketRef.current && socketRef.current.connected) {
+          console.log('🔄 Periodic class room rejoin (keep-alive)...');
+          joinClassRoom(semester?.toString(), branch);
+        }
+      }, 60000); // Every 60 seconds
+
+      return () => clearInterval(rejoinInterval);
     }
   }, [selectedRole, semester, branch, showLogin]);
 

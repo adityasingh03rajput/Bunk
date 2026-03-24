@@ -29,6 +29,8 @@ class MainApplication : Application(), ReactApplication {
             packages.add(WifiPackage())
             // Add face verification package
             packages.add(FaceVerificationPackage())
+            // Add native timer foreground service
+            packages.add(TimerPackage())
             return packages
           }
 

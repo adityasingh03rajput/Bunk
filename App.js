@@ -40,6 +40,7 @@ import BSSIDStorage from './BSSIDStorage';
 // Face Verification Module
 import FaceVerification from './FaceVerification';
 import CircularTimer from './CircularTimer';
+import { requestStartupPermissions } from './PermissionManager';
 
 // Configuration - Import from centralized config
 import { SERVER_BASE_URL, API_URL as CONFIG_API_URL, SOCKET_URL as CONFIG_SOCKET_URL } from './config';
@@ -818,6 +819,15 @@ export default function App() {
   }, [timetable, currentDay, selectedRole]);
 
   useEffect(() => {
+    // Request all required permissions on first launch
+    requestStartupPermissions().then(({ allGranted }) => {
+      if (!allGranted) {
+        console.warn('⚠️ Some permissions were not granted at startup');
+      } else {
+        console.log('✅ All startup permissions granted');
+      }
+    });
+
     // Initialize server time synchronization (CRITICAL for security)
     const serverTime = initializeServerTime(SOCKET_URL);
     serverTime.initialize().then(async (success) => {

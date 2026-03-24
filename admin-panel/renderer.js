@@ -21,6 +21,12 @@ let classrooms = [];
 let subjects = [];
 let selectedSubjects = new Set();
 let currentTimetable = null;
+let currentPeriods = [];
+
+// Timetable view toggles (must be top-level to avoid TDZ)
+let showTeachers = true;
+let showRooms = true;
+let compactView = false;
 
 // Dynamic dropdown data (fetched from server)
 let dynamicData = {
@@ -3698,7 +3704,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Global Search
-document.getElementById('globalSearch').addEventListener('input', (e) => {
+const _globalSearch = document.getElementById('globalSearch');
+if (_globalSearch) _globalSearch.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase();
     if (!query) return;
 
@@ -4371,9 +4378,6 @@ function applyColorToSelected(color) {
 }
 
 // View Toggles
-let showTeachers = true;
-let showRooms = true;
-let compactView = false;
 
 function toggleTeacherView() {
     showTeachers = !showTeachers;
@@ -5827,8 +5831,6 @@ function processHolidayCSV() {
 
 
 // ==================== PERIOD MANAGEMENT ====================
-
-let currentPeriods = [];
 
 // Initialize currentPeriods with defaults immediately
 function initializePeriods() {

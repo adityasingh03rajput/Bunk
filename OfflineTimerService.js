@@ -6,10 +6,13 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
+import { AppState, NativeModules } from 'react-native';
 import WiFiManager from './WiFiManager';
 import BSSIDStorage from './BSSIDStorage';
 import { getServerTime } from './ServerTime';
+
+const KEEP_AWAKE_TAG = 'offline-timer';
+const { TimerModule } = NativeModules;
 
 const OFFLINE_TIMER_KEY = '@offline_timer_state';
 const SYNC_QUEUE_KEY = '@sync_queue';
@@ -683,6 +686,9 @@ class OfflineTimerService {
     }
     
     this.isPaused = false;
+    // Re-anchor timestamp so elapsed calculation starts fresh from current value
+    this._countingStartedAt = Date.now();
+    this._countingBaseSeconds = this.timerSeconds;
     this.startCounting();
     
     await this.saveState();
@@ -695,39 +701,77 @@ class OfflineTimerService {
   }
 
   /**
-   * Start counting seconds
+   * Start counting via the native TimerService foreground service.
+   * The native service holds a WakeLock and counts with a Handler — it keeps
+   * running even when the screen is off or JS is throttled.
+   * JS polls every second only to update the UI.
    */
   startCounting() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
+      this.timerInterval = null;
     }
-    
-    this.timerInterval = setInterval(() => {
-      if (this.isRunning && !this.isPaused) {
-        this.timerSeconds++;
-        
-        // Save state every 10 seconds
-        if (this.timerSeconds % 10 === 0) {
-          this.saveState();
+
+    // Start the native foreground service (WakeLock + Handler timer)
+    if (TimerModule) {
+      const subject = this.currentLecture?.subject || '';
+      TimerModule.startTimer(subject, this.timerSeconds).catch((e) =>
+        console.warn('⚠️ Native timer start failed:', e)
+      );
+    } else {
+      console.warn('⚠️ TimerModule not available — falling back to JS timer');
+      this._countingStartedAt = Date.now();
+      this._countingBaseSeconds = this.timerSeconds;
+    }
+
+    // JS poll: sync timerSeconds from native every second (UI only)
+    this.timerInterval = setInterval(async () => {
+      if (!this.isRunning || this.isPaused) return;
+
+      if (TimerModule) {
+        try {
+          const { seconds } = await TimerModule.getElapsedSeconds();
+          this.timerSeconds = Math.floor(seconds);
+        } catch (_) {
+          // Native call failed — fall back to JS elapsed
+          if (this._countingStartedAt) {
+            this.timerSeconds = this._countingBaseSeconds +
+              Math.floor((Date.now() - this._countingStartedAt) / 1000);
+          }
         }
-        
-        // Notify listeners every second
-        this.notifyListeners({
-          type: 'timer_tick',
-          timerSeconds: this.timerSeconds
-        });
+      } else {
+        // Pure JS fallback
+        if (this._countingStartedAt) {
+          this.timerSeconds = this._countingBaseSeconds +
+            Math.floor((Date.now() - this._countingStartedAt) / 1000);
+        }
       }
+
+      // Save state every 10 seconds
+      if (this.timerSeconds % 10 === 0) {
+        this.saveState();
+      }
+
+      this.notifyListeners({
+        type: 'timer_tick',
+        timerSeconds: this.timerSeconds
+      });
     }, 1000);
   }
 
   /**
-   * Stop counting
+   * Stop counting — stops native service and JS poll.
    */
   stopCounting() {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
+    if (TimerModule) {
+      TimerModule.stopTimer().catch(() => {});
+    }
+    this._countingStartedAt = null;
+    this._countingBaseSeconds = null;
   }
 
   /**
@@ -1289,11 +1333,18 @@ class OfflineTimerService {
         // App came to foreground
         console.log('📱 App resumed from background');
         
-        if (this.backgroundStartTime && this.isRunning) {
-          // Calculate time spent in background
-          const backgroundDuration = Math.floor((Date.now() - this.backgroundStartTime) / 1000);
-          console.log(`⏱️ Background duration: ${backgroundDuration} seconds`);
-          
+        if (this.isRunning) {
+          // Sync elapsed seconds from native service immediately
+          if (TimerModule) {
+            try {
+              const { seconds } = await TimerModule.getElapsedSeconds();
+              this.timerSeconds = Math.floor(seconds);
+              console.log(`⏱️ Synced from native timer: ${this.timerSeconds}s`);
+            } catch (e) {
+              console.warn('⚠️ Could not sync from native timer:', e);
+            }
+          }
+
           // Check if still connected to authorized WiFi using BSSIDStorage
           const currentBSSID = await WiFiManager.getCurrentBSSID();
           
@@ -1301,18 +1352,13 @@ class OfflineTimerService {
             const validation = await BSSIDStorage.validateCurrentBSSID(currentBSSID);
             
             if (validation.valid) {
-              // Still authorized - timer was running in background
               console.log('✅ Still in authorized WiFi - timer continued in background');
-              
-              // Sync immediately
               await this.syncToServer();
             } else {
-              // Not authorized - stop timer
               console.warn('⚠️ No longer in authorized WiFi - stopping timer');
               await this.stopTimer('wifi_disconnected_background');
             }
           } else {
-            // No WiFi - stop timer
             console.warn('⚠️ No WiFi connection - stopping timer');
             await this.stopTimer('wifi_disconnected_background');
           }
@@ -1320,30 +1366,17 @@ class OfflineTimerService {
         
         this.backgroundStartTime = null;
       } else if (nextAppState.match(/inactive|background/)) {
-        // App went to background
-        console.log('📱 App going to background');
+        // App went to background / screen off
+        console.log('📱 App going to background — native foreground service keeps timer alive');
         
         if (this.isRunning) {
-          // Check if connected to authorized WiFi using BSSIDStorage
-          const currentBSSID = await WiFiManager.getCurrentBSSID();
-          
-          if (currentBSSID) {
-            const validation = await BSSIDStorage.validateCurrentBSSID(currentBSSID);
-            
-            if (validation.valid) {
-              // Authorized - timer will continue in background
-              console.log('✅ In authorized WiFi - timer will continue in background');
-              this.backgroundStartTime = Date.now();
-            } else {
-              // Not authorized - stop timer
-              console.warn('⚠️ Not in authorized WiFi - stopping timer');
-              await this.stopTimer('wifi_disconnected');
-            }
-          } else {
-            // No WiFi - stop timer
-            console.warn('⚠️ No WiFi connection - stopping timer');
-            await this.stopTimer('wifi_disconnected');
-          }
+          // DO NOT check WiFi or stop timer here.
+          // The native TimerService holds a PARTIAL_WAKE_LOCK and will keep counting
+          // even with the screen off. WiFi APIs are unreliable when screen is off on
+          // OEM devices (MIUI, OneUI, etc.) and will falsely return null BSSID.
+          // BSSID validation happens again when the user returns to foreground.
+          this.backgroundStartTime = Date.now();
+          console.log('✅ Timer running in native service — screen-off safe');
         }
       }
       

@@ -623,10 +623,12 @@ app.get('/api/timetable/:semester/:branch', async (req, res) => {
         const { semester, branch } = req.params;
 
         if (mongoose.connection.readyState === 1) {
-            let timetable = await Timetable.findOne({ semester, branch });
+            let timetable = await Timetable.findOne({ semester, branch }).lean();
             if (!timetable) {
                 timetable = createDefaultTimetable(semester, branch);
             }
+            // Cache for 5 minutes — timetable rarely changes
+            res.set('Cache-Control', 'public, max-age=300');
             res.json({ success: true, timetable });
         } else {
             const key = `${semester}_${branch}`;
@@ -4400,13 +4402,18 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         let userFound = false;
 
         if (mongoose.connection.readyState === 1) {
+            // Query student and teacher collections in parallel — cuts DB wait in half
+            const [studentUser, teacherUser] = await Promise.all([
+                StudentManagement.findOne({
+                    $or: [{ enrollmentNo: sanitizedId }, { email: sanitizedId }]
+                }).lean(),
+                Teacher.findOne({
+                    $or: [{ employeeId: sanitizedId }, { email: sanitizedId }]
+                }).lean()
+            ]);
+
             // Check in StudentManagement collection
-            user = await StudentManagement.findOne({
-                $or: [
-                    { enrollmentNo: sanitizedId },
-                    { email: sanitizedId }
-                ]
-            });
+            user = studentUser;
 
             if (user) {
                 userFound = true;
@@ -4450,12 +4457,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
             }
 
             // Check in Teacher collection
-            user = await Teacher.findOne({
-                $or: [
-                    { employeeId: sanitizedId },
-                    { email: sanitizedId }
-                ]
-            });
+            user = teacherUser;
 
             if (user) {
                 userFound = true;
@@ -4601,6 +4603,10 @@ const studentManagementSchema = new mongoose.Schema({
     }]
 });
 
+// Indexes for fast login lookups
+studentManagementSchema.index({ enrollmentNo: 1 });
+studentManagementSchema.index({ email: 1 });
+
 const StudentManagement = mongoose.model('StudentManagement', studentManagementSchema);
 
 app.get('/api/students', async (req, res) => {
@@ -4610,7 +4616,7 @@ app.get('/api/students', async (req, res) => {
         if (mongoose.connection.readyState === 1) {
             // If enrollmentNo is provided, filter by it
             const query = enrollmentNo ? { enrollmentNo } : {};
-            const students = await StudentManagement.find(query);
+            const students = await StudentManagement.find(query).lean();
             res.json({ success: true, students });
         } else {
             // Filter from memory if enrollmentNo is provided
@@ -5311,7 +5317,7 @@ app.get('/api/student/validate', async (req, res) => {
             return res.status(400).json({ success: false, message: 'enrollmentNo required' });
         }
 
-        const student = await StudentManagement.findOne({ enrollmentNo }).select('isActive name');
+        const student = await StudentManagement.findOne({ enrollmentNo }).select('isActive name').lean();
         if (!student) {
             return res.json({ success: false, valid: false, reason: 'not_found' });
         }

@@ -1829,56 +1829,9 @@ export default function App() {
   // Save lecture attendance when class ends
   // Load today's attendance from server (called on login)
   const loadTodayAttendance = async (studentIdValue) => {
-    try {
-      console.log('📥 Loading today\'s attendance for student:', studentIdValue);
-
-      // Load from StudentManagement (server-side timer system)
-      const response = await fetch(`${SOCKET_URL}/api/student/${studentIdValue}`);
-      const data = await response.json();
-
-      if (data.success && data.student) {
-        const student = data.student;
-        console.log('✅ Found student data:', {
-          name: student.name,
-          isRunning: student.isRunning,
-          attendedSeconds: student.attendanceSession?.totalAttendedSeconds || 0
-        });
-
-        // Restore timer data from server
-        const attendedSeconds = student.attendanceSession?.totalAttendedSeconds || 0;
-
-        if (attendedSeconds > 0) {
-          console.log(`✅ Restoring timer: ${attendedSeconds} seconds (${Math.floor(attendedSeconds / 60)} minutes)`);
-
-          // Period-based attendance - no timer data to restore
-
-          // If student was running timer, restore running status
-          if (student.isRunning) {
-            console.log('✅ Student timer was running, restoring running status');
-            // Face verification removed - no longer needed
-            // Timer removed - period-based attendance
-
-            // Save verification status
-            try {
-              const serverTime = getServerTime();
-              const todayDateStr = serverTime.nowDate().toDateString();
-              await AsyncStorage.setItem(DAILY_VERIFICATION_KEY, JSON.stringify({
-                date: todayDateStr,
-                verified: true
-              }));
-            } catch (err) {
-              console.log('Error saving verification status:', err);
-            }
-          }
-        } else {
-          console.log('ℹ️  No attended time recorded yet');
-        }
-      } else {
-        console.log('ℹ️  Student data not found');
-      }
-    } catch (error) {
-      console.error('❌ Error loading today\'s attendance:', error);
-    }
+    // Data is already available from login response via userData — no extra fetch needed.
+    // attendanceSession is restored by OfflineTimerService on initialization.
+    console.log('📥 Attendance session will be restored by OfflineTimerService');
   };
 
   // Removed saveLectureAttendance - server handles all attendance tracking
@@ -1994,30 +1947,23 @@ export default function App() {
             // Join class socket room so student receives random ring notifications
             joinClassRoom(userData.semester?.toString(), userData.branch);
 
-            // Validate enrollment on every app start
-            try {
-              const enrollmentNo = userData.enrollmentNo;
-              if (enrollmentNo) {
-                const validateRes = await fetch(`${SOCKET_URL}/api/student/validate?enrollmentNo=${enrollmentNo}`);
-                const validateData = await validateRes.json();
-                if (validateData.valid === false) {
-                  console.log('🚫 Enrollment invalid on app start — clearing session');
-                  await AsyncStorage.multiRemove([USER_DATA_KEY, LOGIN_ID_KEY, ROLE_KEY, STUDENT_NAME_KEY, STUDENT_ID_KEY, DAILY_VERIFICATION_KEY]);
-                  // Reset all state back to logged-out
-                  setUserData(null);
-                  setLoginId(null);
-                  setSelectedRole(null);
-                  setShowLogin(true);
-                  Alert.alert(
-                    'Enrollment Invalid',
-                    'Your enrollment is no longer valid. Please contact administration.',
-                    [{ text: 'OK' }]
-                  );
-                  return; // stop restoring session
-                }
-              }
-            } catch (e) {
-              console.log('⚠️ Enrollment validation skipped (network error)');
+            // Validate enrollment in background — don't block UI restore
+            const enrollmentNo = userData.enrollmentNo;
+            if (enrollmentNo) {
+              fetch(`${SOCKET_URL}/api/student/validate?enrollmentNo=${enrollmentNo}`)
+                .then(r => r.json())
+                .then(validateData => {
+                  if (validateData.valid === false) {
+                    console.log('🚫 Enrollment invalid — clearing session');
+                    AsyncStorage.multiRemove([USER_DATA_KEY, LOGIN_ID_KEY, ROLE_KEY, STUDENT_NAME_KEY, STUDENT_ID_KEY, DAILY_VERIFICATION_KEY]);
+                    setUserData(null);
+                    setLoginId(null);
+                    setSelectedRole(null);
+                    setShowLogin(true);
+                    Alert.alert('Enrollment Invalid', 'Your enrollment is no longer valid. Please contact administration.', [{ text: 'OK' }]);
+                  }
+                })
+                .catch(() => console.log('⚠️ Enrollment validation skipped (network error)'));
             }
 
             if (userData.semester) {
@@ -2342,7 +2288,7 @@ export default function App() {
     try {
       console.log('🔄 Fetching timetable for:', sem, br);
       const branchParam = encodeURIComponent(br);
-      const response = await fetch(`${SOCKET_URL}/api/timetable/${sem}/${branchParam}?cacheBust=${Date.now()}`);
+      const response = await fetch(`${SOCKET_URL}/api/timetable/${sem}/${branchParam}`);
       console.log('✅ Response status:', response.status);
       const data = await response.json();
 
@@ -3182,14 +3128,12 @@ export default function App() {
           // Join class socket room so student receives random ring notifications
           joinClassRoom(normalizedUser.semester?.toString(), normalizedUser.branch);
 
-          // Fetch timetable for student
-          fetchTimetable(normalizedUser.semester, normalizedUser.branch);
-
-          // Fetch and cache daily BSSID schedule
-          fetchDailyBSSIDSchedule(normalizedUser.enrollmentNo);
-
-          // Load today's attendance to restore attended minutes
-          loadTodayAttendance(studentIdValue);
+          // Fire all post-login fetches in parallel — no sequential waiting
+          Promise.all([
+            fetchTimetable(normalizedUser.semester, normalizedUser.branch),
+            fetchDailyBSSIDSchedule(normalizedUser.enrollmentNo),
+            loadTodayAttendance(studentIdValue),
+          ]).catch(() => {});
 
           storageData.push(
             [STUDENT_NAME_KEY, normalizedUser.name],
@@ -3199,43 +3143,24 @@ export default function App() {
           if (normalizedUser.semester) storageData.push([SEMESTER_KEY, normalizedUser.semester]);
           if (normalizedUser.branch) storageData.push([BRANCH_KEY, normalizedUser.branch]);
 
-          // Save face embedding securely (if available)
+          // Save face embedding + photo cache in parallel (non-blocking, after UI is shown)
           if (data.user.faceEmbedding && Array.isArray(data.user.faceEmbedding)) {
-            console.log('💾 Saving face embedding to secure storage...');
-            SecureStorage.saveFaceEmbedding(data.user.faceEmbedding).then((success) => {
-              if (success) {
-                console.log('✅ Face embedding saved successfully');
-                SecureStorage.saveEnrollmentNumber(normalizedUser.enrollmentNo);
-              } else {
-                console.log('⚠️ Failed to save face embedding');
-              }
-            });
-          } else {
-            console.log('ℹ️ No face embedding available for this student');
+            Promise.all([
+              SecureStorage.saveFaceEmbedding(data.user.faceEmbedding).then(success => {
+                if (success) SecureStorage.saveEnrollmentNumber(normalizedUser.enrollmentNo);
+              }),
+              normalizedUser.photoUrl
+                ? cacheProfilePhoto(normalizedUser.photoUrl, normalizedUser._id).then(p => { if (p) setPhotoCached(true); })
+                : Promise.resolve()
+            ]).catch(() => {});
+          } else if (normalizedUser.photoUrl) {
+            cacheProfilePhoto(normalizedUser.photoUrl, normalizedUser._id)
+              .then(p => { if (p) setPhotoCached(true); })
+              .catch(() => {});
           }
         } else if (data.user.role === 'teacher') {
           // Don't set default semester/branch for teachers - let current class detection handle it
-          // setSemester(data.user.semester || '1');
-          // setBranch(data.user.department);
           fetchStudents();
-        }
-
-        // Save all data in parallel (non-blocking)
-        AsyncStorage.multiSet(storageData).catch(error => {
-          console.log('Error saving login data:', error);
-        });
-
-        // Cache profile photo for face verification (students only)
-        if (normalizedUser.role === 'student' && normalizedUser.photoUrl) {
-          console.log('📥 Caching profile photo for face verification...');
-          cacheProfilePhoto(normalizedUser.photoUrl, normalizedUser._id).then(async (cachedPath) => {
-            if (cachedPath) {
-              console.log('✅ Photo cached successfully');
-              setPhotoCached(true);
-            } else {
-              console.log('⚠️ Failed to cache photo');
-            }
-          });
         }
       } else {
         // Server returned an error message

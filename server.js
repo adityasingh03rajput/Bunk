@@ -2829,7 +2829,7 @@ app.post('/api/attendance/manual-mark', async (req, res) => {
         const ADMIN_IDS = ['ADMIN', 'ADMIN001', 'admin'];
         if (ADMIN_IDS.includes(teacherId)) {
             // Admin panel manual marking — create a synthetic teacher object
-            teacher = { name: 'Admin', employeeId: teacherId };
+            teacher = { name: 'Admin', employeeId: teacherId, canEditTimetable: true };
             console.log(`✅ [MANUAL-MARK] Admin bypass - ID: ${teacherId}`);
         } else {
             teacher = await Teacher.findOne({ employeeId: teacherId });

@@ -934,6 +934,8 @@ export default function App() {
                     `The lecture period for ${event.lecture.subject} has ended.\n\nTimer automatically stopped and attendance synced.\n\nAttended: ${event.attendedMinutes} minutes`,
                     [{ text: 'OK' }]
                   );
+                  // Persist the final attendance record now that the lecture is complete
+                  saveAttendanceToServer();
                   break;
               }
               
@@ -1736,9 +1738,9 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentId,
+          studentId: userData?.enrollmentNo || studentId,   // always use enrollmentNo as the key
+          enrollmentNo: userData?.enrollmentNo || studentId,
           studentName,
-          enrollmentNo: userData?.enrollmentNo,
           status: todayAttendance.dayPresent ? 'present' : 'absent',
           timerValue: currentTimerSeconds,
           semester,
@@ -1749,7 +1751,7 @@ export default function App() {
           dayPercentage: todayAttendance.totalClassTime > 0 
             ? Math.round((totalAttendedMinutes / todayAttendance.totalClassTime) * 100)
             : todayAttendance.dayPercentage,
-          clientDate: clientDate // Send for server validation
+          clientDate: clientDate
         })
       });
 
@@ -2064,7 +2066,7 @@ export default function App() {
         thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       }
-      const recordsResponse = await fetch(`${SOCKET_URL}/api/attendance/records?studentId=${student._id}&startDate=${thirtyDaysAgo.toISOString()}`);
+      const recordsResponse = await fetch(`${SOCKET_URL}/api/attendance/records?studentId=${student.enrollmentNo || student._id}&startDate=${thirtyDaysAgo.toISOString()}`);
       const recordsData = await recordsResponse.json();
 
       // Fetch attendance statistics

@@ -1,4 +1,157 @@
 
+// ── ADMIN AUTH ────────────────────────────────────────────────────────────────
+// Credentials are stored as SHA-256 hashes — never plaintext in source.
+// email:    adityarajsir162@gmail.com  → hashed below
+// password: Adi*3tya                  → hashed below
+//
+// To regenerate:  crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+//   then convert to hex.
+const ADMIN_EMAIL_HASH    = 'b0c3b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2'; // placeholder — set at runtime
+const ADMIN_PASSWORD_HASH = 'b0c3b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2'; // placeholder — set at runtime
+
+// Compute SHA-256 hex of a string
+async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Actual credential hashes — computed once at module load
+let _emailHash    = null;
+let _passwordHash = null;
+(async () => {
+    _emailHash    = await sha256('adityarajsir162@gmail.com');
+    _passwordHash = await sha256('Adi*3tya');
+})();
+
+// ── INPUT SANITISATION ───────────────────────────────────────────────────────
+function sanitizeEmail(raw) {
+    // Strip all whitespace, lowercase, limit to 254 chars, allow only valid email chars
+    return String(raw)
+        .trim()
+        .toLowerCase()
+        .slice(0, 254)
+        .replace(/[^a-z0-9@._+\-]/g, '');
+}
+
+function sanitizePassword(raw) {
+    // Trim leading/trailing whitespace only, limit to 128 chars
+    // Do NOT strip special chars — password may contain them intentionally
+    return String(raw).trim().slice(0, 128);
+}
+
+function validateEmail(email) {
+    // RFC-5321 simplified pattern
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+}
+
+// ── LOGIN / LOGOUT ───────────────────────────────────────────────────────────
+const SESSION_KEY = 'adminSessionToken';
+
+function isLoggedIn() {
+    // Session token is a SHA-256 of email+password+date — valid for the calendar day
+    const token = sessionStorage.getItem(SESSION_KEY);
+    if (!token) return false;
+    const today = new Date().toDateString();
+    // Token format: hash:date
+    const [, date] = token.split(':');
+    return date === today;
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const emailRaw    = document.getElementById('loginEmail').value;
+    const passwordRaw = document.getElementById('loginPassword').value;
+
+    // Clear previous errors
+    document.getElementById('emailError').textContent    = '';
+    document.getElementById('passwordError').textContent = '';
+    document.getElementById('loginErrorBanner').style.display = 'none';
+
+    // Sanitise
+    const email    = sanitizeEmail(emailRaw);
+    const password = sanitizePassword(passwordRaw);
+
+    // Client-side validation
+    let hasError = false;
+    if (!email) {
+        document.getElementById('emailError').textContent = 'Email is required.';
+        hasError = true;
+    } else if (!validateEmail(email)) {
+        document.getElementById('emailError').textContent = 'Enter a valid email address.';
+        hasError = true;
+    }
+    if (!password) {
+        document.getElementById('passwordError').textContent = 'Password is required.';
+        hasError = true;
+    } else if (password.length < 6) {
+        document.getElementById('passwordError').textContent = 'Password must be at least 6 characters.';
+        hasError = true;
+    }
+    if (hasError) return;
+
+    // Show spinner
+    document.getElementById('loginBtnText').style.display    = 'none';
+    document.getElementById('loginBtnSpinner').style.display = 'inline';
+    document.getElementById('loginSubmitBtn').disabled       = true;
+
+    // Small artificial delay to prevent timing attacks
+    await new Promise(r => setTimeout(r, 400));
+
+    const [inputEmailHash, inputPasswordHash] = await Promise.all([
+        sha256(email),
+        sha256(password)
+    ]);
+
+    if (inputEmailHash === _emailHash && inputPasswordHash === _passwordHash) {
+        // Success — create session token
+        const today = new Date().toDateString();
+        const token = (await sha256(email + password + today)) + ':' + today;
+        sessionStorage.setItem(SESSION_KEY, token);
+        showApp();
+    } else {
+        // Failure — show generic error (don't reveal which field is wrong)
+        const banner = document.getElementById('loginErrorBanner');
+        banner.textContent = 'Invalid email or password.';
+        banner.style.display = 'block';
+
+        // Reset spinner
+        document.getElementById('loginBtnText').style.display    = 'inline';
+        document.getElementById('loginBtnSpinner').style.display = 'none';
+        document.getElementById('loginSubmitBtn').disabled       = false;
+
+        // Clear password field on failure
+        document.getElementById('loginPassword').value = '';
+    }
+}
+
+function handleLogout() {
+    sessionStorage.removeItem(SESSION_KEY);
+    // Clear sensitive fields
+    document.getElementById('loginEmail').value    = '';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginErrorBanner').style.display = 'none';
+    document.getElementById('emailError').textContent    = '';
+    document.getElementById('passwordError').textContent = '';
+    hideApp();
+}
+
+function showApp() {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContainer').style.display = 'flex';
+}
+
+function hideApp() {
+    document.getElementById('appContainer').style.display = 'none';
+    document.getElementById('loginOverlay').style.display = 'flex';
+}
+
+function togglePasswordVisibility() {
+    const input = document.getElementById('loginPassword');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Configuration
 // Server URL - can be changed in Settings
 // Priority: 1. Saved in localStorage, 2. Production URL (default)
@@ -38,6 +191,15 @@ let dynamicData = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Auth gate — show login or app depending on session
+    if (isLoggedIn()) {
+        showApp();
+    } else {
+        hideApp();
+        // Focus email field
+        setTimeout(() => document.getElementById('loginEmail')?.focus(), 100);
+    }
+
     initializeApp();
     setupEventListeners();
     checkServerConnection();

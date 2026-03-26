@@ -6,10 +6,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>College Admin Panel</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="login.css">
 </head>
 
 <body>
-    <div class="app-container">
+
+    <!-- ── LOGIN OVERLAY ─────────────────────────────────────────── -->
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="login-logo-icon">🎓</div>
+                <h1 class="login-title">LetsBunk Admin</h1>
+                <p class="login-subtitle">Sign in to continue</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" novalidate autocomplete="off">
+                <div class="login-field">
+                    <label for="loginEmail">Email</label>
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        class="login-input"
+                        placeholder="admin@example.com"
+                        maxlength="254"
+                        autocomplete="off"
+                        spellcheck="false"
+                        required
+                    />
+                    <span class="login-field-error" id="emailError"></span>
+                </div>
+
+                <div class="login-field">
+                    <label for="loginPassword">Password</label>
+                    <div class="login-password-wrap">
+                        <input
+                            type="password"
+                            id="loginPassword"
+                            class="login-input"
+                            placeholder="••••••••"
+                            maxlength="128"
+                            autocomplete="off"
+                            required
+                        />
+                        <button type="button" class="login-eye-btn" onclick="togglePasswordVisibility()" tabindex="-1" aria-label="Toggle password visibility">👁</button>
+                    </div>
+                    <span class="login-field-error" id="passwordError"></span>
+                </div>
+
+                <div class="login-error-banner" id="loginErrorBanner" style="display:none;"></div>
+
+                <button type="submit" class="login-btn" id="loginSubmitBtn">
+                    <span id="loginBtnText">Sign In</span>
+                    <span id="loginBtnSpinner" style="display:none;">⏳</span>
+                </button>
+            </form>
+
+            <p class="login-footer">LetsBunk Admin Panel &copy; 2025</p>
+        </div>
+    </div>
+    <!-- ─────────────────────────────────────────────────────────── -->
+
+    <div class="app-container" id="appContainer" style="display:none;">
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo">
@@ -128,8 +185,9 @@
                             </button>
                         </div>
                     </div>
-                    <span class="user-name">Admin User</span>
+                    <span class="user-name" id="adminUserName">Admin User</span>
                     <div class="user-avatar">A</div>
+                    <button class="logout-btn" onclick="handleLogout()" title="Sign out">⏻ Logout</button>
                 </div>
             </header>
 
@@ -1247,8 +1305,7 @@
             </div>
         </main>
     </div>
-
-    <!-- Modals -->
+    <!-- end #appContainer -->
     <div id="modal" class="modal">
         <div class="modal-content">
             <span class="modal-close">&times;</span>

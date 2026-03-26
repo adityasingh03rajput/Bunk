@@ -2212,10 +2212,10 @@ app.post('/api/attendance/record', async (req, res) => {
         console.log(`   Status: ${status}, Total Attended: ${totalAttended}min, Total Class Time: ${totalClassTime}min, Percentage: ${dayPercentage}%`);
 
         // Validate required fields
-        if (!studentId || !enrollmentNo || !studentName) {
+        if (!enrollmentNo || !studentName) {
             return res.status(400).json({
                 success: false,
-                error: 'Missing required fields: studentId, enrollmentNo, studentName'
+                error: 'Missing required fields: enrollmentNo, studentName'
             });
         }
 
@@ -2223,16 +2223,16 @@ app.post('/api/attendance/record', async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Find or create attendance record
+        // Find or create attendance record — always key on enrollmentNo
         let record = await AttendanceRecord.findOne({
-            studentId,
+            $or: [{ enrollmentNo }, { studentId: enrollmentNo }],
             date: today
         });
 
         if (!record) {
             // Create new record
             record = new AttendanceRecord({
-                studentId,
+                studentId: enrollmentNo,   // store enrollmentNo in both fields for consistent querying
                 studentName,
                 enrollmentNo,
                 semester: semester || 'Unknown',
@@ -2243,7 +2243,7 @@ app.post('/api/attendance/record', async (req, res) => {
                 totalAttended: totalAttended || 0,
                 totalClassTime: totalClassTime || 0,
                 dayPercentage: dayPercentage || 0,
-                timerValue: 0, // Legacy field
+                timerValue: 0,
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
@@ -2474,6 +2474,28 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
             });
         }
 
+        // 2b. Guard: reject sync if student has no verified check-in for today
+        const syncDate = new Date(timestamp);
+        const todayStart = new Date(syncDate);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+
+        const hasCheckedIn = await PeriodAttendance.exists({
+            enrollmentNo: studentId,
+            date: { $gte: todayStart, $lt: todayEnd },
+            verificationType: 'initial'
+        });
+
+        if (!hasCheckedIn) {
+            console.log(`❌ [OFFLINE-SYNC] No verified check-in for today - Student: ${studentId}`);
+            return res.status(403).json({
+                success: false,
+                error: 'No verified check-in found for today. Please check in first.',
+                requiresCheckIn: true
+            });
+        }
+
         // 3. Update student's timer data
         const updateData = {
             'attendanceSession.totalAttendedSeconds': Math.max(0, Math.floor(timerSeconds)),
@@ -2501,27 +2523,28 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
         // 4. Check for missed random rings
         let missedRandomRing = null;
         try {
-            // Check if there are any active random rings for this student
+            const now = new Date();
             const activeRings = await RandomRing.find({
                 'selectedStudents.enrollmentNo': studentId,
                 status: 'active',
-                expiresAt: { $gt: new Date() }
+                expiresAt: { $gt: now }
             }).sort({ createdAt: -1 }).limit(1);
 
             if (activeRings.length > 0) {
                 const ring = activeRings[0];
                 const studentRing = ring.selectedStudents.find(s => s.enrollmentNo === studentId);
-                
-                // If student hasn't responded and ring is still active
-                if (studentRing && !studentRing.responded && studentRing.teacherAction === 'pending') {
+                const timeRemaining = Math.floor((new Date(ring.expiresAt).getTime() - now.getTime()) / 1000);
+
+                // Only surface the ring if it's genuinely still active (positive time remaining)
+                if (studentRing && !studentRing.responded && studentRing.teacherAction === 'pending' && timeRemaining > 0) {
                     missedRandomRing = {
                         ringId: ring.ringId,
                         teacherId: ring.teacherId,
                         createdAt: ring.createdAt,
                         expiresAt: ring.expiresAt,
-                        timeRemaining: Math.max(0, Math.floor((ring.expiresAt - new Date()) / 1000))
+                        timeRemaining
                     };
-                    console.log(`🔔 [OFFLINE-SYNC] Active random ring found for student: ${studentId}`);
+                    console.log(`🔔 [OFFLINE-SYNC] Active random ring found for student: ${studentId}, timeRemaining: ${timeRemaining}s`);
                 }
             }
         } catch (ringError) {
@@ -2601,12 +2624,11 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
             
             // Find or create attendance record
             let attendanceRecord = await AttendanceRecord.findOne({
-                studentId: student._id,
+                $or: [{ studentId: student._id }, { enrollmentNo: student.enrollmentNo }],
                 date: today
             });
 
             if (!attendanceRecord) {
-                // Create new attendance record
                 attendanceRecord = new AttendanceRecord({
                     studentId: student._id,
                     studentName: student.name,
@@ -2629,7 +2651,6 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                 attendanceRecord.status = computedStatus;
                 attendanceRecord.updatedAt = new Date();
                 
-                // Update percentage if total class time is available
                 if (attendanceRecord.totalClassTime > 0) {
                     attendanceRecord.dayPercentage = Math.round((attendedMinutes / attendanceRecord.totalClassTime) * 100);
                 }
@@ -2640,7 +2661,37 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
 
         } catch (recordError) {
             console.error(`❌ [OFFLINE-SYNC] Error updating AttendanceRecord:`, recordError);
-            // Don't fail the sync if attendance record update fails
+        }
+
+        // 7b. Sync timer progress back into the current period's PeriodAttendance record
+        // so the daily cron sees up-to-date data even before lecture ends
+        try {
+            if (lecture && lecture.startTime && lecture.endTime) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Identify which period this lecture maps to
+                const currentLectureInfo = await getCurrentLectureInfo(student.semester, student.branch);
+                if (currentLectureInfo) {
+                    const periodId = `P${currentLectureInfo.period}`;
+                    await PeriodAttendance.updateOne(
+                        {
+                            enrollmentNo: student.enrollmentNo,
+                            date: today,
+                            period: periodId
+                        },
+                        {
+                            $set: {
+                                timerSeconds: Math.floor(timerSeconds),
+                                updatedAt: new Date()
+                            }
+                        }
+                    );
+                    console.log(`📊 [OFFLINE-SYNC] Updated PeriodAttendance timer - Student: ${studentId}, Period: ${periodId}`);
+                }
+            }
+        } catch (periodError) {
+            console.error(`❌ [OFFLINE-SYNC] Error updating PeriodAttendance:`, periodError);
         }
 
         const duration = Date.now() - startTime;
@@ -2773,17 +2824,25 @@ app.post('/api/attendance/manual-mark', async (req, res) => {
             });
         }
 
-        // 2. Get teacher information
-        const teacher = await Teacher.findOne({ employeeId: teacherId });
-        if (!teacher) {
-            console.log(`? [MANUAL-MARK] Teacher not found - ID: ${teacherId}`);
-            return res.status(404).json({
-                success: false,
-                message: 'Teacher not found',
-                teacherId
-            });
+        // 2. Get teacher information — allow ADMIN bypass
+        let teacher;
+        const ADMIN_IDS = ['ADMIN', 'ADMIN001', 'admin'];
+        if (ADMIN_IDS.includes(teacherId)) {
+            // Admin panel manual marking — create a synthetic teacher object
+            teacher = { name: 'Admin', employeeId: teacherId };
+            console.log(`✅ [MANUAL-MARK] Admin bypass - ID: ${teacherId}`);
+        } else {
+            teacher = await Teacher.findOne({ employeeId: teacherId });
+            if (!teacher) {
+                console.log(`❌ [MANUAL-MARK] Teacher not found - ID: ${teacherId}`);
+                return res.status(404).json({
+                    success: false,
+                    message: 'Teacher not found',
+                    teacherId
+                });
+            }
+            console.log(`✅ [MANUAL-MARK] Teacher found - Name: ${teacher.name}`);
         }
-        console.log(`? [MANUAL-MARK] Teacher found - Name: ${teacher.name}`);
 
         // 3. Get student information
         const student = await StudentManagement.findOne({ enrollmentNo });
@@ -5651,7 +5710,10 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
         }
 
         const records = await AttendanceRecord.find({
-            enrollmentNo: enrollmentNo,  // Changed from enrollmentNumber
+            $or: [
+                { enrollmentNo },
+                { studentId: enrollmentNo }
+            ],
             ...dateFilter
         })
             .select('date status dayPercentage totalAttended totalClassTime lectures')
@@ -5660,24 +5722,39 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
         // Calculate summary
         const totalDays = records.length;
         const presentDays = records.filter(r => r.status === 'present').length;
-        // Timer-based calculations removed - period-based system uses discrete present/absent counts
         const overallPercentage = totalDays > 0
             ? Math.round((presentDays / totalDays) * 100)
             : 0;
 
+        // Aggregate total time across all records
+        const totalAttendedMinutes = records.reduce((sum, r) => sum + (r.totalAttended || 0), 0);
+        const totalClassMinutes   = records.reduce((sum, r) => sum + (r.totalClassTime || 0), 0);
+
         res.json({
             success: true,
             student: {
-                enrollmentNo: enrollmentNo,
+                enrollmentNo,
                 totalDays,
                 presentDays,
-                overallPercentage
+                overallPercentage,
+                totalHours: Math.floor(totalAttendedMinutes / 60),
+                totalMinutes: totalAttendedMinutes % 60
             },
-            dates: records.map(r => ({
-                date: r.date,
-                status: r.status,
-                lectureCount: r.lectures.length
-            }))
+            dates: records.map(r => {
+                const attended   = r.totalAttended   || 0; // minutes
+                const total      = r.totalClassTime  || 0; // minutes
+                const percentage = total > 0
+                    ? Math.round((attended / total) * 100)
+                    : (r.dayPercentage || 0);
+                return {
+                    date:         r.date,
+                    status:       r.status,
+                    lectureCount: r.lectures ? r.lectures.length : 0,
+                    attended:     attended * 60,  // admin panel expects seconds
+                    total:        total * 60,
+                    percentage
+                };
+            })
         });
 
     } catch (error) {
@@ -6610,6 +6687,53 @@ app.get('/api/attendance/history/:enrollmentNo', async (req, res) => {
         }
     } catch (error) {
         console.error('❌ Error fetching attendance history:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// GET /api/attendance/records - Query attendance records by studentId or semester/branch
+// Used by: admin-panel showStudentAttendance(), App.js fetchStudentDetails()
+app.get('/api/attendance/records', async (req, res) => {
+    try {
+        const { studentId, semester, branch, startDate, endDate } = req.query;
+
+        if (!studentId && (!semester || !branch)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Provide studentId OR both semester and branch'
+            });
+        }
+
+        // Build query — studentId may be enrollmentNo or _id
+        let query = {};
+        if (studentId) {
+            query = { $or: [{ studentId }, { enrollmentNo: studentId }] };
+        } else {
+            query = { semester, branch };
+        }
+
+        if (startDate || endDate) {
+            query.date = {};
+            if (startDate) query.date.$gte = new Date(startDate);
+            if (endDate)   query.date.$lte = new Date(endDate);
+        }
+
+        if (mongoose.connection.readyState === 1) {
+            const records = await AttendanceRecord.find(query)
+                .sort({ date: -1 })
+                .lean();
+
+            res.json({ success: true, records });
+        } else {
+            const records = attendanceRecordsMemory.filter(r => {
+                if (studentId) return r.studentId === studentId || r.enrollmentNo === studentId;
+                return r.semester === semester && r.branch === branch;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            res.json({ success: true, records });
+        }
+    } catch (error) {
+        console.error('❌ Error fetching attendance records:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

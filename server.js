@@ -3026,7 +3026,40 @@ app.post('/api/attendance/manual-mark', async (req, res) => {
             console.log(`?? [MANUAL-MARK] Audit record created - AuditId: ${auditRecord.auditId}`);
         }
 
-        // 9. Send response
+        // 9. Update AttendanceRecord (daily summary) so history page reflects manual marks
+        try {
+            const allPeriodRecords = await PeriodAttendance.find({
+                enrollmentNo,
+                date: markingDate
+            }).lean();
+
+            const presentCount = allPeriodRecords.filter(r => r.status === 'present').length;
+            const totalCount = allPeriodRecords.length;
+            const dayPercentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+            const dayStatus = dayPercentage >= 75 ? 'present' : 'absent';
+
+            await AttendanceRecord.findOneAndUpdate(
+                { $or: [{ enrollmentNo }, { studentId: enrollmentNo }], date: markingDate },
+                {
+                    $set: {
+                        studentId: enrollmentNo,
+                        enrollmentNo,
+                        studentName: student.name,
+                        semester: student.semester,
+                        branch: student.branch,
+                        status: dayStatus,
+                        dayPercentage,
+                        updatedAt: new Date()
+                    }
+                },
+                { upsert: true }
+            );
+            console.log(`✅ [MANUAL-MARK] AttendanceRecord updated - Status: ${dayStatus}, ${presentCount}/${totalCount} periods`);
+        } catch (syncErr) {
+            console.error('⚠️ [MANUAL-MARK] Failed to sync AttendanceRecord:', syncErr.message);
+        }
+
+        // 10. Send response
         const duration = Date.now() - startTime;
         console.log(`? [MANUAL-MARK] Completed in ${duration}ms - Marked ${markedRecords.length} period(s)`);
 
@@ -3084,9 +3117,16 @@ app.get('/api/attendance/period-report', async (req, res) => {
             queryDate.setHours(0, 0, 0, 0);
             query.date = queryDate;
         }
-        if (semester) query.semester = semester;
-        if (branch) query.branch = branch;
         if (period) query.period = period;
+
+        // semester/branch not stored on PeriodAttendance — filter by enrollmentNo list instead
+        if ((semester || branch) && !enrollmentNo) {
+            const studentFilter = {};
+            if (semester) studentFilter.semester = semester;
+            if (branch) studentFilter.branch = branch;
+            const matchingStudents = await StudentManagement.find(studentFilter).select('enrollmentNo').lean();
+            query.enrollmentNo = { $in: matchingStudents.map(s => s.enrollmentNo) };
+        }
 
         // Calculate pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);

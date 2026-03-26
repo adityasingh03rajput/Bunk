@@ -156,14 +156,15 @@ function togglePasswordVisibility() {
 // Server URL - can be changed in Settings
 // Priority: 1. Saved in localStorage, 2. Production URL (default)
 
-// FORCE RENDER URL: Clear any existing localhost URLs
+// Clear any stale URLs that are no longer valid
 const savedUrl = localStorage.getItem('serverUrl');
-if (savedUrl && (savedUrl.includes('localhost') || savedUrl.includes('192.168'))) {
-    console.log('🔄 Clearing old localhost URL, switching to Render server');
+if (savedUrl && (savedUrl.includes('localhost') || savedUrl.includes('192.168') || savedUrl.includes('onrender.com'))) {
+    console.log('🔄 Clearing old server URL, switching to current server');
     localStorage.removeItem('serverUrl');
 }
 
-let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-server.azurewebsites.net';
+const DEFAULT_SERVER_URL = 'https://letsbunk-server.azurewebsites.net';
+let SERVER_URL = localStorage.getItem('serverUrl') || DEFAULT_SERVER_URL;
 
 console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 
@@ -6574,7 +6575,8 @@ async function loadAttendanceHistory() {
         document.getElementById('totalStudentsAttendance').textContent = totalStudents;
         document.getElementById('avgAttendanceRate').textContent = `${avgAttendance}%`;
         document.getElementById('totalDaysTracked').textContent = totalDays;
-        document.getElementById('totalHoursAttended').textContent = `${totalHours}h`;
+        const hoursEl = document.getElementById('totalHoursAttended') || document.getElementById('avgPeriodsPerDay');
+        if (hoursEl) hoursEl.textContent = `${totalHours}h`;
 
         // Render table
         console.log('📋 Calling renderAttendanceHistoryTable...');
@@ -6613,8 +6615,9 @@ function renderAttendanceHistoryTable(students) {
             overallPercentage: 0
         };
 
-        const totalHours = Math.floor(summary.totalAttendedMinutes / 60);
-        const totalMinutes = summary.totalAttendedMinutes % 60;
+        const totalAttendedMinutes = Number(summary.totalAttendedMinutes) || 0;
+        const totalHours = Math.floor(totalAttendedMinutes / 60);
+        const totalMinutes = totalAttendedMinutes % 60;
 
         console.log(`  ${index + 1}. ${student.name} - ${summary.overallPercentage}%`);
 
@@ -6810,7 +6813,7 @@ function renderStudentOverviewModal(student, summary, dates) {
                 </div>
                 <div class="summary-item">
                     <span class="summary-label">Total Time:</span>
-                    <span class="summary-value">${summary.totalHours}h ${summary.totalMinutes}m</span>
+                    <span class="summary-value">${(summary.totalHours || 0)}h ${(summary.totalMinutes || 0)}m</span>
                 </div>
             </div>
         </div>
@@ -6820,23 +6823,27 @@ function renderStudentOverviewModal(student, summary, dates) {
             ${dates.map(d => {
         const date = new Date(d.date);
         const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-        const attendedMin = Math.floor(d.attended / 60);
-        const totalMin = Math.floor(d.total / 60);
+        const attendedSec = Number(d.attended) || 0;
+        const totalSec    = Number(d.total)    || 0;
+        const attendedMin = Math.floor(attendedSec / 60);
+        const totalMin    = Math.floor(totalSec / 60);
+        const pct         = Number(d.percentage) || (d.status === 'present' ? 100 : 0);
+        const timeStr     = totalMin > 0 ? `${attendedMin}/${totalMin} min` : (d.status === 'present' ? 'Present' : '—');
 
         return `
                     <div class="date-card" onclick="viewDateDetails('${student.enrollmentNo}', '${d.date}', '${student.name}')">
                         <div class="date-card-header">
                             <span class="date-text">${dateStr}</span>
-                            <span class="attendance-badge ${getAttendanceBadgeClass(d.percentage)}">${d.percentage}%</span>
+                            <span class="attendance-badge ${getAttendanceBadgeClass(pct)}">${pct}%</span>
                         </div>
                         <div class="date-card-body">
                             <div class="date-stat">
                                 <span class="stat-icon">📚</span>
-                                <span>${d.lectureCount} lectures</span>
+                                <span>${d.lectureCount || 0} lectures</span>
                             </div>
                             <div class="date-stat">
                                 <span class="stat-icon">⏱️</span>
-                                <span>${attendedMin}/${totalMin} min</span>
+                                <span>${timeStr}</span>
                             </div>
                             <div class="date-stat">
                                 <span class="stat-icon">${d.status === 'present' ? '✅' : '❌'}</span>
@@ -10450,22 +10457,20 @@ function renderManualMarkingTable(students, attendanceMap) {
 async function markStudentPresent(enrollmentNo, studentName) {
     const period = document.getElementById('manualMarkPeriod').value;
     const date = document.getElementById('manualMarkDate').value;
-    
-    const reason = prompt(`Mark ${studentName} present for ${period}?\n\nOptional reason:`);
-    if (reason === null) return; // User cancelled
-    
-    await submitManualMarking(enrollmentNo, period, 'present', reason || 'Manual marking by admin', date);
+
+    if (!confirm(`Mark ${studentName} as PRESENT for ${period}?`)) return;
+
+    await submitManualMarking(enrollmentNo, period, 'present', 'Manual marking by admin', date);
 }
 
 // Mark Student Absent
 async function markStudentAbsent(enrollmentNo, studentName) {
     const period = document.getElementById('manualMarkPeriod').value;
     const date = document.getElementById('manualMarkDate').value;
-    
-    const reason = prompt(`Mark ${studentName} absent for ${period}?\n\nOptional reason:`);
-    if (reason === null) return; // User cancelled
-    
-    await submitManualMarking(enrollmentNo, period, 'absent', reason || 'Manual marking by admin', date);
+
+    if (!confirm(`Mark ${studentName} as ABSENT for ${period}?`)) return;
+
+    await submitManualMarking(enrollmentNo, period, 'absent', 'Manual marking by admin', date);
 }
 
 // Submit Manual Marking
@@ -10508,15 +10513,14 @@ async function markAllPresent() {
         showNotification('Please select at least one student', 'warning');
         return;
     }
-    
+
     const period = document.getElementById('manualMarkPeriod').value;
     const date = document.getElementById('manualMarkDate').value;
-    const reason = prompt(`Mark ${checkboxes.length} students present for ${period}?\n\nOptional reason:`);
-    
-    if (reason === null) return;
-    
+
+    if (!confirm(`Mark ${checkboxes.length} students as PRESENT for ${period}?`)) return;
+
     for (const checkbox of checkboxes) {
-        await submitManualMarking(checkbox.value, period, 'present', reason || 'Bulk marking by admin', date);
+        await submitManualMarking(checkbox.value, period, 'present', 'Bulk marking by admin', date);
     }
 }
 
@@ -10527,15 +10531,14 @@ async function markAllAbsent() {
         showNotification('Please select at least one student', 'warning');
         return;
     }
-    
+
     const period = document.getElementById('manualMarkPeriod').value;
     const date = document.getElementById('manualMarkDate').value;
-    const reason = prompt(`Mark ${checkboxes.length} students absent for ${period}?\n\nOptional reason:`);
-    
-    if (reason === null) return;
-    
+
+    if (!confirm(`Mark ${checkboxes.length} students as ABSENT for ${period}?`)) return;
+
     for (const checkbox of checkboxes) {
-        await submitManualMarking(checkbox.value, period, 'absent', reason || 'Bulk marking by admin', date);
+        await submitManualMarking(checkbox.value, period, 'absent', 'Bulk marking by admin', date);
     }
 }
 

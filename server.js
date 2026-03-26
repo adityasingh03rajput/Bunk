@@ -5727,8 +5727,8 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
             : 0;
 
         // Aggregate total time across all records
-        const totalAttendedMinutes = records.reduce((sum, r) => sum + (r.totalAttended || 0), 0);
-        const totalClassMinutes   = records.reduce((sum, r) => sum + (r.totalClassTime || 0), 0);
+        const totalAttendedMinutes = records.reduce((sum, r) => sum + (Number(r.totalAttended) || 0), 0);
+        const totalClassMinutes   = records.reduce((sum, r) => sum + (Number(r.totalClassTime) || 0), 0);
 
         res.json({
             success: true,
@@ -5741,14 +5741,14 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
                 totalMinutes: totalAttendedMinutes % 60
             },
             dates: records.map(r => {
-                const attended   = r.totalAttended   || 0; // minutes
-                const total      = r.totalClassTime  || 0; // minutes
+                const attended   = Number(r.totalAttended)  || 0; // minutes
+                const total      = Number(r.totalClassTime) || 0; // minutes
                 const percentage = total > 0
                     ? Math.round((attended / total) * 100)
-                    : (r.dayPercentage || 0);
+                    : (Number(r.dayPercentage) || (r.status === 'present' ? 100 : 0));
                 return {
                     date:         r.date,
-                    status:       r.status,
+                    status:       r.status || 'absent',
                     lectureCount: r.lectures ? r.lectures.length : 0,
                     attended:     attended * 60,  // admin panel expects seconds
                     total:        total * 60,

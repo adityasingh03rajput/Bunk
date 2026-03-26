@@ -1,16 +1,16 @@
-// Force admin panel to use Render server
-// This script clears localStorage and sets Render URL
+// Force admin panel to use the production server
+// This script clears localStorage and sets the correct server URL
 
-console.log('🔧 Forcing admin panel to use Render server...');
+console.log('🔧 Forcing admin panel to use production server...');
 
 // Clear any existing server URL
 localStorage.removeItem('serverUrl');
 console.log('🗑️ Cleared existing server URL from localStorage');
 
-// Set Render URL
-const RENDER_URL = 'https://letsbunk-uw7g.onrender.com';
-localStorage.setItem('serverUrl', RENDER_URL);
-console.log('✅ Set server URL to:', RENDER_URL);
+// Set production URL
+const SERVER_URL = 'https://letsbunk-server.azurewebsites.net';
+localStorage.setItem('serverUrl', SERVER_URL);
+console.log('✅ Set server URL to:', SERVER_URL);
 
 // Verify
 const currentUrl = localStorage.getItem('serverUrl');

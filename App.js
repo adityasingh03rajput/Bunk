@@ -41,6 +41,8 @@ import BSSIDStorage from './BSSIDStorage';
 import FaceVerification from './FaceVerification';
 import CircularTimer from './CircularTimer';
 import { requestStartupPermissions } from './PermissionManager';
+import LoginScreen from './LoginScreen';
+import SplashScreenView from './SplashScreen';
 
 // Configuration - Import from centralized config
 import { SERVER_BASE_URL, API_URL as CONFIG_API_URL, SOCKET_URL as CONFIG_SOCKET_URL } from './config';
@@ -83,194 +85,42 @@ const normalizeStudentUserData = (user) => {
 
 // Theme colors
 const THEMES = {
-  // ── Cyber Dark family ──────────────────────────────────────────
-  dark: {
-    background: '#0a1628',
-    cardBackground: '#0d1f3c',
-    text: '#ffffff',
-    textSecondary: '#00d9ff',
-    primary: '#00f5ff',
-    border: '#00d9ff',
-    statusBar: 'light',
-    label: 'Cyber Dark',
-    emoji: '🌌',
-  },
-  cyberGold: {
-    background: '#0d0e0a',
-    cardBackground: '#1a1c10',
-    text: '#fff8dc',
-    textSecondary: '#c9a84c',
-    primary: '#ffd700',
-    border: '#8b6914',
-    statusBar: 'light',
-    label: 'Cyber Gold',
-    emoji: '⚡',
-  },
-  cyberRed: {
-    background: '#0f0808',
-    cardBackground: '#1e0f0f',
-    text: '#ffe8e8',
-    textSecondary: '#ff6b6b',
-    primary: '#ff2d55',
-    border: '#7f1d1d',
-    statusBar: 'light',
-    label: 'Cyber Red',
-    emoji: '�',
-  },
-
-  // ── Warm Light family ──────────────────────────────────────────
-  light: {
-    background: '#fef3e2',
-    cardBackground: '#ffffff',
-    text: '#2c1810',
-    textSecondary: '#8b6f47',
-    primary: '#d97706',
-    border: '#f3d5a0',
+  // ── Warm (matches login repo color palette) ───────────────────
+  warm: {
+    background: '#E8DCC4',
+    cardBackground: '#DDD0B3',
+    text: '#030213',
+    textSecondary: 'rgba(3,2,19,0.6)',
+    primary: '#030213',
+    border: 'rgba(0,0,0,0.1)',
     statusBar: 'dark',
-    label: 'Warm Light',
+    label: 'Warm',
     emoji: '☀️',
   },
-  skyBlue: {
-    background: '#eef6ff',
-    cardBackground: '#ffffff',
-    text: '#0c2340',
-    textSecondary: '#4a7fa5',
-    primary: '#2563eb',
-    border: '#bfdbfe',
-    statusBar: 'dark',
-    label: 'Sky Blue',
-    emoji: '�️',
-  },
-  mintFresh: {
-    background: '#f0fdf4',
-    cardBackground: '#ffffff',
-    text: '#052e16',
-    textSecondary: '#4a7c59',
-    primary: '#16a34a',
-    border: '#bbf7d0',
-    statusBar: 'dark',
-    label: 'Mint Fresh',
-    emoji: '🍃',
-  },
 
-  // ── Midnight Purple family ─────────────────────────────────────
-  midnight: {
-    background: '#0d0d1a',
-    cardBackground: '#1a1a2e',
-    text: '#e0d7ff',
-    textSecondary: '#9b8ec4',
-    primary: '#a78bfa',
-    border: '#4c3d8f',
+  // ── Night (black/grey dark mode) ──────────────────────────────
+  night: {
+    background: '#111111',
+    cardBackground: '#1e1e1e',
+    text: '#f0f0f0',
+    textSecondary: '#9a9a9a',
+    primary: '#ffffff',
+    border: '#333333',
     statusBar: 'light',
-    label: 'Midnight Purple',
-    emoji: '🔮',
-  },
-  deepOcean: {
-    background: '#020b18',
-    cardBackground: '#071a2e',
-    text: '#cce8ff',
-    textSecondary: '#5b9bd5',
-    primary: '#38bdf8',
-    border: '#1e4d7a',
-    statusBar: 'light',
-    label: 'Deep Ocean',
-    emoji: '🌊',
-  },
-  cosmicPink: {
-    background: '#120a1e',
-    cardBackground: '#1e1030',
-    text: '#f5d0fe',
-    textSecondary: '#c084fc',
-    primary: '#e879f9',
-    border: '#6b21a8',
-    statusBar: 'light',
-    label: 'Cosmic Pink',
-    emoji: '💜',
-  },
-
-  // ── Forest Green family ────────────────────────────────────────
-  forest: {
-    background: '#0a1a0f',
-    cardBackground: '#0f2318',
-    text: '#d4f5d4',
-    textSecondary: '#6abf7b',
-    primary: '#4ade80',
-    border: '#2d6a3f',
-    statusBar: 'light',
-    label: 'Forest Green',
-    emoji: '🌿',
-  },
-  earthTone: {
-    background: '#1a1208',
-    cardBackground: '#2a1e0e',
-    text: '#fde8c8',
-    textSecondary: '#c49a5a',
-    primary: '#f59e0b',
-    border: '#78450f',
-    statusBar: 'light',
-    label: 'Earth Tone',
-    emoji: '🍂',
-  },
-  arcticMoss: {
-    background: '#071a1a',
-    cardBackground: '#0d2b2b',
-    text: '#ccfbf1',
-    textSecondary: '#5eead4',
-    primary: '#2dd4bf',
-    border: '#0f766e',
-    statusBar: 'light',
-    label: 'Arctic Moss',
-    emoji: '🧊',
-  },
-
-  // ── Sunset Rose family ─────────────────────────────────────────
-  sunset: {
-    background: '#1a0a0f',
-    cardBackground: '#2d1020',
-    text: '#ffe4e6',
-    textSecondary: '#f9a8b8',
-    primary: '#fb7185',
-    border: '#9f1239',
-    statusBar: 'light',
-    label: 'Sunset Rose',
-    emoji: '🌸',
-  },
-  volcanicOrange: {
-    background: '#180a00',
-    cardBackground: '#2a1200',
-    text: '#fff0e0',
-    textSecondary: '#fb923c',
-    primary: '#f97316',
-    border: '#9a3412',
-    statusBar: 'light',
-    label: 'Volcanic',
-    emoji: '🌋',
-  },
-  cherryBlossom: {
-    background: '#1a0a14',
-    cardBackground: '#2e1022',
-    text: '#fce7f3',
-    textSecondary: '#f472b6',
-    primary: '#ec4899',
-    border: '#831843',
-    statusBar: 'light',
-    label: 'Cherry Blossom',
-    emoji: '🌺',
+    label: 'Night',
+    emoji: '🌙',
   },
 };
 
 const THEME_GROUPS = [
-  { label: '🌌 Cyber Dark', keys: ['dark', 'cyberGold', 'cyberRed'] },
-  { label: '☀️ Warm Light', keys: ['light', 'skyBlue', 'mintFresh'] },
-  { label: '🔮 Midnight', keys: ['midnight', 'deepOcean', 'cosmicPink'] },
-  { label: '🌿 Forest', keys: ['forest', 'earthTone', 'arcticMoss'] },
-  { label: '🌸 Sunset', keys: ['sunset', 'volcanicOrange', 'cherryBlossom'] },
+  { label: '☀️ Warm', keys: ['warm'] },
+  { label: '🌙 Night', keys: ['night'] },
 ];
 
 const getDefaultConfig = () => ({
   roleSelection: {
-    backgroundColor: '#0a1628',
-    title: { text: 'Who are you?', fontSize: 36, color: '#00f5ff', fontWeight: 'bold' },
+    backgroundColor: '#E8DCC4',
+    title: { text: 'Who are you?', fontSize: 36, color: '#030213', fontWeight: 'bold' },
     subtitle: { text: 'Select your role to continue', fontSize: 16, color: '#00d9ff' },
     roles: [
       { id: 'student', text: 'Student', icon: '🎓', backgroundColor: '#00d9ff', textColor: '#0a1628' },
@@ -383,13 +233,14 @@ export default function App() {
 
   // Theme state
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('dark'); // 'dark' | 'light' | 'midnight' | 'forest' | 'sunset'
+  const [themeMode, setThemeMode] = useState('warm');
   const [showThemePicker, setShowThemePicker] = useState(false);
-  const isDarkTheme = !['light', 'skyBlue', 'mintFresh'].includes(themeMode);
-  const theme = THEMES[themeMode] || THEMES.dark;
+  const isDarkTheme = themeMode === 'night';
+  const theme = THEMES[themeMode] || THEMES.warm;
 
   // Loading state for better UX
   const [isInitializing, setIsInitializing] = useState(true);
+  const [splashDone, setSplashDone] = useState(false);
 
   // Profile modal state
   const [showProfile, setShowProfile] = useState(false);
@@ -1926,7 +1777,7 @@ export default function App() {
 
       // Load theme preference
       if (savedTheme !== null) {
-        setThemeMode(THEMES[savedTheme] ? savedTheme : 'dark');
+        setThemeMode(THEMES[savedTheme] ? savedTheme : 'warm');
       }
 
       // Check for saved login data
@@ -3278,94 +3129,25 @@ export default function App() {
   };
 
   // Loading Screen
-  if (isInitializing) {
+  if (!splashDone) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <StatusBar style={theme.statusBar} />
-        <Text style={{ fontSize: 48, marginBottom: 20 }}>🎓</Text>
-        <Text style={{ fontSize: 24, color: theme.primary, fontWeight: 'bold' }}>LetsBunk</Text>
-        <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 10 }}>Loading...</Text>
-      </View>
+      <SplashScreenView onDone={() => setSplashDone(true)} />
     );
   }
 
   // Login Screen
   if (showLogin) {
     return (
-      <Animated.View style={[styles.container, { backgroundColor: theme.background, opacity: fadeAnim }]}>
-        <StatusBar style={theme.statusBar} />
-        <View style={styles.loginContainer}>
-          <Text style={[styles.glowText, { fontSize: 36, marginBottom: 10, color: theme.primary }]}>
-            🎓 LetsBunk
-          </Text>
-          <Text style={{ color: theme.textSecondary, fontSize: 16, marginBottom: 40 }}>
-            Login to continue
-          </Text>
-
-          <View style={styles.loginForm}>
-            <Text style={[styles.loginLabel, { color: theme.textSecondary }]}>Enrollment / Employee ID</Text>
-            <TextInput
-              style={[styles.loginInput, {
-                backgroundColor: theme.cardBackground,
-                borderColor: theme.border,
-                color: theme.text
-              }]}
-              placeholder="Enter your ID"
-              placeholderTextColor={theme.textSecondary + '80'}
-              value={loginId}
-              onChangeText={(text) => {
-                setLoginId(text);
-                setLoginError('');
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Text style={[styles.loginLabel, { marginTop: 20, color: theme.textSecondary }]}>Password</Text>
-            <TextInput
-              style={[styles.loginInput, {
-                backgroundColor: theme.cardBackground,
-                borderColor: theme.border,
-                color: theme.text
-              }]}
-              placeholder="Enter your password"
-              placeholderTextColor={theme.textSecondary + '80'}
-              value={loginPassword}
-              onChangeText={(text) => {
-                setLoginPassword(text);
-                setLoginError('');
-              }}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-
-            {loginError ? (
-              <Text style={styles.loginError}>{loginError}</Text>
-            ) : null}
-
-            <TouchableOpacity
-              onPress={handleLogin}
-              activeOpacity={0.8}
-              disabled={isLoggingIn}
-              style={styles.loginButton}
-            >
-              <Animated.View style={[styles.loginButtonInner, {
-                shadowColor: theme.primary,
-                shadowOpacity: glowOpacity,
-                shadowRadius: 20,
-              }]}>
-                <Text style={styles.loginButtonText}>
-                  {isLoggingIn ? 'LOGGING IN...' : 'LOGIN'}
-                </Text>
-              </Animated.View>
-            </TouchableOpacity>
-
-            <Text style={styles.loginHint}>
-              Use your enrollment number (students) or employee ID (teachers)
-            </Text>
-          </View>
-        </View>
-      </Animated.View>
+      <LoginScreen
+        loginId={loginId}
+        setLoginId={setLoginId}
+        loginPassword={loginPassword}
+        setLoginPassword={setLoginPassword}
+        loginError={loginError}
+        setLoginError={setLoginError}
+        isLoggingIn={isLoggingIn}
+        handleLogin={handleLogin}
+      />
     );
   }
 

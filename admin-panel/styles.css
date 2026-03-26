@@ -19,20 +19,20 @@
     --danger: #ef4444;
 }
 
-/* Light Theme */
+/* Day Theme — warm beige (login repo palette) */
 [data-theme="light"] {
-    --primary: #3b82f6;
-    --primary-dark: #2563eb;
-    --secondary: #10b981;
-    --bg-dark: #f3f4f6;
-    --bg-card: #ffffff;
-    --bg-hover: #e5e7eb;
-    --text-primary: #1f2937;
-    --text-secondary: #6b7280;
-    --border: #d1d5db;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
+    --primary: #030213;
+    --primary-dark: #1a1a2e;
+    --secondary: #3B82F6;
+    --bg-dark: #E8DCC4;
+    --bg-card: #DDD0B3;
+    --bg-hover: #C8B99A;
+    --text-primary: #030213;
+    --text-secondary: rgba(3,2,19,0.6);
+    --border: rgba(0,0,0,0.1);
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #D4183D;
 }
 
 body {
@@ -3130,21 +3130,21 @@ ture Details Styles */
 
 /* Period Settings Styles */
 .period-info-card {
-    background: linear-gradient(135deg, #0d1f3c 0%, #1a2942 100%);
-    border: 1px solid #00d9ff;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
 }
 
 .period-info-card h3 {
-    color: #00f5ff;
+    color: var(--primary);
     margin-bottom: 12px;
     font-size: 20px;
 }
 
 .period-info-card p {
-    color: #a0aec0;
+    color: var(--text-secondary);
     margin-bottom: 20px;
     line-height: 1.6;
 }
@@ -3162,20 +3162,20 @@ ture Details Styles */
 }
 
 .stat-label {
-    color: #718096;
+    color: var(--text-secondary);
     font-size: 13px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .stat-value {
-    color: #00f5ff;
+    color: var(--primary);
     font-size: 24px;
     font-weight: 600;
 }
 
 .periods-container {
-    background: #0d1f3c;
+    background: var(--bg-card);
     border-radius: 12px;
     padding: 24px;
     margin-bottom: 24px;
@@ -3188,8 +3188,8 @@ ture Details Styles */
 }
 
 .period-item {
-    background: #1a2942;
-    border: 1px solid #2d3748;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 20px;
     display: grid;
@@ -3200,8 +3200,8 @@ ture Details Styles */
 }
 
 .period-item:hover {
-    border-color: #00d9ff;
-    box-shadow: 0 0 20px rgba(0, 217, 255, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(0,0,0,0.1);
 }
 
 .period-number {
@@ -3210,11 +3210,11 @@ ture Details Styles */
     justify-content: center;
     width: 60px;
     height: 60px;
-    background: linear-gradient(135deg, #00d9ff 0%, #00bfff 100%);
+    background: var(--primary);
     border-radius: 12px;
     font-size: 24px;
     font-weight: 700;
-    color: #0a1628;
+    color: var(--bg-dark);
 }
 
 .period-time-group {
@@ -3224,18 +3224,18 @@ ture Details Styles */
 }
 
 .period-time-group label {
-    color: #718096;
+    color: var(--text-secondary);
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .period-time-input {
-    background: #0d1f3c;
-    border: 1px solid #2d3748;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 10px 14px;
-    color: #00f5ff;
+    color: var(--text-primary);
     font-size: 16px;
     font-weight: 500;
     transition: all 0.3s ease;
@@ -3243,18 +3243,18 @@ ture Details Styles */
 
 .period-time-input:focus {
     outline: none;
-    border-color: #00d9ff;
-    box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
 }
 
 .period-duration {
-    color: #a0aec0;
+    color: var(--text-secondary);
     font-size: 14px;
     text-align: center;
 }
 
 .period-duration strong {
-    color: #00f5ff;
+    color: var(--primary);
     font-size: 18px;
     display: block;
     margin-top: 4px;
@@ -3298,14 +3298,13 @@ ture Details Styles */
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
-    color: #0a1628;
+    background: var(--success);
+    color: var(--bg-dark);
 }
 
 .btn-success:hover {
-    background: linear-gradient(135deg, #00cc6a 0%, #00aa55 100%);
+    opacity: 0.9;
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
 }
 
 /* Responsive */

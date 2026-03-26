@@ -10,7 +10,7 @@ if (savedUrl && (savedUrl.includes('localhost') || savedUrl.includes('192.168'))
     localStorage.removeItem('serverUrl');
 }
 
-let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-uw7g.onrender.com';
+let SERVER_URL = localStorage.getItem('serverUrl') || 'https://letsbunk-server.azurewebsites.net';
 
 console.log('🌐 Admin Panel Server URL:', SERVER_URL);
 

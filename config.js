@@ -9,7 +9,7 @@
 // SERVER CONFIGURATION
 // ============================================
 // Fetch from environment variable
-export const SERVER_BASE_URL = process.env.SERVER_URL || 'https://letsbunk-uw7g.onrender.com';
+export const SERVER_BASE_URL = process.env.SERVER_URL || 'https://letsbunk-server.azurewebsites.net';
 
 // Derived URLs (automatically generated from SERVER_BASE_URL)
 export const API_URL = `${SERVER_BASE_URL}/api/config`;

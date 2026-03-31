@@ -3963,7 +3963,7 @@ app.post('/api/timetable-history/backfill', async (req, res) => {
         }
 
         // ── Source 2: Timetable schedule → past 90 days ───────────────────────
-        const timetables = await TimetableTable.find({}).lean();
+        const timetables = await Timetable.find({}).lean();
         const dayNames   = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
         const today      = new Date(); today.setHours(0,0,0,0);
         const ninetyDaysAgo = new Date(today); ninetyDaysAgo.setDate(today.getDate() - 90);
@@ -6879,7 +6879,7 @@ cron.schedule('5 0 * * *', async () => {
         const days  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
         const dayName = days[now.getDay()];
 
-        const timetables = await TimetableTable.find({}).lean();
+        const timetables = await Timetable.find({}).lean();
         let count = 0;
 
         for (const tt of timetables) {

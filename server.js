@@ -3934,33 +3934,72 @@ app.get('/api/attendance/subject-dates', async (req, res) => {
 });
 
 // ─── POST /api/timetable-history/backfill ────────────────────────────────────
-// One-time backfill: reads PeriodAttendance to reconstruct TimetableHistory
-// for all past dates. Call once from admin panel after deploying this update.
+// Backfill TimetableHistory from two sources:
+// 1. PeriodAttendance — actual check-in records (subject was definitely held)
+// 2. Timetable schedule — generate history for every past weekday based on
+//    the current timetable (so subjects show on calendar even with no check-ins)
 app.post('/api/timetable-history/backfill', async (req, res) => {
     try {
         if (mongoose.connection.readyState !== 1) {
             return res.json({ success: false, error: 'DB not connected' });
         }
-        const records = await PeriodAttendance.find({}, {
+
+        let inserted = 0;
+
+        // ── Source 1: PeriodAttendance records ────────────────────────────────
+        const paRecords = await PeriodAttendance.find({}, {
             date: 1, semester: 1, branch: 1, period: 1,
             subject: 1, teacher: 1, teacherName: 1, room: 1
         }).lean();
 
-        let inserted = 0;
-        for (const r of records) {
+        for (const r of paRecords) {
             await recordTimetableHistory({
-                date:        r.date,
-                semester:    r.semester,
-                branch:      r.branch,
-                period:      r.period,
-                subject:     r.subject,
-                teacher:     r.teacher,
-                teacherName: r.teacherName,
-                room:        r.room,
-                source:      'cron'
+                date: r.date, semester: r.semester, branch: r.branch,
+                period: r.period, subject: r.subject,
+                teacher: r.teacher, teacherName: r.teacherName, room: r.room,
+                source: 'cron'
             });
             inserted++;
         }
+
+        // ── Source 2: Timetable schedule → past 90 days ───────────────────────
+        const timetables = await TimetableTable.find({}).lean();
+        const dayNames   = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const today      = new Date(); today.setHours(0,0,0,0);
+        const ninetyDaysAgo = new Date(today); ninetyDaysAgo.setDate(today.getDate() - 90);
+
+        for (const tt of timetables) {
+            if (!tt.semester || !tt.branch) continue;
+            const periods = tt.periods || [];
+
+            // Walk every day in the past 90 days
+            for (let d = new Date(ninetyDaysAgo); d <= today; d.setDate(d.getDate() + 1)) {
+                const dayName = dayNames[d.getDay()];
+                const schedule = tt.timetable?.schedule?.[dayName] || tt.timetable?.[dayName] || [];
+
+                for (let i = 0; i < schedule.length; i++) {
+                    const slot = schedule[i];
+                    if (!slot || slot.isBreak || !slot.subject?.trim()) continue;
+
+                    const periodInfo = periods[i] || {};
+                    await recordTimetableHistory({
+                        date:        new Date(d),
+                        semester:    tt.semester.toString(),
+                        branch:      tt.branch,
+                        period:      `P${i + 1}`,
+                        subject:     slot.subject.trim(),
+                        teacher:     slot.teacher     || '',
+                        teacherName: slot.teacherName || slot.teacher || '',
+                        room:        slot.room        || '',
+                        startTime:   periodInfo.startTime || '',
+                        endTime:     periodInfo.endTime   || '',
+                        source:      'cron'
+                    });
+                    inserted++;
+                }
+            }
+        }
+
         res.json({ success: true, message: `Backfilled ${inserted} records into TimetableHistory` });
     } catch (error) {
         console.error('❌ Backfill error:', error);

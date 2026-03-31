@@ -5557,6 +5557,22 @@ async function loadCalendar() {
 }
 
 // Populate semester/branch dropdowns from existing dynamicData
+// ── Shared fetch helper with timeout ─────────────────────────────────────────
+async function calApiFetch(url, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        return await res.json();
+    } catch (err) {
+        clearTimeout(timer);
+        if (err.name === 'AbortError') throw new Error('Request timed out');
+        throw err;
+    }
+}
+
 async function loadCalendarFilterDropdowns() {
     const semEl = document.getElementById('calSemesterFilter');
     const brEl  = document.getElementById('calBranchFilter');
@@ -5574,11 +5590,15 @@ async function loadCalendarSubjects() {
     const br  = calFilterBranch;
     if (!sem || !br) { calSubjectList = []; renderCalendarSubjectDropdown(); return; }
     try {
-        const res  = await fetch(`${SERVER_URL}/api/attendance/subjects?semester=${encodeURIComponent(sem)}&branch=${encodeURIComponent(br)}`);
-        const data = await res.json();
-        calSubjectList = data.success ? (data.subjects || []) : [];
-    } catch (_) { calSubjectList = []; }
-    // Always reset subject selection when list reloads
+        const data = await calApiFetch(`${SERVER_URL}/api/attendance/subjects?semester=${encodeURIComponent(sem)}&branch=${encodeURIComponent(br)}`);
+        calSubjectList = (data.success && data.subjects?.length) ? data.subjects : [];
+        if (!calSubjectList.length) {
+            console.warn('No subjects found for', sem, br);
+        }
+    } catch (err) {
+        console.error('loadCalendarSubjects failed:', err.message);
+        calSubjectList = [];
+    }
     calFilterSubject = calSubjectList.length > 0 ? calSubjectList[0] : '';
     renderCalendarSubjectDropdown();
 }
@@ -5586,9 +5606,13 @@ async function loadCalendarSubjects() {
 function renderCalendarSubjectDropdown() {
     const el = document.getElementById('calSubjectFilter');
     if (!el) return;
-    el.innerHTML = calSubjectList.map(s =>
-        `<option value="${s}" ${s === calFilterSubject ? 'selected' : ''}>${s}</option>`
-    ).join('') || '<option value="">No subjects found</option>';
+    if (calSubjectList.length === 0) {
+        el.innerHTML = '<option value="">No subjects found</option>';
+    } else {
+        el.innerHTML = calSubjectList.map(s =>
+            `<option value="${s}" ${s === calFilterSubject ? 'selected' : ''}>${s}</option>`
+        ).join('');
+    }
     el.style.display = calFilterMode === 'subject' ? 'inline-block' : 'none';
 }
 
@@ -5610,12 +5634,10 @@ async function onCalendarFilterChange() {
 
     const semBrChanged = prevSem !== calFilterSemester || prevBr !== calFilterBranch;
 
-    // Always reload subjects when sem/branch change (pre-loads for subject mode)
     if (semBrChanged && calFilterSemester && calFilterBranch) {
         await loadCalendarSubjects();
     }
 
-    // Read subject from dropdown AFTER it's been populated
     calFilterSubject = subEl ? subEl.value : (calSubjectList[0] || '');
 
     if (calFilterMode === 'subject') {
@@ -5635,8 +5657,7 @@ async function fetchCalendarDayData() {
     calDayData = {};
     if (!calFilterSemester || !calFilterBranch) return;
     try {
-        const res  = await fetch(`${SERVER_URL}/api/attendance/records?semester=${calFilterSemester}&branch=${calFilterBranch}`);
-        const data = await res.json();
+        const data = await calApiFetch(`${SERVER_URL}/api/attendance/records?semester=${encodeURIComponent(calFilterSemester)}&branch=${encodeURIComponent(calFilterBranch)}`);
         if (data.success && data.records) {
             data.records.forEach(r => {
                 const key = new Date(r.date).toDateString();
@@ -5646,7 +5667,10 @@ async function fetchCalendarDayData() {
                 calDayData[key].total++;
             });
         }
-    } catch (_) {}
+    } catch (err) {
+        console.error('fetchCalendarDayData failed:', err.message);
+        showNotification('Failed to load attendance data: ' + err.message, 'error');
+    }
 }
 
 // Fetch subject-mode data: dates when subject was held
@@ -5654,24 +5678,27 @@ async function fetchCalendarSubjectDates() {
     calActiveDates = new Set();
     if (!calFilterSemester || !calFilterBranch || !calFilterSubject) return;
     try {
-        const res  = await fetch(
-            `${SERVER_URL}/api/attendance/subject-dates?semester=${calFilterSemester}&branch=${calFilterBranch}&subject=${encodeURIComponent(calFilterSubject)}`
+        const data = await calApiFetch(
+            `${SERVER_URL}/api/attendance/subject-dates?semester=${encodeURIComponent(calFilterSemester)}&branch=${encodeURIComponent(calFilterBranch)}&subject=${encodeURIComponent(calFilterSubject)}`
         );
-        const data = await res.json();
         if (data.success) data.dates.forEach(d => calActiveDates.add(d));
-    } catch (_) {}
+        else showNotification('No scheduled dates found for this subject.', 'warning');
+    } catch (err) {
+        console.error('fetchCalendarSubjectDates failed:', err.message);
+        showNotification('Failed to load subject dates: ' + err.message, 'error');
+    }
 }
 
 async function loadHolidays() {
     try {
-        const response = await fetch(`${SERVER_URL}/api/holidays`);
-        const data = await response.json();
+        const data = await calApiFetch(`${SERVER_URL}/api/holidays`);
         if (data.success) {
             holidays = data.holidays || [];
+        } else {
+            holidays = getDefaultHolidays();
         }
     } catch (error) {
-        console.log('Error loading holidays:', error);
-        // Use default holidays if server fails
+        console.warn('loadHolidays failed, using defaults:', error.message);
         holidays = getDefaultHolidays();
     }
 }
@@ -5835,20 +5862,28 @@ function selectDate(dateStr) { selectCalendarDate(dateStr); }
 
 // ── Day-mode modal ────────────────────────────────────────────────────────────
 async function showDayAttendanceModal(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr   = date.toISOString().split('T')[0];
     const modalBody = document.getElementById('modalBody');
-    modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p>Loading…</p>`;
+    modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p style="color:var(--text-secondary)">Loading…</p>`;
     openModal();
     try {
-        const res  = await fetch(`${SERVER_URL}/api/attendance/date/${dateStr}?semester=${calFilterSemester}&branch=${calFilterBranch}`);
-        const data = await res.json();
+        const data = await calApiFetch(
+            `${SERVER_URL}/api/attendance/date/${dateStr}?semester=${encodeURIComponent(calFilterSemester)}&branch=${encodeURIComponent(calFilterBranch)}`
+        );
         if (!data.success || !data.students?.length) {
-            modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p style="color:var(--text-secondary)">No attendance records for this date.</p>`;
+            modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2>
+                <p style="color:var(--text-secondary);text-align:center;padding:20px">
+                    No attendance records for this date.
+                </p>`;
             return;
         }
         renderDayModal(date, data.students);
-    } catch (e) {
-        modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p style="color:#ef4444">Error loading data.</p>`;
+    } catch (err) {
+        modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2>
+            <p style="color:#ef4444;text-align:center;padding:20px">⚠️ ${err.message}</p>
+            <div style="text-align:center">
+                <button class="btn btn-secondary" onclick="showDayAttendanceModal(new Date('${date.toISOString()}'))">🔄 Retry</button>
+            </div>`;
     }
 }
 
@@ -5923,24 +5958,24 @@ function showStudentLectureDetail(idx, mode) {
 let calSubjectModalData = null;   // { students, allPeriods }
 
 async function showSubjectAttendanceModal(date) {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr   = date.toISOString().split('T')[0];
     const modalBody = document.getElementById('modalBody');
-    modalBody.innerHTML = `<h2>📚 ${calFilterSubject} — ${date.toDateString()}</h2><p>Loading…</p>`;
+    modalBody.innerHTML = `<h2>📚 ${calFilterSubject} — ${date.toDateString()}</h2><p style="color:var(--text-secondary)">Loading…</p>`;
     openModal();
     try {
-        const res  = await fetch(
-            `${SERVER_URL}/api/attendance/date/${dateStr}/subject/${encodeURIComponent(calFilterSubject)}?semester=${calFilterSemester}&branch=${calFilterBranch}`
+        const data = await calApiFetch(
+            `${SERVER_URL}/api/attendance/date/${dateStr}/subject/${encodeURIComponent(calFilterSubject)}?semester=${encodeURIComponent(calFilterSemester)}&branch=${encodeURIComponent(calFilterBranch)}`
         );
-        const data = await res.json();
         if (!data.success || !data.students?.length) {
             modalBody.innerHTML = `<h2>📚 ${calFilterSubject} — ${date.toDateString()}</h2>
-                <p style="color:var(--text-secondary)">No records for this subject on this date.</p>`;
+                <p style="color:var(--text-secondary);text-align:center;padding:20px">
+                    No attendance records for this subject on this date.
+                </p>`;
             return;
         }
         calSubjectModalData  = data;
         calCurrentPeriodIdx  = 0;
         window._calModalDate = date;
-        // Build merged student list for drill-down
         window._calModalStudents = data.students.map(s => ({
             ...s,
             name: s.studentName,
@@ -5951,8 +5986,12 @@ async function showSubjectAttendanceModal(date) {
             })
         }));
         renderSubjectModal(date);
-    } catch (e) {
-        modalBody.innerHTML = `<h2>📚 ${calFilterSubject}</h2><p style="color:#ef4444">Error loading data.</p>`;
+    } catch (err) {
+        modalBody.innerHTML = `<h2>📚 ${calFilterSubject}</h2>
+            <p style="color:#ef4444;text-align:center;padding:20px">⚠️ ${err.message}</p>
+            <div style="text-align:center">
+                <button class="btn btn-secondary" onclick="showSubjectAttendanceModal(new Date('${date.toISOString()}'))">🔄 Retry</button>
+            </div>`;
     }
 }
 
@@ -6002,6 +6041,38 @@ function calChevron(dir) {
     const max = calSubjectModalData.allPeriods.length - 1;
     calCurrentPeriodIdx = Math.max(0, Math.min(max, calCurrentPeriodIdx + dir));
     renderSubjectModal(null);
+}
+
+async function backfillTimetableHistory() {
+    if (!confirm('This will backfill TimetableHistory from existing PeriodAttendance records.\nRun once after deploying the update. Continue?')) return;
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Running…'; }
+    try {
+        const data = await calApiFetch(`${SERVER_URL}/api/timetable-history/backfill`, 60000);
+        // calApiFetch only does GET — use fetch directly for POST
+        throw new Error('use_fetch'); // fallthrough to catch
+    } catch (_) {
+        // POST needs direct fetch
+    }
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 60000);
+        const res  = await fetch(`${SERVER_URL}/api/timetable-history/backfill`, {
+            method: 'POST', signal: controller.signal
+        });
+        clearTimeout(timer);
+        const data = await res.json();
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Backfill failed: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (err) {
+        const msg = err.name === 'AbortError' ? 'Backfill timed out (60s)' : err.message;
+        showNotification('Backfill error: ' + msg, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔄 Backfill History'; }
+    }
 }
 
 document.getElementById('addHolidayBtn').addEventListener('click', () => {

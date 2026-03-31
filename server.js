@@ -486,7 +486,28 @@ attendanceAuditSchema.index({ recordId: 1 });
 
 const AttendanceAudit = mongoose.model('AttendanceAudit', attendanceAuditSchema);
 
-// In-memory storage as fallback
+// ─── TimetableHistory Schema ──────────────────────────────────────────────────
+// Records every subject that was scheduled on a given date.
+// Written by: (1) lecture-start endpoint, (2) daily midnight cron.
+// Read by: /api/attendance/subject-dates to highlight calendar dates.
+const timetableHistorySchema = new mongoose.Schema({
+    date:        { type: Date, required: true },   // midnight of the day
+    semester:    { type: String, required: true },
+    branch:      { type: String, required: true },
+    period:      { type: String, required: true },  // 'P1'–'P8'
+    subject:     { type: String, required: true },
+    teacher:     { type: String },
+    teacherName: { type: String },
+    room:        { type: String },
+    startTime:   { type: String },                  // 'HH:MM'
+    endTime:     { type: String },
+    source:      { type: String, enum: ['cron', 'lecture_start'], default: 'cron' }
+}, { timestamps: true });
+
+timetableHistorySchema.index({ date: 1, semester: 1, branch: 1, period: 1 }, { unique: true });
+timetableHistorySchema.index({ subject: 1, semester: 1, branch: 1, date: -1 });
+
+const TimetableHistory = mongoose.model('TimetableHistory', timetableHistorySchema);
 let studentsMemory = [];
 let timetableMemory = {};
 let studentManagementMemory = [];
@@ -3520,6 +3541,35 @@ app.post('/api/attendance/start-session', async (req, res) => {
 
 
 // 3. Lecture Started (Called by server when lecture begins)
+// ─── Helper: record a lecture in TimetableHistory ────────────────────────────
+async function recordTimetableHistory({ date, semester, branch, period, subject, teacher, teacherName, room, startTime, endTime, source = 'lecture_start' }) {
+    // Validate required fields before hitting DB
+    if (!subject?.trim() || !semester?.trim() || !branch?.trim() || !period?.trim()) {
+        console.warn('⚠️ recordTimetableHistory: missing required fields', { subject, semester, branch, period });
+        return;
+    }
+    try {
+        const midnight = new Date(date); midnight.setHours(0, 0, 0, 0);
+        await TimetableHistory.findOneAndUpdate(
+            { date: midnight, semester: semester.toString(), branch, period },
+            { $set: {
+                subject:     subject.trim(),
+                teacher:     teacher     || '',
+                teacherName: teacherName || teacher || '',
+                room:        room        || '',
+                startTime:   startTime   || '',
+                endTime:     endTime     || '',
+                source
+            }},
+            { upsert: true, new: true }
+        );
+    } catch (e) {
+        if (e.code !== 11000) { // 11000 = duplicate key — safe to ignore on race condition
+            console.error('❌ TimetableHistory write error:', e.message);
+        }
+    }
+}
+
 app.post('/api/attendance/lecture-start', async (req, res) => {
     try {
         const { period, subject, teacher, teacherName, room, startTime, endTime, semester, branch } = req.body;
@@ -3527,6 +3577,9 @@ app.post('/api/attendance/lecture-start', async (req, res) => {
         const now = new Date();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
+        // Record in TimetableHistory
+        await recordTimetableHistory({ date: today, semester, branch, period, subject, teacher, teacherName, room, startTime, endTime });
 
         // Find all active sessions for this semester/branch
         const sessions = await AttendanceSession.find({
@@ -3837,9 +3890,10 @@ app.get('/api/attendance/subjects', async (req, res) => {
 });
 
 // ─── GET /api/attendance/subject-dates ───────────────────────────────────────
-// Returns all distinct dates on which a specific subject had at least one
-// PeriodAttendance record for the given semester + branch.
-// Used to highlight only relevant dates on the calendar in subject-filter mode.
+// Returns all distinct dates on which a specific subject was scheduled
+// for the given semester + branch.
+// Primary source: TimetableHistory (records every day the subject was on the timetable).
+// Fallback: PeriodAttendance (actual check-ins, for older data before TimetableHistory existed).
 app.get('/api/attendance/subject-dates', async (req, res) => {
     try {
         const { semester, branch, subject } = req.query;
@@ -3849,26 +3903,67 @@ app.get('/api/attendance/subject-dates', async (req, res) => {
         if (mongoose.connection.readyState !== 1) {
             return res.json({ success: true, dates: [] });
         }
-        const records = await PeriodAttendance.find(
+
+        // 1. From TimetableHistory — scheduled dates (most reliable)
+        const historyRecords = await TimetableHistory.find(
             { semester, branch, subject },
             { date: 1 }
         ).lean();
 
-        // Deduplicate by midnight date string
+        // 2. From PeriodAttendance — actual attendance dates (fallback / older data)
+        const attendanceRecords = await PeriodAttendance.find(
+            { semester, branch, subject },
+            { date: 1 }
+        ).lean();
+
+        // Merge and deduplicate by midnight ISO string
         const seen = new Set();
         const dates = [];
-        for (const r of records) {
-            const d = new Date(r.date);
-            d.setHours(0, 0, 0, 0);
+        for (const r of [...historyRecords, ...attendanceRecords]) {
+            const d = new Date(r.date); d.setHours(0, 0, 0, 0);
             const key = d.toISOString();
-            if (!seen.has(key)) {
-                seen.add(key);
-                dates.push(key);
-            }
+            if (!seen.has(key)) { seen.add(key); dates.push(key); }
         }
+        dates.sort((a, b) => new Date(b) - new Date(a)); // newest first
+
         res.json({ success: true, dates });
     } catch (error) {
         console.error('❌ Error fetching subject dates:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ─── POST /api/timetable-history/backfill ────────────────────────────────────
+// One-time backfill: reads PeriodAttendance to reconstruct TimetableHistory
+// for all past dates. Call once from admin panel after deploying this update.
+app.post('/api/timetable-history/backfill', async (req, res) => {
+    try {
+        if (mongoose.connection.readyState !== 1) {
+            return res.json({ success: false, error: 'DB not connected' });
+        }
+        const records = await PeriodAttendance.find({}, {
+            date: 1, semester: 1, branch: 1, period: 1,
+            subject: 1, teacher: 1, teacherName: 1, room: 1
+        }).lean();
+
+        let inserted = 0;
+        for (const r of records) {
+            await recordTimetableHistory({
+                date:        r.date,
+                semester:    r.semester,
+                branch:      r.branch,
+                period:      r.period,
+                subject:     r.subject,
+                teacher:     r.teacher,
+                teacherName: r.teacherName,
+                room:        r.room,
+                source:      'cron'
+            });
+            inserted++;
+        }
+        res.json({ success: true, message: `Backfilled ${inserted} records into TimetableHistory` });
+    } catch (error) {
+        console.error('❌ Backfill error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -6733,6 +6828,55 @@ cron.schedule('* * * * *', () => {
 });
 // Also run on the 30-second mark
 setInterval(() => { checkExpiredRandomRings(); }, 30000);
+
+// ─── Daily midnight cron: snapshot today's timetable into TimetableHistory ───
+// Runs at 00:05 every day so all subjects scheduled for today are recorded
+// even if no student checks in.
+cron.schedule('5 0 * * *', async () => {
+    console.log('📅 [CRON] Snapshotting today\'s timetable into TimetableHistory...');
+    try {
+        const now   = new Date();
+        const today = new Date(now); today.setHours(0, 0, 0, 0);
+        const days  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const dayName = days[now.getDay()];
+
+        const timetables = await TimetableTable.find({}).lean();
+        let count = 0;
+
+        for (const tt of timetables) {
+            const schedule = tt.timetable?.schedule?.[dayName] || tt.timetable?.[dayName] || [];
+            if (!schedule.length) continue;
+
+            const periods = tt.periods || [];
+
+            for (let i = 0; i < schedule.length; i++) {
+                const slot = schedule[i];
+                if (!slot || slot.isBreak || !slot.subject) continue;
+
+                const periodInfo = periods[i] || {};
+                const periodId   = `P${i + 1}`;
+
+                await recordTimetableHistory({
+                    date:        today,
+                    semester:    tt.semester?.toString(),
+                    branch:      tt.branch,
+                    period:      periodId,
+                    subject:     slot.subject,
+                    teacher:     slot.teacher || '',
+                    teacherName: slot.teacherName || slot.teacher || '',
+                    room:        slot.room || '',
+                    startTime:   periodInfo.startTime || '',
+                    endTime:     periodInfo.endTime   || '',
+                    source:      'cron'
+                });
+                count++;
+            }
+        }
+        console.log(`✅ [CRON] TimetableHistory: recorded ${count} period slots for ${dayName}`);
+    } catch (e) {
+        console.error('❌ [CRON] TimetableHistory snapshot failed:', e.message);
+    }
+});
 
 console.log('? [TIMEOUT] Random ring timeout handler initialized - checking every minute');
 

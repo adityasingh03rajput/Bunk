@@ -51,6 +51,24 @@ export default function CalendarScreen({
     const [drillStudent,      setDrillStudent]       = useState(null); // student object with lectures
 
     // ── effects ───────────────────────────────────────────────────────────────
+    // ── shared fetch helper with timeout ─────────────────────────────────────
+    const [fetchError, setFetchError] = useState(null);
+
+    const apiFetch = async (url, timeoutMs = 10000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const res = await fetch(url, { signal: controller.signal });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error(`Server error ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            clearTimeout(timer);
+            if (err.name === 'AbortError') throw new Error('Request timed out. Check your connection.');
+            throw err;
+        }
+    };
+
     useEffect(() => {
         if (isTeacher) {
             if (filterMode === 'day') {
@@ -67,41 +85,42 @@ export default function CalendarScreen({
     // Load subject list when teacher switches to subject mode
     useEffect(() => {
         if (isTeacher && filterMode === 'subject') {
-            // Always reload when semester/branch available
             if (semester && branch) fetchSubjectList();
         }
     }, [filterMode, isTeacher, semester, branch]);
 
-    // ── holiday fetch ─────────────────────────────────────────────────────────
+    // ── holiday fetch — silent fail, non-critical ─────────────────────────────
     const fetchHolidays = async () => {
         try {
             const year  = currentDate.getFullYear();
             const month = currentDate.getMonth();
             const start = new Date(year, month, 1).toISOString();
             const end   = new Date(year, month + 1, 0).toISOString();
-            const res   = await fetch(`${socketUrl}/api/holidays/range?startDate=${start}&endDate=${end}`);
-            const data  = await res.json();
+            const data  = await apiFetch(`${socketUrl}/api/holidays/range?startDate=${start}&endDate=${end}`);
             if (data.success && data.holidays) {
                 const map = {};
                 data.holidays.forEach(h => { map[new Date(h.date).toDateString()] = h; });
                 setHolidays(map);
             }
-        } catch (_) {}
+        } catch (_) {
+            // Holidays are non-critical — silently ignore
+        }
     };
 
     // ── teacher: day mode ─────────────────────────────────────────────────────
     const fetchTeacherMonthData = async () => {
         if (!semester || !branch) return;
         setLoading(true);
+        setFetchError(null);
+        // Optimistic: keep previous data visible while loading
         try {
-            const res  = await fetch(`${socketUrl}/api/attendance/records?semester=${semester}&branch=${branch}`);
-            const data = await res.json();
+            const data = await apiFetch(`${socketUrl}/api/attendance/records?semester=${encodeURIComponent(semester)}&branch=${encodeURIComponent(branch)}`);
             if (data.success && data.records) {
                 const dateMap = {};
                 let mp = 0, ma = 0;
                 data.records.forEach(r => {
-                    const d    = new Date(r.date);
-                    const key  = d.toDateString();
+                    const d   = new Date(r.date);
+                    const key = d.toDateString();
                     if (!dateMap[key]) dateMap[key] = { present: 0, absent: 0, total: 0 };
                     if (r.status === 'present') { dateMap[key].present++; mp++; }
                     else                        { dateMap[key].absent++;  ma++; }
@@ -109,55 +128,72 @@ export default function CalendarScreen({
                 });
                 setAttendanceData(dateMap);
                 setMonthStats({ present: mp, absent: ma, total: mp + ma });
+            } else {
+                setFetchError('No attendance data found for this class.');
             }
-        } catch (_) {} finally { setLoading(false); }
+        } catch (err) {
+            setFetchError(`Failed to load attendance: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // ── teacher: subject list ─────────────────────────────────────────────────
     const fetchSubjectList = async () => {
         try {
-            const res  = await fetch(`${socketUrl}/api/attendance/subjects?semester=${semester}&branch=${branch}`);
-            const data = await res.json();
-            if (data.success) {
-                setSubjectList(data.subjects || []);
-                if (data.subjects?.length > 0 && !selectedSubject) {
-                    setSelectedSubject(data.subjects[0]);
-                }
+            const data = await apiFetch(`${socketUrl}/api/attendance/subjects?semester=${encodeURIComponent(semester)}&branch=${encodeURIComponent(branch)}`);
+            if (data.success && data.subjects?.length > 0) {
+                setSubjectList(data.subjects);
+                // Only auto-select if nothing is selected yet
+                setSelectedSubject(prev => prev || data.subjects[0]);
+            } else {
+                setSubjectList([]);
             }
-        } catch (_) {}
+        } catch (err) {
+            console.warn('Subject list fetch failed:', err.message);
+            setSubjectList([]);
+        }
     };
 
     // ── teacher: subject mode — fetch active dates ────────────────────────────
     const fetchSubjectDates = async () => {
         if (!selectedSubject) return;
         setLoading(true);
+        setFetchError(null);
         try {
-            const res  = await fetch(
-                `${socketUrl}/api/attendance/subject-dates?semester=${semester}&branch=${branch}&subject=${encodeURIComponent(selectedSubject)}`
+            const data = await apiFetch(
+                `${socketUrl}/api/attendance/subject-dates?semester=${encodeURIComponent(semester)}&branch=${encodeURIComponent(branch)}&subject=${encodeURIComponent(selectedSubject)}`
             );
-            const data = await res.json();
             if (data.success) {
-                setActiveDates(new Set(data.dates));   // ISO midnight strings
+                setActiveDates(new Set(data.dates));
+            } else {
+                setActiveDates(new Set());
+                setFetchError('No scheduled dates found for this subject.');
             }
-        } catch (_) {} finally { setLoading(false); }
+        } catch (err) {
+            setFetchError(`Failed to load subject dates: ${err.message}`);
+            setActiveDates(new Set());
+        } finally {
+            setLoading(false);
+        }
     };
 
     // ── student: month attendance ─────────────────────────────────────────────
     const fetchMonthAttendance = async () => {
         if (!studentId) return;
         setLoading(true);
+        setFetchError(null);
         try {
-            const res  = await fetch(`${socketUrl}/api/attendance/records?studentId=${studentId}`);
-            const data = await res.json();
+            const data = await apiFetch(`${socketUrl}/api/attendance/records?studentId=${encodeURIComponent(studentId)}`);
             if (data.success && data.records) {
                 const aMap = {}, rMap = {};
                 let mp = 0, ma = 0;
                 data.records.forEach(r => {
                     const d   = new Date(r.date);
                     const key = d.toDateString();
-                    r.totalAttended  = r.totalAttended  || 0;
-                    r.totalClassTime = r.totalClassTime || 0;
-                    r.dayPercentage  = r.dayPercentage  || 0;
+                    r.totalAttended  = Number(r.totalAttended)  || 0;
+                    r.totalClassTime = Number(r.totalClassTime) || 0;
+                    r.dayPercentage  = Number(r.dayPercentage)  || 0;
                     aMap[key] = r.status;
                     rMap[key] = r;
                     if (d.getMonth() === currentDate.getMonth() &&
@@ -168,8 +204,14 @@ export default function CalendarScreen({
                 setAttendanceData(aMap);
                 setAttendanceRecords(rMap);
                 setMonthStats({ present: mp, absent: ma, total: mp + ma });
+            } else {
+                setFetchError('No attendance records found.');
             }
-        } catch (_) {} finally { setLoading(false); }
+        } catch (err) {
+            setFetchError(`Failed to load attendance: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // ── date click handlers ───────────────────────────────────────────────────
@@ -198,38 +240,48 @@ export default function CalendarScreen({
     const fetchStudentsForDate = async (date) => {
         if (!semester || !branch) return;
         setLoadingStudents(true);
+        setStudentsOnDate([]); // optimistic clear
         try {
             const dateStr = date.toISOString().split('T')[0];
-            const res  = await fetch(
-                `${socketUrl}/api/attendance/date/${dateStr}?semester=${semester}&branch=${branch}`
+            const data = await apiFetch(
+                `${socketUrl}/api/attendance/date/${dateStr}?semester=${encodeURIComponent(semester)}&branch=${encodeURIComponent(branch)}`
             );
-            const data = await res.json();
             setStudentsOnDate(data.success ? (data.students || []) : []);
             setAllPeriods([]);
             setCurrentPeriodIdx(0);
-        } catch (_) { setStudentsOnDate([]); }
-        finally { setLoadingStudents(false); }
+        } catch (err) {
+            console.warn('fetchStudentsForDate failed:', err.message);
+            setStudentsOnDate([]);
+        } finally {
+            setLoadingStudents(false);
+        }
     };
 
     // teacher subject-mode: fetch per-period student list for a date+subject
     const fetchStudentsForDateSubject = async (date) => {
         if (!semester || !branch || !selectedSubject) return;
         setLoadingStudents(true);
+        setStudentsOnDate([]); // optimistic clear
         try {
             const dateStr = date.toISOString().split('T')[0];
-            const res  = await fetch(
-                `${socketUrl}/api/attendance/date/${dateStr}/subject/${encodeURIComponent(selectedSubject)}?semester=${semester}&branch=${branch}`
+            const data = await apiFetch(
+                `${socketUrl}/api/attendance/date/${dateStr}/subject/${encodeURIComponent(selectedSubject)}?semester=${encodeURIComponent(semester)}&branch=${encodeURIComponent(branch)}`
             );
-            const data = await res.json();
             if (data.success) {
                 setStudentsOnDate(data.students || []);
                 setAllPeriods(data.allPeriods || []);
                 setCurrentPeriodIdx(0);
             } else {
-                setStudentsOnDate([]); setAllPeriods([]);
+                setStudentsOnDate([]);
+                setAllPeriods([]);
             }
-        } catch (_) { setStudentsOnDate([]); setAllPeriods([]); }
-        finally { setLoadingStudents(false); }
+        } catch (err) {
+            console.warn('fetchStudentsForDateSubject failed:', err.message);
+            setStudentsOnDate([]);
+            setAllPeriods([]);
+        } finally {
+            setLoadingStudents(false);
+        }
     };
 
     // ── calendar helpers ──────────────────────────────────────────────────────
@@ -395,6 +447,15 @@ export default function CalendarScreen({
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={theme.primary} />
                     </View>
+                ) : fetchError ? (
+                    <View style={styles.loadingContainer}>
+                        <Text style={{ color: '#ef4444', textAlign: 'center', fontSize: 13 }}>⚠️ {fetchError}</Text>
+                        <TouchableOpacity
+                            onPress={() => isTeacher ? (filterMode === 'subject' ? fetchSubjectDates() : fetchTeacherMonthData()) : fetchMonthAttendance()}
+                            style={{ marginTop: 10, padding: 8, borderRadius: 8, backgroundColor: 'rgba(0,217,255,0.1)' }}>
+                            <Text style={{ color: theme.primary, fontSize: 13 }}>🔄 Retry</Text>
+                        </TouchableOpacity>
+                    </View>
                 ) : (
                     <View style={styles.daysGrid}>
                         {days.map((date, idx) => {
@@ -537,6 +598,7 @@ export default function CalendarScreen({
 
                         {/* ── Teacher view ── */}
                         {isTeacher ? (
+                            <View style={{ flex: 1 }}>
                             <ScrollView style={styles.modalBody}>
                                 {loadingStudents ? (
                                     <View style={styles.loadingContainer}>
@@ -726,6 +788,7 @@ export default function CalendarScreen({
                                     </ScrollView>
                                 </View>
                             )}
+                            </View>
                         ) : (
                             /* ── Student view ── */
                             <ScrollView style={styles.modalBody}>

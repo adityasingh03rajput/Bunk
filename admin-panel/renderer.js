@@ -5539,19 +5539,127 @@ let currentCalendarDate = new Date();
 let holidays = [];
 let academicEvents = [];
 
-// Calendar Schema for MongoDB
-const holidaySchema = {
-    date: Date,
-    name: String,
-    type: String, // 'holiday', 'exam', 'event'
-    description: String,
-    color: String
-};
+// ── Attendance filter state ───────────────────────────────────────────────────
+let calFilterMode     = 'day';      // 'day' | 'subject'
+let calFilterSemester = '';
+let calFilterBranch   = '';
+let calFilterSubject  = '';
+let calSubjectList    = [];
+let calActiveDates    = new Set();  // ISO midnight strings (subject mode)
+let calDayData        = {};         // dateKey → { present, absent, total } (day mode)
+let calCurrentPeriodIdx = 0;        // chevron index inside subject modal
 
 async function loadCalendar() {
     await loadHolidays();
+    await loadCalendarFilterDropdowns();
     renderCalendar();
     renderHolidaysList();
+}
+
+// Populate semester/branch dropdowns from existing dynamicData
+async function loadCalendarFilterDropdowns() {
+    const semEl = document.getElementById('calSemesterFilter');
+    const brEl  = document.getElementById('calBranchFilter');
+    if (!semEl || !brEl) return;
+
+    semEl.innerHTML = '<option value="">All Semesters</option>' +
+        (dynamicData.semesters || []).map(s => `<option value="${s}">Semester ${s}</option>`).join('');
+    brEl.innerHTML  = '<option value="">All Branches</option>' +
+        (dynamicData.branches  || []).map(b => `<option value="${b.value}">${b.label}</option>`).join('');
+}
+
+// Load subject list for the selected semester+branch
+async function loadCalendarSubjects() {
+    const sem = calFilterSemester;
+    const br  = calFilterBranch;
+    if (!sem || !br) { calSubjectList = []; renderCalendarSubjectDropdown(); return; }
+    try {
+        const res  = await fetch(`${SERVER_URL}/api/attendance/subjects?semester=${encodeURIComponent(sem)}&branch=${encodeURIComponent(br)}`);
+        const data = await res.json();
+        calSubjectList = data.success ? (data.subjects || []) : [];
+    } catch (_) { calSubjectList = []; }
+    // Always reset subject selection when list reloads
+    calFilterSubject = calSubjectList.length > 0 ? calSubjectList[0] : '';
+    renderCalendarSubjectDropdown();
+}
+
+function renderCalendarSubjectDropdown() {
+    const el = document.getElementById('calSubjectFilter');
+    if (!el) return;
+    el.innerHTML = calSubjectList.map(s =>
+        `<option value="${s}" ${s === calFilterSubject ? 'selected' : ''}>${s}</option>`
+    ).join('') || '<option value="">No subjects found</option>';
+    el.style.display = calFilterMode === 'subject' ? 'inline-block' : 'none';
+}
+
+// Called when any filter changes
+async function onCalendarFilterChange() {
+    const semEl  = document.getElementById('calSemesterFilter');
+    const brEl   = document.getElementById('calBranchFilter');
+    const modeEl = document.getElementById('calModeFilter');
+    const subEl  = document.getElementById('calSubjectFilter');
+
+    const prevSem = calFilterSemester;
+    const prevBr  = calFilterBranch;
+
+    calFilterSemester = semEl  ? semEl.value  : '';
+    calFilterBranch   = brEl   ? brEl.value   : '';
+    calFilterMode     = modeEl ? modeEl.value : 'day';
+
+    if (subEl) subEl.style.display = calFilterMode === 'subject' ? 'inline-block' : 'none';
+
+    const semBrChanged = prevSem !== calFilterSemester || prevBr !== calFilterBranch;
+
+    // Always reload subjects when sem/branch change (pre-loads for subject mode)
+    if (semBrChanged && calFilterSemester && calFilterBranch) {
+        await loadCalendarSubjects();
+    }
+
+    // Read subject from dropdown AFTER it's been populated
+    calFilterSubject = subEl ? subEl.value : (calSubjectList[0] || '');
+
+    if (calFilterMode === 'subject') {
+        if (calSubjectList.length === 0 && calFilterSemester && calFilterBranch) {
+            await loadCalendarSubjects();
+            calFilterSubject = subEl ? subEl.value : (calSubjectList[0] || '');
+        }
+        await fetchCalendarSubjectDates();
+    } else {
+        await fetchCalendarDayData();
+    }
+    renderCalendar();
+}
+
+// Fetch day-mode data: all attendance records for semester+branch
+async function fetchCalendarDayData() {
+    calDayData = {};
+    if (!calFilterSemester || !calFilterBranch) return;
+    try {
+        const res  = await fetch(`${SERVER_URL}/api/attendance/records?semester=${calFilterSemester}&branch=${calFilterBranch}`);
+        const data = await res.json();
+        if (data.success && data.records) {
+            data.records.forEach(r => {
+                const key = new Date(r.date).toDateString();
+                if (!calDayData[key]) calDayData[key] = { present: 0, absent: 0, total: 0 };
+                if (r.status === 'present') calDayData[key].present++;
+                else                        calDayData[key].absent++;
+                calDayData[key].total++;
+            });
+        }
+    } catch (_) {}
+}
+
+// Fetch subject-mode data: dates when subject was held
+async function fetchCalendarSubjectDates() {
+    calActiveDates = new Set();
+    if (!calFilterSemester || !calFilterBranch || !calFilterSubject) return;
+    try {
+        const res  = await fetch(
+            `${SERVER_URL}/api/attendance/subject-dates?semester=${calFilterSemester}&branch=${calFilterBranch}&subject=${encodeURIComponent(calFilterSubject)}`
+        );
+        const data = await res.json();
+        if (data.success) data.dates.forEach(d => calActiveDates.add(d));
+    } catch (_) {}
 }
 
 async function loadHolidays() {
@@ -5600,51 +5708,60 @@ function getDefaultHolidays() {
 }
 
 function renderCalendar() {
-    const calendar = document.getElementById('adminCalendar');
+    const calendar  = document.getElementById('adminCalendar');
     const monthYear = document.getElementById('calendarMonthYear');
+    if (!calendar || !monthYear) return;
 
-    const year = currentCalendarDate.getFullYear();
+    const year  = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
-
+    const monthNames = ['January','February','March','April','May','June',
+                        'July','August','September','October','November','December'];
     monthYear.textContent = `${monthNames[month]} ${year}`;
 
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const firstDay    = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDow    = firstDay.getDay();
 
     let html = '<div class="calendar-grid">';
-
-    // Day headers
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    days.forEach(day => {
-        html += `<div class="calendar-day-header">${day}</div>`;
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+        html += `<div class="calendar-day-header">${d}</div>`;
     });
+    for (let i = 0; i < startDow; i++) html += '<div class="calendar-cell empty"></div>';
 
-    // Empty cells before month starts
-    for (let i = 0; i < startingDayOfWeek; i++) {
-        html += '<div class="calendar-cell empty"></div>';
-    }
-
-    // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(year, month, day);
+        const date    = new Date(year, month, day);
         const dateStr = date.toDateString();
-        const today = new Date().toDateString() === dateStr;
+        const today   = new Date().toDateString() === dateStr;
         const holiday = holidays.find(h => new Date(h.date).toDateString() === dateStr);
-        const isSunday = date.getDay() === 0;
+        const isSun   = date.getDay() === 0;
 
-        html += `<div class="calendar-cell ${today ? 'today' : ''} ${holiday ? 'has-event' : ''} ${isSunday ? 'sunday' : ''}" 
-                      onclick="selectDate('${dateStr}')"
-                      style="${holiday ? `border-left: 4px solid ${holiday.color}` : ''}">
+        // Determine if this date is "active" under current filter
+        let isActive = false;
+        let badge    = '';
+        if (calFilterMode === 'day' && calFilterSemester && calFilterBranch) {
+            const stats = calDayData[dateStr];
+            if (stats) {
+                isActive = true;
+                badge = `<div class="cal-badge">${stats.total}</div>`;
+            }
+        } else if (calFilterMode === 'subject' && calFilterSubject) {
+            const midnight = new Date(date); midnight.setHours(0,0,0,0);
+            if (calActiveDates.has(midnight.toISOString())) {
+                isActive = true;
+                badge = `<div class="cal-badge cal-badge-subject">●</div>`;
+            }
+        }
+
+        html += `<div class="calendar-cell ${today ? 'today' : ''} ${holiday ? 'has-event' : ''} ${isSun ? 'sunday' : ''} ${isActive ? 'cal-active' : ''}"
+                      onclick="selectCalendarDate('${dateStr}')"
+                      style="${holiday ? `border-left:4px solid ${holiday.color}` : ''}">
             <div class="calendar-date">${day}</div>
-            ${holiday ? `<div class="calendar-event" style="background: ${holiday.color}">${holiday.name}</div>` : ''}
+            ${holiday ? `
+                <div class="calendar-event" style="background:${holiday.color}">${holiday.name}</div>
+                <button class="cal-edit-btn" onclick="event.stopPropagation();editHoliday(${JSON.stringify(holiday).replace(/"/g,'&quot;')})" title="Edit holiday">✏️</button>
+            ` : badge}
         </div>`;
     }
-
     html += '</div>';
     calendar.innerHTML = html;
 }
@@ -5694,15 +5811,197 @@ function nextMonth() {
     renderCalendar();
 }
 
-function selectDate(dateStr) {
-    const date = new Date(dateStr);
+// Unified date click handler
+async function selectCalendarDate(dateStr) {
+    const date    = new Date(dateStr);
     const holiday = holidays.find(h => new Date(h.date).toDateString() === dateStr);
 
-    if (holiday) {
-        showHolidayDetails(holiday);
-    } else {
-        showAddHolidayModal(date);
+    // If semester+branch filters are active → always show attendance modal
+    if (calFilterSemester && calFilterBranch) {
+        if (calFilterMode === 'subject' && calFilterSubject) {
+            await showSubjectAttendanceModal(date);
+        } else {
+            await showDayAttendanceModal(date);
+        }
+        return;
     }
+
+    // No filters — clicking opens add-holiday (holiday edit is via pencil icon)
+    showAddHolidayModal(date);
+}
+
+// Keep old selectDate as alias for any remaining references
+function selectDate(dateStr) { selectCalendarDate(dateStr); }
+
+// ── Day-mode modal ────────────────────────────────────────────────────────────
+async function showDayAttendanceModal(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p>Loading…</p>`;
+    openModal();
+    try {
+        const res  = await fetch(`${SERVER_URL}/api/attendance/date/${dateStr}?semester=${calFilterSemester}&branch=${calFilterBranch}`);
+        const data = await res.json();
+        if (!data.success || !data.students?.length) {
+            modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p style="color:var(--text-secondary)">No attendance records for this date.</p>`;
+            return;
+        }
+        renderDayModal(date, data.students);
+    } catch (e) {
+        modalBody.innerHTML = `<h2>📅 ${date.toDateString()}</h2><p style="color:#ef4444">Error loading data.</p>`;
+    }
+}
+
+function renderDayModal(date, students) {
+    const modalBody = document.getElementById('modalBody');
+    const present = students.filter(s => s.status === 'present').length;
+    const absent  = students.filter(s => s.status === 'absent').length;
+
+    modalBody.innerHTML = `
+        <h2>📅 ${date.toDateString()} — Sem ${calFilterSemester} ${calFilterBranch}</h2>
+        <div class="cal-summary-row">
+            <span class="cal-stat present">✅ ${present} Present</span>
+            <span class="cal-stat absent">❌ ${absent} Absent</span>
+            <span class="cal-stat total">👥 ${students.length} Total</span>
+        </div>
+        <div class="cal-student-list">
+            ${students.map((s, i) => `
+                <div class="cal-student-row ${s.status}" onclick="showStudentLectureDetail(${i},'day')" style="cursor:pointer">
+                    <span class="cal-student-name">${s.name || s.studentName || 'Unknown'}</span>
+                    <span class="cal-student-id">${s.enrollmentNo || s.studentId || ''}</span>
+                    <span class="cal-lecture-count">${s.lectures?.length || 0} lectures</span>
+                    <span class="cal-status-badge ${s.status}">${s.status === 'present' ? '✓ Present' : '✗ Absent'}</span>
+                    <span class="cal-drill-arrow">›</span>
+                </div>`).join('')}
+        </div>`;
+
+    // Store for drill-down
+    window._calModalStudents = students;
+    window._calModalDate     = date;
+}
+
+function showStudentLectureDetail(idx, mode) {
+    const students = window._calModalStudents;
+    if (!students || !students[idx]) return;
+    const s = students[idx];
+    const lectures = s.lectures || [];
+    const modalBody = document.getElementById('modalBody');
+
+    const presentLectures = lectures.filter(l => l.status === 'present');
+    const absentLectures  = lectures.filter(l => l.status === 'absent');
+
+    modalBody.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+            <button class="btn btn-sm btn-secondary" onclick="${mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)'}">← Back</button>
+            <h2 style="margin:0">${s.name || s.studentName || 'Unknown'}</h2>
+        </div>
+        <div class="cal-summary-row">
+            <span class="cal-stat present">✅ ${presentLectures.length} Present</span>
+            <span class="cal-stat absent">❌ ${absentLectures.length} Absent</span>
+            <span class="cal-stat total">📚 ${lectures.length} Total</span>
+        </div>
+        ${lectures.length === 0
+            ? `<p style="color:var(--text-secondary);text-align:center;padding:20px">No lecture data available</p>`
+            : `<div class="cal-lecture-list">
+                ${lectures.map(l => `
+                    <div class="cal-lecture-row ${l.status}">
+                        <div class="cal-lecture-period">${l.period || '—'}</div>
+                        <div class="cal-lecture-info">
+                            <div class="cal-lecture-subject">${l.subject || 'Unknown Subject'}</div>
+                            <div class="cal-lecture-meta">
+                                ${l.teacher ? `👨‍🏫 ${l.teacher}` : ''}
+                                ${l.room    ? ` &nbsp;📍 ${l.room}` : ''}
+                                ${l.verificationType ? ` &nbsp;🔐 ${l.verificationType}` : ''}
+                            </div>
+                        </div>
+                        <span class="cal-status-badge ${l.status}">${l.status === 'present' ? '✓' : '✗'}</span>
+                    </div>`).join('')}
+               </div>`}`;
+}
+
+// ── Subject-mode modal with chevron period navigation ─────────────────────────
+let calSubjectModalData = null;   // { students, allPeriods }
+
+async function showSubjectAttendanceModal(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `<h2>📚 ${calFilterSubject} — ${date.toDateString()}</h2><p>Loading…</p>`;
+    openModal();
+    try {
+        const res  = await fetch(
+            `${SERVER_URL}/api/attendance/date/${dateStr}/subject/${encodeURIComponent(calFilterSubject)}?semester=${calFilterSemester}&branch=${calFilterBranch}`
+        );
+        const data = await res.json();
+        if (!data.success || !data.students?.length) {
+            modalBody.innerHTML = `<h2>📚 ${calFilterSubject} — ${date.toDateString()}</h2>
+                <p style="color:var(--text-secondary)">No records for this subject on this date.</p>`;
+            return;
+        }
+        calSubjectModalData  = data;
+        calCurrentPeriodIdx  = 0;
+        window._calModalDate = date;
+        // Build merged student list for drill-down
+        window._calModalStudents = data.students.map(s => ({
+            ...s,
+            name: s.studentName,
+            lectures: (data.allPeriods || []).map((p, i) => {
+                const pr = s.periods?.[i];
+                return { period: p, subject: calFilterSubject, status: pr?.status || 'absent',
+                         verificationType: pr?.verificationType, room: pr?.room, teacher: pr?.teacher };
+            })
+        }));
+        renderSubjectModal(date);
+    } catch (e) {
+        modalBody.innerHTML = `<h2>📚 ${calFilterSubject}</h2><p style="color:#ef4444">Error loading data.</p>`;
+    }
+}
+
+function renderSubjectModal(date) {
+    if (!calSubjectModalData) return;
+    const { students, allPeriods } = calSubjectModalData;
+    const period    = allPeriods[calCurrentPeriodIdx];
+    const modalBody = document.getElementById('modalBody');
+    const dateLabel = date ? date.toDateString() : (window._calModalDate ? window._calModalDate.toDateString() : '');
+
+    const present = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'present').length;
+    const absent  = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'absent').length;
+
+    const prevDisabled = calCurrentPeriodIdx === 0 ? 'disabled' : '';
+    const nextDisabled = calCurrentPeriodIdx === allPeriods.length - 1 ? 'disabled' : '';
+
+    modalBody.innerHTML = `
+        <h2>📚 ${calFilterSubject} — ${dateLabel}</h2>
+        <div class="cal-summary-row">
+            <span class="cal-stat present">✅ ${present} Present</span>
+            <span class="cal-stat absent">❌ ${absent} Absent</span>
+            <span class="cal-stat total">👥 ${students.length} Total</span>
+        </div>
+        ${allPeriods.length > 1 ? `
+        <div class="cal-period-nav">
+            <button class="btn btn-sm btn-secondary" onclick="calChevron(-1)" ${prevDisabled}>‹</button>
+            <span class="cal-period-label">${period} &nbsp;<small>(${calCurrentPeriodIdx + 1} of ${allPeriods.length})</small></span>
+            <button class="btn btn-sm btn-secondary" onclick="calChevron(1)" ${nextDisabled}>›</button>
+        </div>` : `<div class="cal-period-label-solo">${period}</div>`}
+        <div class="cal-student-list">
+            ${students.map((s, i) => {
+                const pr = s.periods?.[calCurrentPeriodIdx];
+                const st = pr?.status || 'absent';
+                return `<div class="cal-student-row ${st}" onclick="showStudentLectureDetail(${i},'subject')" style="cursor:pointer">
+                    <span class="cal-student-name">${s.studentName || 'Unknown'}</span>
+                    <span class="cal-student-id">${s.enrollmentNo || ''}</span>
+                    ${pr?.verificationType ? `<span class="cal-verify-type">${pr.verificationType}</span>` : ''}
+                    <span class="cal-status-badge ${st}">${st === 'present' ? '✓ Present' : '✗ Absent'}</span>
+                    <span class="cal-drill-arrow">›</span>
+                </div>`;
+            }).join('')}
+        </div>`;
+}
+
+function calChevron(dir) {
+    if (!calSubjectModalData) return;
+    const max = calSubjectModalData.allPeriods.length - 1;
+    calCurrentPeriodIdx = Math.max(0, Math.min(max, calCurrentPeriodIdx + dir));
+    renderSubjectModal(null);
 }
 
 document.getElementById('addHolidayBtn').addEventListener('click', () => {

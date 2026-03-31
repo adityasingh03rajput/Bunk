@@ -514,9 +514,25 @@
                     <div class="section-header">
                         <h2 class="section-title">Academic Calendar</h2>
                         <div class="action-buttons">
-                            <button class="btn btn-secondary" id="exportCalendarBtn">📤 Export</button>
                             <button class="btn btn-primary" id="addHolidayBtn">➕ Add Holiday</button>
                         </div>
+                    </div>
+
+                    <!-- Attendance filter bar -->
+                    <div class="cal-filter-bar">
+                        <select id="calSemesterFilter" class="filter-select" onchange="onCalendarFilterChange()">
+                            <option value="">All Semesters</option>
+                        </select>
+                        <select id="calBranchFilter" class="filter-select" onchange="onCalendarFilterChange()">
+                            <option value="">All Branches</option>
+                        </select>
+                        <select id="calModeFilter" class="filter-select" onchange="onCalendarFilterChange()">
+                            <option value="day">📅 By Day</option>
+                            <option value="subject">📚 By Subject</option>
+                        </select>
+                        <select id="calSubjectFilter" class="filter-select" style="display:none" onchange="onCalendarFilterChange()">
+                            <option value="">Select Subject</option>
+                        </select>
                     </div>
 
                     <div class="calendar-tools">

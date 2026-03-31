@@ -6961,3 +6961,132 @@ ture Details Styles */
 [data-layout="focused"] .section-header {
     margin-bottom: 20px;
 }
+
+/* ── Calendar filter bar ─────────────────────────────────────────────────── */
+.cal-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--bg-card);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+}
+
+/* Active date highlight on calendar grid */
+.calendar-cell.cal-active {
+    background: rgba(0, 217, 255, 0.12);
+    border: 1px solid rgba(0, 217, 255, 0.35);
+}
+.calendar-cell.cal-active .calendar-date { font-weight: 700; color: var(--primary); }
+
+/* Badge inside calendar cell */
+.cal-badge {
+    font-size: 9px;
+    font-weight: 700;
+    background: rgba(0, 217, 255, 0.25);
+    color: var(--primary);
+    border-radius: 8px;
+    padding: 1px 5px;
+    margin-top: 2px;
+    text-align: center;
+}
+.cal-badge-subject {
+    background: transparent;
+    color: var(--primary);
+    font-size: 12px;
+    padding: 0;
+}
+
+/* ── Attendance modal styles ─────────────────────────────────────────────── */
+.cal-summary-row {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0 16px;
+    flex-wrap: wrap;
+}
+.cal-stat {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.cal-stat.present { background: rgba(16,185,129,0.15); color: #10b981; }
+.cal-stat.absent  { background: rgba(239,68,68,0.15);  color: #ef4444; }
+.cal-stat.total   { background: rgba(0,217,255,0.12);  color: var(--primary); }
+
+.cal-period-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 14px;
+}
+.cal-period-label { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.cal-period-label-solo {
+    font-size: 14px; font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.cal-student-list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; }
+.cal-student-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border-left: 3px solid transparent;
+    background: var(--bg-secondary);
+}
+.cal-student-row.present { border-left-color: #10b981; }
+.cal-student-row.absent  { border-left-color: #ef4444; }
+.cal-student-name  { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cal-student-id    { font-size: 11px; color: var(--text-secondary); min-width: 80px; }
+.cal-verify-type   { font-size: 10px; color: var(--text-secondary); background: var(--bg-card); padding: 2px 6px; border-radius: 8px; }
+.cal-status-badge  { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+.cal-status-badge.present { background: rgba(16,185,129,0.15); color: #10b981; }
+.cal-status-badge.absent  { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+/* ── Student drill-down ──────────────────────────────────────────────────── */
+.cal-drill-arrow   { margin-left: auto; color: var(--text-secondary); font-size: 16px; }
+.cal-lecture-count { font-size: 11px; color: var(--text-secondary); min-width: 60px; }
+
+.cal-lecture-list  { display: flex; flex-direction: column; gap: 8px; }
+.cal-lecture-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: 8px;
+    border-left: 3px solid transparent;
+    background: var(--bg-secondary);
+}
+.cal-lecture-row.present { border-left-color: #10b981; }
+.cal-lecture-row.absent  { border-left-color: #ef4444; }
+.cal-lecture-period {
+    font-size: 12px; font-weight: 700; color: var(--primary);
+    min-width: 28px; text-align: center;
+    background: rgba(0,217,255,0.1); border-radius: 6px; padding: 2px 6px;
+}
+.cal-lecture-info  { flex: 1; }
+.cal-lecture-subject { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.cal-lecture-meta  { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ── Calendar cell pencil edit button ───────────────────────────────────── */
+.calendar-cell { position: relative; }
+.cal-edit-btn {
+    position: absolute;
+    top: 2px; right: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 2px;
+    opacity: 0.5;
+    line-height: 1;
+    border-radius: 4px;
+    transition: opacity 0.15s;
+}
+.cal-edit-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }

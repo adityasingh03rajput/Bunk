@@ -3726,93 +3726,221 @@ app.get('/api/attendance/date/:date', async (req, res) => {
         const { date } = req.params;
         const { semester, branch } = req.query;
 
-        console.log('📅 Fetching students for date:', date, 'Semester:', semester, 'Branch:', branch);
-
         if (!date || !semester || !branch) {
-            return res.status(400).json({
-                success: false,
-                error: 'Date, semester, and branch are required'
+            return res.status(400).json({ success: false, error: 'date, semester and branch are required' });
+        }
+
+        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay   = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+
+        if (mongoose.connection.readyState !== 1) {
+            return res.json({ success: true, students: [], date, semester, branch });
+        }
+
+        // Use PeriodAttendance — it has real per-period data with subject names
+        const periods = await PeriodAttendance.find({
+            date: { $gte: startOfDay, $lte: endOfDay },
+            semester, branch
+        }).sort({ period: 1 }).lean();
+
+        // Group by enrollmentNo
+        const studentMap = {};
+        for (const p of periods) {
+            const key = p.enrollmentNo;
+            if (!studentMap[key]) {
+                studentMap[key] = {
+                    enrollmentNo: key,
+                    studentId:    key,
+                    name:         p.studentName || 'Unknown',
+                    status:       'absent',
+                    lectures:     []
+                };
+            }
+            studentMap[key].lectures.push({
+                period:           p.period,
+                subject:          p.subject,
+                teacher:          p.teacherName || p.teacher || '',
+                room:             p.room || '',
+                status:           p.status,
+                verificationType: p.verificationType,
+                checkInTime:      p.checkInTime
             });
+            // Mark present if any period is present
+            if (p.status === 'present') studentMap[key].status = 'present';
+        }
+
+        // Also pull any students who have an AttendanceRecord but no PeriodAttendance
+        // (older records) so they still appear
+        const arRecords = await AttendanceRecord.find({
+            date: { $gte: startOfDay, $lte: endOfDay },
+            semester, branch
+        }).lean();
+
+        for (const r of arRecords) {
+            const key = r.enrollmentNo || r.studentId;
+            if (!studentMap[key]) {
+                studentMap[key] = {
+                    enrollmentNo: key,
+                    studentId:    key,
+                    name:         r.studentName || 'Unknown',
+                    status:       r.status || 'absent',
+                    lectures:     (r.lectures || []).map(l => ({
+                        period:  l.period || '',
+                        subject: l.subject || '',
+                        teacher: l.teacherName || l.teacher || '',
+                        room:    l.room || '',
+                        status:  l.present ? 'present' : 'absent'
+                    }))
+                };
+            }
+        }
+
+        const students = Object.values(studentMap);
+        res.json({ success: true, students, date, semester, branch });
+
+    } catch (error) {
+        console.error('❌ Error fetching students for date:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ─── GET /api/attendance/subjects ────────────────────────────────────────────
+// Returns subject names for a given semester + branch.
+// Merges: Subject collection (configured subjects) + PeriodAttendance distinct subjects (actual attendance).
+app.get('/api/attendance/subjects', async (req, res) => {
+    try {
+        const { semester, branch } = req.query;
+        if (!semester || !branch) {
+            return res.status(400).json({ success: false, error: 'semester and branch are required' });
+        }
+        if (mongoose.connection.readyState !== 1) {
+            return res.json({ success: true, subjects: [] });
+        }
+
+        // 1. From Subject collection — use subjectName field
+        const configuredSubjects = await Subject.find(
+            { semester: semester.toString(), branch, isActive: { $ne: false } },
+            { subjectName: 1, shortName: 1 }
+        ).lean();
+        const fromSubjects = configuredSubjects.map(s => s.subjectName).filter(Boolean);
+
+        // 2. From PeriodAttendance — subjects that actually have attendance records
+        const fromAttendance = await PeriodAttendance.distinct('subject', { semester, branch });
+
+        // Merge and deduplicate
+        const merged = [...new Set([...fromSubjects, ...fromAttendance.filter(Boolean)])].sort();
+        res.json({ success: true, subjects: merged });
+    } catch (error) {
+        console.error('❌ Error fetching subjects:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ─── GET /api/attendance/subject-dates ───────────────────────────────────────
+// Returns all distinct dates on which a specific subject had at least one
+// PeriodAttendance record for the given semester + branch.
+// Used to highlight only relevant dates on the calendar in subject-filter mode.
+app.get('/api/attendance/subject-dates', async (req, res) => {
+    try {
+        const { semester, branch, subject } = req.query;
+        if (!semester || !branch || !subject) {
+            return res.status(400).json({ success: false, error: 'semester, branch and subject are required' });
+        }
+        if (mongoose.connection.readyState !== 1) {
+            return res.json({ success: true, dates: [] });
+        }
+        const records = await PeriodAttendance.find(
+            { semester, branch, subject },
+            { date: 1 }
+        ).lean();
+
+        // Deduplicate by midnight date string
+        const seen = new Set();
+        const dates = [];
+        for (const r of records) {
+            const d = new Date(r.date);
+            d.setHours(0, 0, 0, 0);
+            const key = d.toISOString();
+            if (!seen.has(key)) {
+                seen.add(key);
+                dates.push(key);
+            }
+        }
+        res.json({ success: true, dates });
+    } catch (error) {
+        console.error('❌ Error fetching subject dates:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ─── GET /api/attendance/date/:date/subject/:subject ─────────────────────────
+// Returns per-student attendance for a specific subject on a specific date.
+// Groups all PeriodAttendance rows for that date+subject into per-student
+// arrays so the UI can show chevron-navigable period slots.
+app.get('/api/attendance/date/:date/subject/:subject', async (req, res) => {
+    try {
+        const { date, subject } = req.params;
+        const { semester, branch } = req.query;
+        if (!date || !subject || !semester || !branch) {
+            return res.status(400).json({ success: false, error: 'date, subject, semester and branch are required' });
+        }
+        if (mongoose.connection.readyState !== 1) {
+            return res.json({ success: true, students: [], totalPeriods: 0 });
         }
 
         const targetDate = new Date(date);
-        const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
-        const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+        const startOfDay = new Date(targetDate); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay   = new Date(targetDate); endOfDay.setHours(23, 59, 59, 999);
 
-        if (mongoose.connection.readyState === 1) {
-            // Fetch all attendance records for this date, semester, and branch
-            const records = await AttendanceRecord.find({
-                date: { $gte: startOfDay, $lte: endOfDay },
-                semester: semester,
-                branch: branch
-            }).lean();
+        const records = await PeriodAttendance.find({
+            date: { $gte: startOfDay, $lte: endOfDay },
+            subject,
+            semester,
+            branch
+        }).sort({ period: 1 }).lean();
 
-            console.log('📊 Found', records.length, 'attendance records');
-
-            // Group by student and aggregate their data
-            const studentMap = {};
-
-            for (const record of records) {
-                if (!studentMap[record.studentId]) {
-                    // Fetch student details
-                    const student = await Student.findOne({ studentId: record.studentId }).lean();
-
-                    studentMap[record.studentId] = {
-                        studentId: record.studentId,
-                        name: student?.name || 'Unknown',
-                        status: record.status,
-                        totalAttended: record.totalAttended || 0,
-                        totalClassTime: record.totalClassTime || 0,
-                        percentage: record.dayPercentage || 0,
-                        lectures: record.lectures || []
-                    };
-                } else {
-                    // Aggregate if multiple records exist
-                    studentMap[record.studentId].totalAttended += record.totalAttended || 0;
-                    studentMap[record.studentId].totalClassTime += record.totalClassTime || 0;
-                    if (record.lectures) {
-                        studentMap[record.studentId].lectures.push(...record.lectures);
-                    }
-                }
+        // Group by enrollmentNo
+        const studentMap = {};
+        for (const r of records) {
+            if (!studentMap[r.enrollmentNo]) {
+                studentMap[r.enrollmentNo] = {
+                    enrollmentNo: r.enrollmentNo,
+                    studentName: r.studentName,
+                    periods: []
+                };
             }
-
-            const students = Object.values(studentMap);
-            console.log('👥 Returning', students.length, 'students');
-
-            res.json({
-                success: true,
-                students: students,
-                date: date,
-                semester: semester,
-                branch: branch
-            });
-        } else {
-            // Memory fallback
-            const records = attendanceRecordsMemory.filter(r => {
-                const recordDate = new Date(r.date);
-                return recordDate >= startOfDay && recordDate <= endOfDay &&
-                    r.semester === semester && r.branch === branch;
-            });
-
-            const students = records.map(r => ({
-                studentId: r.studentId,
-                name: r.studentName || 'Unknown',
-                status: r.status,
-                totalAttended: r.totalAttended || 0,
-                totalClassTime: r.totalClassTime || 0,
-                percentage: r.dayPercentage || 0
-            }));
-
-            res.json({
-                success: true,
-                students: students,
-                date: date,
-                semester: semester,
-                branch: branch
+            studentMap[r.enrollmentNo].periods.push({
+                period:           r.period,
+                status:           r.status,
+                verificationType: r.verificationType,
+                checkInTime:      r.checkInTime,
+                room:             r.room,
+                teacher:          r.teacherName || r.teacher
             });
         }
+
+        // Distinct period slots that existed that day for this subject
+        const allPeriods = [...new Set(records.map(r => r.period))].sort();
+
+        const students = Object.values(studentMap).map(s => ({
+            ...s,
+            // Ensure every student has an entry for every period (absent if missing)
+            periods: allPeriods.map(p => {
+                const found = s.periods.find(x => x.period === p);
+                return found || { period: p, status: 'absent', verificationType: null };
+            })
+        }));
+
+        res.json({
+            success: true,
+            students,
+            subject,
+            date,
+            allPeriods,          // e.g. ['P1','P3'] — the actual period slots
+            totalPeriods: allPeriods.length
+        });
     } catch (error) {
-        console.error('❌ Error fetching students for date:', error);
+        console.error('❌ Error fetching subject attendance for date:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

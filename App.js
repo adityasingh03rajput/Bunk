@@ -4578,6 +4578,7 @@ export default function App() {
           userData={userData}
           semester={semester}
           branch={branch}
+          socketUrl={SOCKET_URL}
           isTeacher={true}
         />
         <BottomNavigation

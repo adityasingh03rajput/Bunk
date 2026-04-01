@@ -5968,28 +5968,52 @@ function showStudentLectureDetail(idx, mode) {
     const backFn   = mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)';
     const enrollmentNo = s.enrollmentNo || s.studentId || '';
 
-    const renderDetail = (subjectStats) => {
-        const bubbleHtml = subjectStats && subjectStats.length > 0
-            ? `<div class="cal-subject-bubbles">
-                ${subjectStats.map(sub => {
-                    const c = sub.percentage >= 75 ? '#10b981' : sub.percentage >= 50 ? '#f59e0b' : '#ef4444';
-                    const dash = sub.percentage;
-                    const shortName = sub.subject.length > 6 ? sub.subject.substring(0, 5) + '…' : sub.subject;
-                    return `
-                    <div class="cal-bubble-wrap" title="${sub.subject}: ${sub.present}/${sub.total} (${sub.percentage}%)">
-                        <svg viewBox="0 0 36 36" class="cal-bubble-svg">
-                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
-                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="${c}" stroke-width="3"
-                                stroke-dasharray="${dash} ${100 - dash}" stroke-dashoffset="25" stroke-linecap="round"/>
-                        </svg>
-                        <div class="cal-bubble-inner">
-                            <div class="cal-bubble-name" style="color:${c}">${shortName}</div>
-                            <div class="cal-bubble-pct" style="color:${c}">${sub.percentage}%</div>
-                        </div>
-                    </div>`;
-                }).join('')}
-               </div>`
-            : '';
+    const renderDetail = () => {
+        // Build period bubbles — P1 to P8 (or however many periods exist in the timetable)
+        // Determine max period number from lectures or default to 8
+        const maxPeriod = Math.max(8, ...lectures.map(l => parseInt((l.period || 'P0').replace('P','')) || 0));
+        const periodSlots = Array.from({ length: maxPeriod }, (_, i) => {
+            const pid = `P${i + 1}`;
+            const lec = lectures.find(l => l.period === pid);
+            return { pid, lec };
+        });
+
+        const bubbleHtml = `
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+                <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">Periods</div>
+                <div class="cal-subject-bubbles">
+                    ${periodSlots.map(({ pid, lec }) => {
+                        if (!lec) {
+                            // Empty ghost bubble — period not in timetable or no data
+                            return `
+                            <div class="cal-bubble-wrap" title="${pid}: No class">
+                                <svg viewBox="0 0 36 36" class="cal-bubble-svg">
+                                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2.5"/>
+                                </svg>
+                                <div class="cal-bubble-inner">
+                                    <div style="font-size:9px;color:rgba(255,255,255,0.2);font-weight:600">${pid}</div>
+                                </div>
+                            </div>`;
+                        }
+                        const isPresent = lec.status === 'present';
+                        const c = isPresent ? '#10b981' : '#ef4444';
+                        const dash = isPresent ? 100 : 0; // full ring if present, empty if absent
+                        const shortName = (lec.subject || '').length > 5 ? (lec.subject || '').substring(0, 4) + '…' : (lec.subject || pid);
+                        return `
+                        <div class="cal-bubble-wrap" title="${pid}: ${lec.subject || '—'} (${isPresent ? 'Present' : 'Absent'})">
+                            <svg viewBox="0 0 36 36" class="cal-bubble-svg">
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2.5"/>
+                                <circle cx="18" cy="18" r="15.9" fill="none" stroke="${c}" stroke-width="2.5"
+                                    stroke-dasharray="${dash} ${100 - dash}" stroke-dashoffset="25" stroke-linecap="round"/>
+                            </svg>
+                            <div class="cal-bubble-inner">
+                                <div class="cal-bubble-name" style="color:${c}">${shortName}</div>
+                                <div class="cal-bubble-pct" style="color:${c}">${pid}</div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>`;
 
         modalBody.innerHTML = `
             <div class="cal-modal-header">
@@ -6047,12 +6071,8 @@ function showStudentLectureDetail(idx, mode) {
             ${bubbleHtml}`;
     };
 
-    renderDetail(null);
-    if (enrollmentNo) {
-        calApiFetch(`${SERVER_URL}/api/attendance/student/${enrollmentNo}/subject-stats`)
-            .then(data => { if (data.success) renderDetail(data.subjects); })
-            .catch(() => {});
-    }
+    // Render immediately — bubbles are built from existing lectures data, no extra fetch needed
+    renderDetail();
 }
 
 // ── Subject-mode modal with chevron period navigation ─────────────────────────

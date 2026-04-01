@@ -699,13 +699,6 @@ export default function CalendarScreen({
                                                           })
                                                         : lecs;
                                                     setDrillStudent({ ...student, name: student.name || student.studentName, lectures: drillLecs });
-                                                    // Fetch subject stats for bubbles
-                                                    const enrollNo = student.enrollmentNo || student.studentId;
-                                                    if (enrollNo) {
-                                                        apiFetch(`${socketUrl}/api/attendance/student/${enrollNo}/subject-stats`)
-                                                            .then(d => { if (d.success) setDrillSubjectStats(d.subjects || []); })
-                                                            .catch(() => setDrillSubjectStats([]));
-                                                    }
                                                 }}>
                                                     <View style={[styles.studentCard, {
                                                         backgroundColor: isPresent ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
@@ -823,27 +816,43 @@ export default function CalendarScreen({
                                             );
                                         })}
 
-                                        {/* Subject bubbles row */}
-                                        {drillSubjectStats.length > 0 && (
-                                            <View style={{ marginTop: 16 }}>
-                                                <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 10 }}>Overall by Subject</Text>
-                                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                                    <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 4 }}>
-                                                        {drillSubjectStats.map((sub, i) => {
-                                                            const color = sub.percentage >= 75 ? '#10b981' : sub.percentage >= 50 ? '#f59e0b' : '#ef4444';
-                                                            const shortName = sub.subject.length > 6 ? sub.subject.substring(0, 5) + '…' : sub.subject;
-                                                            return (
-                                                                <View key={i} style={[styles.bubbleWrap, { borderColor: color }]}>
-                                                                    <Text style={{ color, fontSize: 10, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>{shortName}</Text>
-                                                                    <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{sub.percentage}%</Text>
-                                                                    <Text style={{ color: theme.textSecondary, fontSize: 9 }}>{sub.present}/{sub.total}</Text>
-                                                                </View>
-                                                            );
-                                                        })}
-                                                    </View>
-                                                </ScrollView>
-                                            </View>
-                                        )}
+                                        {/* Period bubbles row */}
+                                        {(() => {
+                                            const maxPeriod = Math.max(8, ...(drillStudent.lectures || []).map(l => parseInt((l.period || 'P0').replace('P','')) || 0));
+                                            const slots = Array.from({ length: maxPeriod }, (_, i) => {
+                                                const pid = `P${i + 1}`;
+                                                const lec = (drillStudent.lectures || []).find(l => l.period === pid);
+                                                return { pid, lec };
+                                            });
+                                            return (
+                                                <View style={{ marginTop: 16 }}>
+                                                    <Text style={{ color: theme.textSecondary, fontSize: 11, marginBottom: 10 }}>Periods</Text>
+                                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                                        <View style={{ flexDirection: 'row', gap: 10, paddingBottom: 4 }}>
+                                                            {slots.map(({ pid, lec }) => {
+                                                                if (!lec) {
+                                                                    return (
+                                                                        <View key={pid} style={[styles.bubbleWrap, { borderColor: 'rgba(255,255,255,0.08)' }]}>
+                                                                            <Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 9, fontWeight: '700' }}>{pid}</Text>
+                                                                        </View>
+                                                                    );
+                                                                }
+                                                                const isP   = lec.status === 'present';
+                                                                const color = isP ? '#10b981' : '#ef4444';
+                                                                const shortName = (lec.subject || '').length > 5 ? (lec.subject || '').substring(0, 4) + '…' : (lec.subject || pid);
+                                                                return (
+                                                                    <View key={pid} style={[styles.bubbleWrap, { borderColor: color }]}>
+                                                                        <Text style={{ color, fontSize: 9, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>{shortName}</Text>
+                                                                        <Text style={{ color, fontSize: 9, fontWeight: '600' }}>{pid}</Text>
+                                                                        <Text style={{ color: isP ? '#10b981' : '#ef4444', fontSize: 8 }}>{isP ? '✓' : '✗'}</Text>
+                                                                    </View>
+                                                                );
+                                                            })}
+                                                        </View>
+                                                    </ScrollView>
+                                                </View>
+                                            );
+                                        })()}
                                     </ScrollView>
                                 </View>
                             )}

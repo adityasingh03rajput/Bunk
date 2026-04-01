@@ -6072,17 +6072,18 @@ app.delete('/api/students/:id', async (req, res) => {
 // Teacher Management
 const teacherSchema = new mongoose.Schema({
     employeeId: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    name:       { type: String, required: true },
+    email:      { type: String, required: true, unique: true },
+    password:   { type: String, required: true },
     department: { type: String, required: true },
-    subject: { type: String, required: true },
-    dob: { type: Date, required: true },
-    phone: String,
-    photoUrl: String,
-    semester: String,
+    subject:    { type: String, default: '' },          // legacy single subject (kept for compat)
+    subjects:   { type: [String], default: [] },        // multi-subject array (new)
+    dob:        { type: Date, required: true },
+    phone:      String,
+    photoUrl:   String,
+    semester:   String,
     canEditTimetable: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
+    createdAt:  { type: Date, default: Date.now }
 });
 
 const Teacher = mongoose.model('Teacher', teacherSchema);

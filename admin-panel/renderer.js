@@ -1152,7 +1152,14 @@ function renderTeachers(teachersToRender) {
             </td>
             <td>${teacher.email}</td>
             <td>${teacher.department}</td>
-            <td>${teacher.subject || 'N/A'}</td>
+            <td>
+                ${(() => {
+                    const subs = teacher.subjects?.length ? teacher.subjects : (teacher.subject ? [teacher.subject] : []);
+                    return subs.length
+                        ? subs.map(s => `<span style="display:inline-block;background:rgba(0,217,255,0.12);color:var(--primary);border-radius:10px;padding:2px 8px;font-size:11px;margin:2px">${s}</span>`).join('')
+                        : '<span style="color:var(--text-secondary)">N/A</span>';
+                })()}
+            </td>
             <td>${formatDate(teacher.dob)}</td>
             <td>
                 <span class="access-toggle ${teacher.canEditTimetable ? 'enabled' : 'disabled'}" 
@@ -1231,9 +1238,19 @@ function filterTeachers() {
 }
 
 async function showAddTeacherModal() {
-    // Reload departments from server before showing form
     await loadDynamicDropdownData();
-    
+
+    // Load all subjects for the multi-select
+    let allSubjects = [];
+    try {
+        const r = await calApiFetch(`${SERVER_URL}/api/subjects`);
+        if (r.success) allSubjects = r.subjects || [];
+    } catch (_) {}
+
+    const subjectOptions = allSubjects.map(s =>
+        `<option value="${s.subjectName}">${s.subjectName} (${s.branch} Sem ${s.semester})</option>`
+    ).join('');
+
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `
         <h2>Add New Teacher</h2>
@@ -1262,12 +1279,19 @@ async function showAddTeacherModal() {
                 </select>
             </div>
             <div class="form-group">
-                <label>Subject *</label>
-                <input type="text" name="subject" class="form-input" placeholder="e.g., Data Structures" required>
-            </div>
-            <div class="form-group">
-                <label>Semester</label>
-                <input type="text" name="semester" class="form-input" placeholder="e.g., 3">
+                <label>Subjects Taught *
+                    <small style="color:var(--text-secondary);font-weight:normal"> — hold Ctrl/Cmd to select multiple</small>
+                </label>
+                ${allSubjects.length > 0
+                    ? `<select id="teacherSubjectsSelect" class="form-select" multiple size="5" style="height:auto">
+                        ${subjectOptions}
+                       </select>
+                       <small style="color:var(--text-secondary);margin-top:4px;display:block">
+                           Or type manually: <input type="text" id="teacherSubjectManual" class="form-input" style="margin-top:6px" placeholder="e.g. Mathematics, Physics">
+                       </small>`
+                    : `<input type="text" name="subject" id="teacherSubjectManual" class="form-input" placeholder="e.g., Data Structures, Mathematics" required>
+                       <small style="color:var(--text-secondary)">No subjects configured yet — type manually (comma separated)</small>`
+                }
             </div>
             <div class="form-group">
                 <label>Date of Birth *</label>
@@ -1299,8 +1323,6 @@ async function showAddTeacherModal() {
             </div>
             <button type="submit" class="btn btn-primary">Add Teacher</button>
         </form>
-        
-        <!-- Camera Modal -->
         <div id="cameraModal" class="camera-modal" style="display:none;">
             <div class="camera-content">
                 <video id="cameraVideo" autoplay playsinline></video>
@@ -1323,6 +1345,22 @@ async function handleAddTeacher(e) {
     const formData = new FormData(e.target);
     const teacherData = Object.fromEntries(formData);
     teacherData.canEditTimetable = formData.has('canEditTimetable');
+
+    // Collect subjects from multi-select + manual input
+    const selectEl  = document.getElementById('teacherSubjectsSelect');
+    const manualEl  = document.getElementById('teacherSubjectManual');
+    const selected  = selectEl  ? Array.from(selectEl.selectedOptions).map(o => o.value) : [];
+    const manual    = manualEl  ? manualEl.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const subjects  = [...new Set([...selected, ...manual])];
+
+    if (subjects.length === 0) {
+        showNotification('Please select or enter at least one subject.', 'error');
+        return;
+    }
+
+    teacherData.subjects = subjects;
+    teacherData.subject  = subjects[0]; // keep legacy field as first subject
+    delete teacherData.photoData; // handled separately below
 
     // Upload photo to server if captured
     if (teacherData.photoData) {

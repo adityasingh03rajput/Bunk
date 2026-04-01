@@ -5889,67 +5889,134 @@ async function showDayAttendanceModal(date) {
 
 function renderDayModal(date, students) {
     const modalBody = document.getElementById('modalBody');
-    const present = students.filter(s => s.status === 'present').length;
-    const absent  = students.filter(s => s.status === 'absent').length;
+    const present   = students.filter(s => s.status === 'present').length;
+    const absent    = students.filter(s => s.status === 'absent').length;
+    const pct       = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
+    const barColor  = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
-    modalBody.innerHTML = `
-        <h2>📅 ${date.toDateString()} — Sem ${calFilterSemester} ${calFilterBranch}</h2>
-        <div class="cal-summary-row">
-            <span class="cal-stat present">✅ ${present} Present</span>
-            <span class="cal-stat absent">❌ ${absent} Absent</span>
-            <span class="cal-stat total">👥 ${students.length} Total</span>
-        </div>
-        <div class="cal-student-list">
-            ${students.map((s, i) => `
-                <div class="cal-student-row ${s.status}" onclick="showStudentLectureDetail(${i},'day')" style="cursor:pointer">
-                    <span class="cal-student-name">${s.name || s.studentName || 'Unknown'}</span>
-                    <span class="cal-student-id">${s.enrollmentNo || s.studentId || ''}</span>
-                    <span class="cal-lecture-count">${s.lectures?.length || 0} lectures</span>
-                    <span class="cal-status-badge ${s.status}">${s.status === 'present' ? '✓ Present' : '✗ Absent'}</span>
-                    <span class="cal-drill-arrow">›</span>
-                </div>`).join('')}
-        </div>`;
-
-    // Store for drill-down
     window._calModalStudents = students;
     window._calModalDate     = date;
+
+    modalBody.innerHTML = `
+        <div class="cal-modal-header">
+            <div>
+                <div class="cal-modal-title">📅 ${date.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+                <div class="cal-modal-sub">Sem ${calFilterSemester} · ${calFilterBranch}</div>
+            </div>
+        </div>
+
+        <!-- Attendance ring + stats -->
+        <div class="cal-day-stats">
+            <div class="cal-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cal-ring">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="${barColor}" stroke-width="3"
+                        stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" stroke-linecap="round"/>
+                </svg>
+                <div class="cal-ring-label" style="color:${barColor}">${pct}%</div>
+            </div>
+            <div class="cal-day-stat-grid">
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#10b981">${present}</span>
+                    <span class="cal-day-stat-lbl">Present</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#ef4444">${absent}</span>
+                    <span class="cal-day-stat-lbl">Absent</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:var(--primary)">${students.length}</span>
+                    <span class="cal-day-stat-lbl">Total</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance bar -->
+        <div class="cal-bar-wrap">
+            <div class="cal-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+
+        <!-- Student cards -->
+        <div class="cal-student-grid">
+            ${students.map((s, i) => {
+                const lc = s.lectures?.length || 0;
+                const sp = s.lectures?.filter(l => l.status === 'present').length || 0;
+                const isP = s.status === 'present';
+                return `
+                <div class="cal-student-card ${isP ? 'present' : 'absent'}" onclick="showStudentLectureDetail(${i},'day')">
+                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.name||'?')[0].toUpperCase()}</div>
+                    <div class="cal-sc-info">
+                        <div class="cal-sc-name">${s.name || s.studentName || 'Unknown'}</div>
+                        <div class="cal-sc-id">${s.enrollmentNo || ''}</div>
+                        ${lc > 0 ? `<div class="cal-sc-lectures">${sp}/${lc} lectures attended</div>` : ''}
+                    </div>
+                    <div class="cal-sc-badge ${isP ? 'present' : 'absent'}">${isP ? '✓' : '✗'}</div>
+                </div>`;
+            }).join('')}
+        </div>`;
 }
 
 function showStudentLectureDetail(idx, mode) {
     const students = window._calModalStudents;
     if (!students || !students[idx]) return;
-    const s = students[idx];
+    const s        = students[idx];
     const lectures = s.lectures || [];
     const modalBody = document.getElementById('modalBody');
-
-    const presentLectures = lectures.filter(l => l.status === 'present');
-    const absentLectures  = lectures.filter(l => l.status === 'absent');
+    const pLec     = lectures.filter(l => l.status === 'present').length;
+    const pct      = lectures.length > 0 ? Math.round((pLec / lectures.length) * 100) : (s.status === 'present' ? 100 : 0);
+    const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const backFn   = mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)';
 
     modalBody.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-            <button class="btn btn-sm btn-secondary" onclick="${mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)'}">← Back</button>
-            <h2 style="margin:0">${s.name || s.studentName || 'Unknown'}</h2>
+        <div class="cal-modal-header">
+            <button class="btn btn-sm btn-secondary" onclick="${backFn}" style="flex-shrink:0">← Back</button>
+            <div>
+                <div class="cal-modal-title">${s.name || s.studentName || 'Unknown'}</div>
+                <div class="cal-modal-sub">${s.enrollmentNo || ''} · ${window._calModalDate?.toDateString() || ''}</div>
+            </div>
         </div>
-        <div class="cal-summary-row">
-            <span class="cal-stat present">✅ ${presentLectures.length} Present</span>
-            <span class="cal-stat absent">❌ ${absentLectures.length} Absent</span>
-            <span class="cal-stat total">📚 ${lectures.length} Total</span>
+
+        <div class="cal-day-stats" style="margin-bottom:12px">
+            <div class="cal-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cal-ring">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="${barColor}" stroke-width="3"
+                        stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" stroke-linecap="round"/>
+                </svg>
+                <div class="cal-ring-label" style="color:${barColor}">${pct}%</div>
+            </div>
+            <div class="cal-day-stat-grid">
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#10b981">${pLec}</span>
+                    <span class="cal-day-stat-lbl">Present</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#ef4444">${lectures.length - pLec}</span>
+                    <span class="cal-day-stat-lbl">Absent</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:var(--primary)">${lectures.length}</span>
+                    <span class="cal-day-stat-lbl">Total</span>
+                </div>
+            </div>
         </div>
+
         ${lectures.length === 0
-            ? `<p style="color:var(--text-secondary);text-align:center;padding:20px">No lecture data available</p>`
-            : `<div class="cal-lecture-list">
+            ? `<div class="cal-empty"><span style="font-size:32px">📭</span><p>No lecture data for this day</p></div>`
+            : `<div class="cal-lecture-timeline">
                 ${lectures.map(l => `
-                    <div class="cal-lecture-row ${l.status}">
-                        <div class="cal-lecture-period">${l.period || '—'}</div>
-                        <div class="cal-lecture-info">
-                            <div class="cal-lecture-subject">${l.subject || 'Unknown Subject'}</div>
-                            <div class="cal-lecture-meta">
-                                ${l.teacher ? `👨‍🏫 ${l.teacher}` : ''}
-                                ${l.room    ? ` &nbsp;📍 ${l.room}` : ''}
-                                ${l.verificationType ? ` &nbsp;🔐 ${l.verificationType}` : ''}
+                    <div class="cal-lt-row ${l.status}">
+                        <div class="cal-lt-dot ${l.status}"></div>
+                        <div class="cal-lt-period">${l.period || '—'}</div>
+                        <div class="cal-lt-body">
+                            <div class="cal-lt-subject">${l.subject || 'Unknown Subject'}</div>
+                            <div class="cal-lt-meta">
+                                ${l.teacher ? `<span>👨‍🏫 ${l.teacher}</span>` : ''}
+                                ${l.room    ? `<span>📍 ${l.room}</span>` : ''}
+                                ${l.verificationType ? `<span class="cal-verify-badge">${l.verificationType}</span>` : ''}
                             </div>
                         </div>
-                        <span class="cal-status-badge ${l.status}">${l.status === 'present' ? '✓' : '✗'}</span>
+                        <div class="cal-lt-status ${l.status}">${l.status === 'present' ? '✓' : '✗'}</div>
                     </div>`).join('')}
                </div>`}`;
 }
@@ -6000,37 +6067,79 @@ function renderSubjectModal(date) {
     const { students, allPeriods } = calSubjectModalData;
     const period    = allPeriods[calCurrentPeriodIdx];
     const modalBody = document.getElementById('modalBody');
-    const dateLabel = date ? date.toDateString() : (window._calModalDate ? window._calModalDate.toDateString() : '');
+    const dateLabel = (date || window._calModalDate)
+        ? (date || window._calModalDate).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
+        : '';
 
     const present = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'present').length;
     const absent  = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'absent').length;
+    const pct     = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
+    const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
     const prevDisabled = calCurrentPeriodIdx === 0 ? 'disabled' : '';
     const nextDisabled = calCurrentPeriodIdx === allPeriods.length - 1 ? 'disabled' : '';
 
     modalBody.innerHTML = `
-        <h2>📚 ${calFilterSubject} — ${dateLabel}</h2>
-        <div class="cal-summary-row">
-            <span class="cal-stat present">✅ ${present} Present</span>
-            <span class="cal-stat absent">❌ ${absent} Absent</span>
-            <span class="cal-stat total">👥 ${students.length} Total</span>
+        <div class="cal-modal-header">
+            <div>
+                <div class="cal-modal-title">📚 ${calFilterSubject}</div>
+                <div class="cal-modal-sub">${dateLabel} · Sem ${calFilterSemester} · ${calFilterBranch}</div>
+            </div>
         </div>
+
+        <!-- Attendance ring + stats -->
+        <div class="cal-day-stats">
+            <div class="cal-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cal-ring">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="${barColor}" stroke-width="3"
+                        stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" stroke-linecap="round"/>
+                </svg>
+                <div class="cal-ring-label" style="color:${barColor}">${pct}%</div>
+            </div>
+            <div class="cal-day-stat-grid">
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#10b981">${present}</span>
+                    <span class="cal-day-stat-lbl">Present</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:#ef4444">${absent}</span>
+                    <span class="cal-day-stat-lbl">Absent</span>
+                </div>
+                <div class="cal-day-stat-item">
+                    <span class="cal-day-stat-val" style="color:var(--primary)">${students.length}</span>
+                    <span class="cal-day-stat-lbl">Total</span>
+                </div>
+            </div>
+        </div>
+        <div class="cal-bar-wrap"><div class="cal-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+
+        <!-- Period chevron navigator -->
         ${allPeriods.length > 1 ? `
         <div class="cal-period-nav">
             <button class="btn btn-sm btn-secondary" onclick="calChevron(-1)" ${prevDisabled}>‹</button>
-            <span class="cal-period-label">${period} &nbsp;<small>(${calCurrentPeriodIdx + 1} of ${allPeriods.length})</small></span>
+            <div style="text-align:center">
+                <div class="cal-period-label">${period}</div>
+                <div style="font-size:11px;color:var(--text-secondary)">${calCurrentPeriodIdx + 1} of ${allPeriods.length} periods</div>
+            </div>
             <button class="btn btn-sm btn-secondary" onclick="calChevron(1)" ${nextDisabled}>›</button>
-        </div>` : `<div class="cal-period-label-solo">${period}</div>`}
-        <div class="cal-student-list">
+        </div>` : period ? `<div class="cal-period-label-solo">${period}</div>` : ''}
+
+        <!-- Student cards -->
+        <div class="cal-student-grid">
             ${students.map((s, i) => {
-                const pr = s.periods?.[calCurrentPeriodIdx];
-                const st = pr?.status || 'absent';
-                return `<div class="cal-student-row ${st}" onclick="showStudentLectureDetail(${i},'subject')" style="cursor:pointer">
-                    <span class="cal-student-name">${s.studentName || 'Unknown'}</span>
-                    <span class="cal-student-id">${s.enrollmentNo || ''}</span>
-                    ${pr?.verificationType ? `<span class="cal-verify-type">${pr.verificationType}</span>` : ''}
-                    <span class="cal-status-badge ${st}">${st === 'present' ? '✓ Present' : '✗ Absent'}</span>
-                    <span class="cal-drill-arrow">›</span>
+                const pr  = s.periods?.[calCurrentPeriodIdx];
+                const st  = pr?.status || 'absent';
+                const isP = st === 'present';
+                return `
+                <div class="cal-student-card ${isP ? 'present' : 'absent'}" onclick="showStudentLectureDetail(${i},'subject')">
+                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.studentName||'?')[0].toUpperCase()}</div>
+                    <div class="cal-sc-info">
+                        <div class="cal-sc-name">${s.studentName || 'Unknown'}</div>
+                        <div class="cal-sc-id">${s.enrollmentNo || ''}</div>
+                        ${pr?.verificationType ? `<div class="cal-sc-lectures">${pr.verificationType}</div>` : ''}
+                    </div>
+                    <div class="cal-sc-badge ${isP ? 'present' : 'absent'}">${isP ? '✓' : '✗'}</div>
                 </div>`;
             }).join('')}
         </div>`;

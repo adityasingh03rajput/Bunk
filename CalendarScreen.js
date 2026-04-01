@@ -680,13 +680,15 @@ export default function CalendarScreen({
                                             const periodRecord = filterMode === 'subject' && allPeriods.length > 0
                                                 ? student.periods?.[currentPeriodIdx]
                                                 : null;
-                                            const status = periodRecord ? periodRecord.status : student.status;
+                                            const status    = periodRecord ? periodRecord.status : student.status;
                                             const isPresent = status === 'present';
+                                            const initials  = (student.name || student.studentName || '?')[0].toUpperCase();
+                                            const lecs      = student.lectures || [];
+                                            const lPresent  = lecs.filter(l => l.status === 'present').length;
 
                                             return (
-                                                <TouchableOpacity key={i} onPress={() => {
-                                                    // Build lectures for drill-down
-                                                    const lecs = filterMode === 'subject' && allPeriods.length > 0
+                                                <TouchableOpacity key={i} activeOpacity={0.7} onPress={() => {
+                                                    const drillLecs = filterMode === 'subject' && allPeriods.length > 0
                                                         ? allPeriods.map((p, pi) => {
                                                             const pr = student.periods?.[pi];
                                                             return { period: p, subject: selectedSubject,
@@ -694,32 +696,37 @@ export default function CalendarScreen({
                                                                      verificationType: pr?.verificationType,
                                                                      room: pr?.room, teacher: pr?.teacher };
                                                           })
-                                                        : (student.lectures || []);
-                                                    setDrillStudent({ ...student, name: student.name || student.studentName, lectures: lecs });
+                                                        : lecs;
+                                                    setDrillStudent({ ...student, name: student.name || student.studentName, lectures: drillLecs });
                                                 }}>
-                                                    <View style={[
-                                                        styles.studentCard,
-                                                        { backgroundColor: theme.background,
-                                                          borderLeftColor: isPresent ? '#10b981' : '#ef4444' }
-                                                    ]}>
-                                                        <View style={styles.studentHeader}>
-                                                            <View style={{ flex: 1 }}>
-                                                                <Text style={[styles.studentName, { color: theme.text }]}>
-                                                                    {student.name || student.studentName || 'Unknown'}
-                                                                </Text>
-                                                                <Text style={[styles.studentId, { color: theme.textSecondary }]}>
-                                                                    {student.enrollmentNo || student.studentId || '—'}
-                                                                </Text>
-                                                            </View>
-                                                            <View style={[styles.statusBadge,
-                                                                { backgroundColor: isPresent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }]}>
-                                                                <Text style={[styles.statusBadgeText,
-                                                                    { color: isPresent ? '#10b981' : '#ef4444' }]}>
-                                                                    {isPresent ? '✓ Present' : '✗ Absent'}
-                                                                </Text>
-                                                            </View>
-                                                            <Text style={{ color: theme.textSecondary, fontSize: 18, marginLeft: 8 }}>›</Text>
+                                                    <View style={[styles.studentCard, {
+                                                        backgroundColor: isPresent ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                                                        borderLeftColor: isPresent ? '#10b981' : '#ef4444',
+                                                        borderColor: isPresent ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                                                        borderWidth: 1
+                                                    }]}>
+                                                        <View style={[styles.scAvatar, {
+                                                            backgroundColor: isPresent ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'
+                                                        }]}>
+                                                            <Text style={{ color: isPresent ? '#10b981' : '#ef4444', fontWeight: '700', fontSize: 15 }}>{initials}</Text>
                                                         </View>
+                                                        <View style={{ flex: 1 }}>
+                                                            <Text style={[styles.studentName, { color: theme.text }]}>
+                                                                {student.name || student.studentName || 'Unknown'}
+                                                            </Text>
+                                                            <Text style={[styles.studentId, { color: theme.textSecondary }]}>
+                                                                {student.enrollmentNo || '—'}
+                                                                {lecs.length > 0 ? `  ·  ${lPresent}/${lecs.length} lectures` : ''}
+                                                            </Text>
+                                                        </View>
+                                                        <View style={[styles.scBadge, {
+                                                            backgroundColor: isPresent ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'
+                                                        }]}>
+                                                            <Text style={{ color: isPresent ? '#10b981' : '#ef4444', fontWeight: '700', fontSize: 13 }}>
+                                                                {isPresent ? '✓' : '✗'}
+                                                            </Text>
+                                                        </View>
+                                                        <Text style={{ color: theme.textSecondary, fontSize: 16, marginLeft: 4 }}>›</Text>
                                                     </View>
                                                 </TouchableOpacity>
                                             );
@@ -737,58 +744,76 @@ export default function CalendarScreen({
                                             <Text style={{ color: theme.primary, fontSize: 18 }}>‹</Text>
                                             <Text style={{ color: theme.primary, fontSize: 14 }}>Back</Text>
                                         </TouchableOpacity>
-                                        <Text style={[styles.modalTitle, { color: theme.text }]}>
-                                            {drillStudent.name || 'Unknown'}
-                                        </Text>
+                                        <View style={{ flex: 1, marginHorizontal: 8 }}>
+                                            <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
+                                                {drillStudent.name || 'Unknown'}
+                                            </Text>
+                                            <Text style={[styles.studentId, { color: theme.textSecondary }]}>
+                                                {drillStudent.enrollmentNo || ''}
+                                            </Text>
+                                        </View>
                                         <TouchableOpacity onPress={() => { setDrillStudent(null); setShowDetailsModal(false); }}>
                                             <XIcon size={22} color={theme.text} />
                                         </TouchableOpacity>
                                     </View>
                                     <ScrollView style={styles.modalBody}>
-                                        <Text style={[styles.studentId, { color: theme.textSecondary, marginBottom: 12 }]}>
-                                            {drillStudent.enrollmentNo || drillStudent.studentId || ''}
-                                        </Text>
-                                        {/* Summary */}
-                                        <View style={[styles.summaryCard, { backgroundColor: theme.background }]}>
-                                            <View style={styles.summaryRow}>
-                                                {[
-                                                    { label: 'Present', color: '#10b981', value: (drillStudent.lectures || []).filter(l => l.status === 'present').length },
-                                                    { label: 'Absent',  color: '#ef4444', value: (drillStudent.lectures || []).filter(l => l.status === 'absent').length },
-                                                    { label: 'Total',   color: theme.primary, value: (drillStudent.lectures || []).length },
-                                                ].map(item => (
-                                                    <View key={item.label} style={styles.summaryItem}>
-                                                        <Text style={[styles.summaryValue, { color: item.color }]}>{item.value}</Text>
-                                                        <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>{item.label}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </View>
-                                        {/* Lecture list */}
-                                        {(drillStudent.lectures || []).length === 0
-                                            ? <Text style={[styles.studentId, { color: theme.textSecondary, textAlign: 'center', padding: 20 }]}>No lecture data</Text>
-                                            : (drillStudent.lectures || []).map((l, i) => (
-                                                <View key={i} style={[styles.lectureCard,
-                                                    { backgroundColor: theme.background,
-                                                      borderLeftColor: l.status === 'present' ? '#10b981' : '#ef4444' }]}>
-                                                    <View style={styles.lectureHeader}>
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                                            <View style={{ backgroundColor: 'rgba(0,217,255,0.1)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                                                                <Text style={{ color: theme.primary, fontSize: 11, fontWeight: '700' }}>{l.period}</Text>
+                                        {/* Stats row */}
+                                        {(() => {
+                                            const lecs   = drillStudent.lectures || [];
+                                            const pLec   = lecs.filter(l => l.status === 'present').length;
+                                            const pct    = lecs.length > 0 ? Math.round((pLec / lecs.length) * 100) : (drillStudent.status === 'present' ? 100 : 0);
+                                            const color  = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                                            return (
+                                                <View style={[styles.summaryCard, { backgroundColor: theme.background, marginBottom: 16 }]}>
+                                                    <View style={styles.summaryRow}>
+                                                        {[
+                                                            { label: 'Present', color: '#10b981', value: pLec },
+                                                            { label: 'Absent',  color: '#ef4444', value: lecs.length - pLec },
+                                                            { label: 'Rate',    color,            value: `${pct}%` },
+                                                        ].map(item => (
+                                                            <View key={item.label} style={styles.summaryItem}>
+                                                                <Text style={[styles.summaryValue, { color: item.color }]}>{item.value}</Text>
+                                                                <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>{item.label}</Text>
                                                             </View>
-                                                            <Text style={[styles.lectureSubject, { color: theme.text }]}>{l.subject || 'Unknown'}</Text>
-                                                        </View>
-                                                        <Text style={[styles.lectureStatus, { color: l.status === 'present' ? '#10b981' : '#ef4444' }]}>
-                                                            {l.status === 'present' ? '✓' : '✗'}
+                                                        ))}
+                                                    </View>
+                                                </View>
+                                            );
+                                        })()}
+
+                                        {/* Lecture timeline */}
+                                        {(drillStudent.lectures || []).length === 0 ? (
+                                            <View style={{ alignItems: 'center', padding: 30 }}>
+                                                <Text style={{ fontSize: 32, marginBottom: 8 }}>📭</Text>
+                                                <Text style={{ color: theme.textSecondary, textAlign: 'center' }}>No lecture data for this day</Text>
+                                            </View>
+                                        ) : (drillStudent.lectures || []).map((l, i) => {
+                                            const isP = l.status === 'present';
+                                            return (
+                                                <View key={i} style={[styles.ltRow, {
+                                                    borderBottomColor: theme.border,
+                                                    borderBottomWidth: i < drillStudent.lectures.length - 1 ? 1 : 0
+                                                }]}>
+                                                    <View style={[styles.ltDot, { backgroundColor: isP ? '#10b981' : '#ef4444' }]} />
+                                                    <View style={[styles.ltPeriodBadge, { backgroundColor: 'rgba(0,217,255,0.1)' }]}>
+                                                        <Text style={{ color: theme.primary, fontSize: 10, fontWeight: '700' }}>{l.period || '—'}</Text>
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ color: theme.text, fontSize: 14, fontWeight: '600' }}>{l.subject || 'Unknown'}</Text>
+                                                        <Text style={{ color: theme.textSecondary, fontSize: 11, marginTop: 2 }}>
+                                                            {[l.teacher && `👨‍🏫 ${l.teacher}`, l.room && `📍 ${l.room}`, l.verificationType && `🔐 ${l.verificationType}`].filter(Boolean).join('  ')}
                                                         </Text>
                                                     </View>
-                                                    <Text style={[styles.lectureRoom, { color: theme.textSecondary }]}>
-                                                        {l.teacher ? `👨‍🏫 ${l.teacher}` : ''}
-                                                        {l.room ? `  📍 ${l.room}` : ''}
-                                                        {l.verificationType ? `  🔐 ${l.verificationType}` : ''}
-                                                    </Text>
+                                                    <View style={[styles.ltStatus, {
+                                                        backgroundColor: isP ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'
+                                                    }]}>
+                                                        <Text style={{ color: isP ? '#10b981' : '#ef4444', fontWeight: '700', fontSize: 12 }}>
+                                                            {isP ? '✓' : '✗'}
+                                                        </Text>
+                                                    </View>
                                                 </View>
-                                            ))
-                                        }
+                                            );
+                                        })}
                                     </ScrollView>
                                 </View>
                             )}
@@ -992,12 +1017,22 @@ const styles = StyleSheet.create({
 
     // ── student cards ─────────────────────────────────────────────────────────
     studentsTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 12 },
-    studentCard:   { padding: 12, borderRadius: 8, marginBottom: 10, borderLeftWidth: 3 },
+    studentCard:   { padding: 12, borderRadius: 10, marginBottom: 8, borderLeftWidth: 3, flexDirection: 'row', alignItems: 'center', gap: 10 },
     studentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     studentName:   { fontSize: 14, fontWeight: '600' },
     studentId:     { fontSize: 11, marginTop: 2 },
     statusBadge:   { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
     statusBadgeText: { fontSize: 11, fontWeight: 'bold' },
+
+    // ── avatar card ───────────────────────────────────────────────────────────
+    scAvatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+    scBadge:  { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+
+    // ── lecture timeline ──────────────────────────────────────────────────────
+    ltRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+    ltDot:         { width: 10, height: 10, borderRadius: 5 },
+    ltPeriodBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, minWidth: 28, alignItems: 'center' },
+    ltStatus:      { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
 
     // ── student detail (own attendance) ──────────────────────────────────────
     overallStatus:     { padding: 16, borderRadius: 12, marginBottom: 16 },

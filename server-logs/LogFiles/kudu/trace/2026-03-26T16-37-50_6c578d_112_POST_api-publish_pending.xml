@@ -1,0 +1,24 @@
+<step title="Incoming Request" date="2026-03-26T16:37:50.145" instance="6c578d" url="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%22a6a59d51a7a5c66e83aed3f4dd8aa505fc43867b%22%2C%22repoName%22%3A%22adityasingh03rajput%2FBunk%22%2C%22actor%22%3A%22adityasingh03rajput%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22ci%3A%20update%20deploy%20workflow%20to%20trigger%20on%20Trial%20branch%22%7D" method="POST" type="request" pid="831,1,53" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_df5c903796c03ef4e3dc8fb86f83b73664c25cdb18ad93406dfbc6d6f57673d2_v3.0.7" Authorization="Bas..." Content-Type="application/octet-stream" Cookie="ARRAffinity=6c578d7fd5121a4b41f36db6df7f2fce18b40a6b63fb74b5285c675db3470289;Path=/;HttpOnly;Secure;Domain=letsbunk-server.scm.azurewebsites.net; ARRAffinitySameSite=6c578d7fd5121a4b41f36db6df7f2fce18b40a6b63fb74b5285c675db3470289;Path=/;HttpOnly;SameSite=None;Secure;Domain=letsbunk-server.scm.azurewebsites.net" Transfer-Encoding="chunked" X-ARR-LOG-ID="4d8ff946-edd8-4a8c-b837-effe45aa661c" CLIENT-IP="172.215.210.224:44033" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%22a6a59d51a7a5c66e83aed3f4dd8aa505fc43867b%22%2C%22repoName%22%3A%22adityasingh03rajput%2FBunk%22%2C%22actor%22%3A%22adityasingh03rajput%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22ci%3A%20update%20deploy%20workflow%20to%20trigger%20on%20Trial%20branch%22%7D" X-Client-IP="172.215.210.224" X-Client-Port="44033" >
+  <step title="Cleanup Xml Logs" date="2026-03-26T16:37:50.153" /><!-- duration: 11ms -->
+  <step title="OneDeploy" date="2026-03-26T16:37:50.175" >
+    <step title="None repository commit" date="2026-03-26T16:37:50.185" >
+      <step title="Commit id: 762284b8-e62e-4b54-910c-affad0ae20a2" date="2026-03-26T16:37:50.189" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+    </step><!-- duration: 12ms -->
+    <step title="Starting PushDeployAsync" date="2026-03-26T16:37:50.201" /><!-- duration: 9ms -->
+    <step title="Removing _del_node_modules symlink" date="2026-03-26T16:37:50.224" >
+      <step title="Writing artifact to /tmp/zipdeploy/0d00951b-0bfd-41b3-b3a4-931ed5002e56.zip" date="2026-03-26T16:37:50.271" >
+        <step title="Writing multipart request body to /tmp/zipdeploy/0d00951b-0bfd-41b3-b3a4-931ed5002e56.zip" date="2026-03-26T16:37:50.275" /><!-- duration: 4ms -->
+      </step><!-- duration: 11849ms -->
+      <step title="None repository commit" date="2026-03-26T16:38:02.144" >
+        <step title="Commit id: 762284b8-e62e-4b54-910c-affad0ae20a2" date="2026-03-26T16:38:02.153" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+      </step><!-- duration: 16ms -->
+      <step title="Start deployment in the background" date="2026-03-26T16:38:02.167" >
+        <step title="None repository commit" date="2026-03-26T16:38:02.210" >
+          <step title="Commit id: 762284b8-e62e-4b54-910c-affad0ae20a2" date="2026-03-26T16:38:02.218" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+        </step><!-- duration: 16ms -->
+        <step title="Acquiring Deployment Lock" date="2026-03-26T16:38:02.232" /><!-- duration: 9ms -->
+        <step title="Acquired Deployment Lock" date="2026-03-26T16:38:02.291" /><!-- duration: 4ms -->
+      </step><!-- duration: 208ms -->
+    </step><!-- duration: 12158ms -->
+    <step title="Outgoing response" date="2026-03-26T16:38:02.387" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 5ms -->
+  </step><!-- duration: 12220ms -->

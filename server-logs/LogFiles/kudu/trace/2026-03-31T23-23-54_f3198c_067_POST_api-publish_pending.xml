@@ -1,0 +1,26 @@
+<step title="Incoming Request" date="2026-03-31T23:23:54.234" instance="f3198c" url="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%224f594dbc728846d4e5670e070e5b4849eb1beb0d%22%2C%22repoName%22%3A%22adityasingh03rajput%2FBunk%22%2C%22actor%22%3A%22adityasingh03rajput%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22fix%3A%20backfill%20TimetableHistory%20from%20timetable%20schedule%20for%20past%2090%20days%22%7D" method="POST" type="request" pid="832,1,67" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_df5c903796c03ef4e3dc8fb86f83b73664c25cdb18ad93406dfbc6d6f57673d2_v3.0.8" Authorization="Bas..." Content-Type="application/octet-stream" Cookie="ARRAffinity=f3198ca8ab17a5248000feba9f208538859174630cd10b762193cbab24f97731;Path=/;HttpOnly;Secure;Domain=letsbunk-server.scm.azurewebsites.net; ARRAffinitySameSite=f3198ca8ab17a5248000feba9f208538859174630cd10b762193cbab24f97731;Path=/;HttpOnly;SameSite=None;Secure;Domain=letsbunk-server.scm.azurewebsites.net" Transfer-Encoding="chunked" X-ARR-LOG-ID="96d5db0f-dbae-45a4-927d-e303aa85c96d" CLIENT-IP="40.116.73.178:46017" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/publish?async=true&amp;deployer=GITHUB_ONE_DEPLOY&amp;type=zip&amp;message=%7B%22type%22%3A%22deployment%22%2C%22sha%22%3A%224f594dbc728846d4e5670e070e5b4849eb1beb0d%22%2C%22repoName%22%3A%22adityasingh03rajput%2FBunk%22%2C%22actor%22%3A%22adityasingh03rajput%22%2C%22slotName%22%3A%22production%22%2C%22commitMessage%22%3A%22fix%3A%20backfill%20TimetableHistory%20from%20timetable%20schedule%20for%20past%2090%20days%22%7D" X-Client-IP="40.116.73.178" X-Client-Port="46017" >
+  <step title="Cleanup Xml Logs" date="2026-03-31T23:23:54.238" >
+    <step title="Cleanup Infos" date="2026-03-31T23:23:54.250" totalFiles="232" totalCleanup="72" /><!-- duration: 6ms -->
+  </step><!-- duration: 23ms -->
+  <step title="OneDeploy" date="2026-03-31T23:23:54.272" >
+    <step title="None repository commit" date="2026-03-31T23:23:54.279" >
+      <step title="Commit id: b6aa3a8a-fb86-4d33-a5d8-d56594fe6d1b" date="2026-03-31T23:23:54.283" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+    </step><!-- duration: 13ms -->
+    <step title="Starting PushDeployAsync" date="2026-03-31T23:23:54.297" /><!-- duration: 25ms -->
+    <step title="Removing _del_node_modules symlink" date="2026-03-31T23:23:54.338" >
+      <step title="Writing artifact to /tmp/zipdeploy/f60870c4-4bfc-48aa-8a62-6a797a214bca.zip" date="2026-03-31T23:23:54.375" >
+        <step title="Writing multipart request body to /tmp/zipdeploy/f60870c4-4bfc-48aa-8a62-6a797a214bca.zip" date="2026-03-31T23:23:54.379" /><!-- duration: 5ms -->
+      </step><!-- duration: 14062ms -->
+      <step title="None repository commit" date="2026-03-31T23:24:08.461" >
+        <step title="Commit id: b6aa3a8a-fb86-4d33-a5d8-d56594fe6d1b" date="2026-03-31T23:24:08.466" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+      </step><!-- duration: 13ms -->
+      <step title="Start deployment in the background" date="2026-03-31T23:24:08.546" >
+        <step title="None repository commit" date="2026-03-31T23:24:08.588" >
+          <step title="Commit id: b6aa3a8a-fb86-4d33-a5d8-d56594fe6d1b" date="2026-03-31T23:24:08.593" Message="N/A" AuthorName="N/A" AuthorEmail="N/A" /><!-- duration: 4ms -->
+        </step><!-- duration: 13ms -->
+        <step title="Acquiring Deployment Lock" date="2026-03-31T23:24:08.606" /><!-- duration: 4ms -->
+        <step title="Acquired Deployment Lock" date="2026-03-31T23:24:08.644" /><!-- duration: 4ms -->
+      </step><!-- duration: 193ms -->
+    </step><!-- duration: 14409ms -->
+    <step title="Outgoing response" date="2026-03-31T23:24:08.769" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 5ms -->
+  </step><!-- duration: 14507ms -->

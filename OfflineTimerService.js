@@ -1286,7 +1286,24 @@ class OfflineTimerService {
       });
 
       if (!response.ok) {
-        throw new Error(`Sync failed: ${response.status}`);
+        // 403 = no check-in yet, 404 = student not found — these are server-side errors,
+        // NOT network failures. Don't mark as offline for these.
+        const errData = await response.json().catch(() => ({}));
+        const serverMsg = errData.error || errData.message || `HTTP ${response.status}`;
+
+        if (response.status === 403 || response.status === 404 || response.status === 400) {
+            // Server is reachable — keep online status, just log the error
+            this.isOnline = true;
+            this.hasInternetConnection = true;
+            console.warn(`⚠️ Sync rejected by server (${response.status}): ${serverMsg}`);
+            this.notifyListeners({
+                type: 'sync_server_error',
+                statusCode: response.status,
+                message: serverMsg
+            });
+            return { success: false, serverError: true, message: serverMsg };
+        }
+        throw new Error(`Sync failed: ${response.status} - ${serverMsg}`);
       }
 
       const result = await response.json();

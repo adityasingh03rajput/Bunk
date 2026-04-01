@@ -1,0 +1,9 @@
+<step title="Incoming Request" date="2026-03-26T06:02:25.701" instance="59351f" url="/api/deployments/latest?deployer=GitHub&amp;time=2026-03-26_06-01-52Z" method="GET" type="request" pid="831,1,19" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="Azure-WebSites-Controller/107.0.7.33" Authorization="Bas..." x-ms-request-id="9e4ddbdf-f018-4b4c-a2cb-04a4fade959a" X-ARR-LOG-ID="9e4ddbdf-f018-4b4c-a2cb-04a4fade959a" CLIENT-IP="20.192.170.15:1408" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-MS-PLATFORM-INTERNAL="True" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GitHub&amp;time=2026-03-26_06-01-52Z" X-Client-IP="20.192.170.15" X-Client-Port="1408" >
+  <step title="Cleanup Xml Logs" date="2026-03-26T06:02:25.737" /><!-- duration: 8ms -->
+  <step title="DeploymentService.GetResult" date="2026-03-26T06:02:25.849" >
+    <step title="DeploymentService.GetLatestDeployment" date="2026-03-26T06:02:25.859" >
+      <step title="DeploymentManager.GetResults" date="2026-03-26T06:02:25.867" /><!-- duration: 1574ms -->
+    </step><!-- duration: 1724ms -->
+  </step><!-- duration: 1746ms -->
+  <step title="Outgoing response" date="2026-03-26T06:02:27.608" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 5ms -->
+</step><!-- duration: 1916ms -->

@@ -909,6 +909,21 @@ export default function App() {
                     attendanceThreshold: event.attendanceThreshold
                   }));
                   break;
+
+                case 'sync_server_error':
+                  // Server is reachable but rejected the sync (403/404/400)
+                  // Keep online status — this is NOT a network failure
+                  console.warn('⚠️ Server rejected sync:', event.message);
+                  if (event.statusCode === 403 && event.message?.includes('check-in')) {
+                    // Show once — don't spam
+                    setOfflineTimerState(prev => ({
+                        ...prev,
+                        isOnline: true,
+                        hasInternetConnection: true,
+                        syncError: 'Check-in required before syncing'
+                    }));
+                  }
+                  break;
                   
                 case 'sync_failed':
                   console.log('⚠️ Timer sync failed:', event.error);
@@ -5200,6 +5215,11 @@ export default function App() {
                         marginTop: 2
                       }}>
                         {offlineTimerState.pendingSyncCount} pending sync{offlineTimerState.pendingSyncCount > 1 ? 's' : ''}
+                      </Text>
+                    )}
+                    {offlineTimerState.syncError && (
+                      <Text style={{ fontSize: 10, color: '#ef4444', marginTop: 2 }}>
+                        ⚠️ {offlineTimerState.syncError}
                       </Text>
                     )}
                   </View>

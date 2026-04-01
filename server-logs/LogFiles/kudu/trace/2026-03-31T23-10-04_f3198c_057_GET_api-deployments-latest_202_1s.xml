@@ -1,0 +1,11 @@
+<step title="Incoming Request" date="2026-03-31T23:10:04.855" instance="f3198c" url="/api/deployments/latest?deployer=OneDeploy&amp;time=2026-03-31_23-08-38Z" method="GET" type="request" pid="832,1,57" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_df5c903796c03ef4e3dc8fb86f83b73664c25cdb18ad93406dfbc6d6f57673d2_v3.0.8" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=f3198ca8ab17a5248000feba9f208538859174630cd10b762193cbab24f97731;Path=/;HttpOnly;Secure;Domain=letsbunk-server.scm.azurewebsites.net; ARRAffinitySameSite=f3198ca8ab17a5248000feba9f208538859174630cd10b762193cbab24f97731;Path=/;HttpOnly;SameSite=None;Secure;Domain=letsbunk-server.scm.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="ef74a461-a840-409f-a70b-fb310bf59989" CLIENT-IP="52.240.186.21:36801" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=OneDeploy&amp;time=2026-03-31_23-08-38Z" X-Client-IP="52.240.186.21" X-Client-Port="36801" >
+  <step title="Cleanup Xml Logs" date="2026-03-31T23:10:04.858" >
+    <step title="Cleanup Infos" date="2026-03-31T23:10:04.870" totalFiles="223" totalCleanup="63" /><!-- duration: 6ms -->
+  </step><!-- duration: 23ms -->
+  <step title="DeploymentService.GetResult" date="2026-03-31T23:10:04.887" >
+    <step title="DeploymentService.GetLatestDeployment" date="2026-03-31T23:10:04.891" >
+      <step title="DeploymentManager.GetResults" date="2026-03-31T23:10:04.896" /><!-- duration: 588ms -->
+    </step><!-- duration: 598ms -->
+  </step><!-- duration: 609ms -->
+  <step title="Outgoing response" date="2026-03-31T23:10:05.504" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 13ms -->
+</step><!-- duration: 671ms -->

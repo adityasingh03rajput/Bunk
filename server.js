@@ -3966,6 +3966,40 @@ app.get('/api/attendance/date/:date', async (req, res) => {
     }
 });
 
+// ─── GET /api/attendance/student/:enrollmentNo/subject-stats ─────────────────
+// Returns per-subject attendance stats for a student.
+// Used for the subject bubble row in the drill-down view.
+app.get('/api/attendance/student/:enrollmentNo/subject-stats', async (req, res) => {
+    try {
+        const { enrollmentNo } = req.params;
+        if (mongoose.connection.readyState !== 1) return res.json({ success: true, subjects: [] });
+
+        const records = await PeriodAttendance.find({ enrollmentNo }, {
+            subject: 1, status: 1
+        }).lean();
+
+        // Group by subject
+        const map = {};
+        for (const r of records) {
+            const sub = r.subject || 'Unknown';
+            if (!map[sub]) map[sub] = { subject: sub, present: 0, total: 0 };
+            map[sub].total++;
+            if (r.status === 'present') map[sub].present++;
+        }
+
+        const subjects = Object.values(map).map(s => ({
+            subject:    s.subject,
+            present:    s.present,
+            total:      s.total,
+            percentage: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0
+        })).sort((a, b) => a.subject.localeCompare(b.subject));
+
+        res.json({ success: true, subjects });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ─── GET /api/attendance/subjects ────────────────────────────────────────────
 // Returns subject names for a given semester + branch.
 // Merges: Subject collection (configured subjects) + PeriodAttendance distinct subjects (actual attendance).

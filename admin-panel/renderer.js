@@ -5966,59 +5966,93 @@ function showStudentLectureDetail(idx, mode) {
     const pct      = lectures.length > 0 ? Math.round((pLec / lectures.length) * 100) : (s.status === 'present' ? 100 : 0);
     const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
     const backFn   = mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)';
+    const enrollmentNo = s.enrollmentNo || s.studentId || '';
 
-    modalBody.innerHTML = `
-        <div class="cal-modal-header">
-            <button class="btn btn-sm btn-secondary" onclick="${backFn}" style="flex-shrink:0">← Back</button>
-            <div>
-                <div class="cal-modal-title">${s.name || s.studentName || 'Unknown'}</div>
-                <div class="cal-modal-sub">${s.enrollmentNo || ''} · ${window._calModalDate?.toDateString() || ''}</div>
-            </div>
-        </div>
-
-        <div class="cal-day-stats" style="margin-bottom:12px">
-            <div class="cal-ring-wrap">
-                <svg viewBox="0 0 36 36" class="cal-ring">
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="3"/>
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="${barColor}" stroke-width="3"
-                        stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" stroke-linecap="round"/>
-                </svg>
-                <div class="cal-ring-label" style="color:${barColor}">${pct}%</div>
-            </div>
-            <div class="cal-day-stat-grid">
-                <div class="cal-day-stat-item">
-                    <span class="cal-day-stat-val" style="color:#10b981">${pLec}</span>
-                    <span class="cal-day-stat-lbl">Present</span>
-                </div>
-                <div class="cal-day-stat-item">
-                    <span class="cal-day-stat-val" style="color:#ef4444">${lectures.length - pLec}</span>
-                    <span class="cal-day-stat-lbl">Absent</span>
-                </div>
-                <div class="cal-day-stat-item">
-                    <span class="cal-day-stat-val" style="color:var(--primary)">${lectures.length}</span>
-                    <span class="cal-day-stat-lbl">Total</span>
-                </div>
-            </div>
-        </div>
-
-        ${lectures.length === 0
-            ? `<div class="cal-empty"><span style="font-size:32px">📭</span><p>No lecture data for this day</p></div>`
-            : `<div class="cal-lecture-timeline">
-                ${lectures.map(l => `
-                    <div class="cal-lt-row ${l.status}">
-                        <div class="cal-lt-dot ${l.status}"></div>
-                        <div class="cal-lt-period">${l.period || '—'}</div>
-                        <div class="cal-lt-body">
-                            <div class="cal-lt-subject">${l.subject || 'Unknown Subject'}</div>
-                            <div class="cal-lt-meta">
-                                ${l.teacher ? `<span>👨‍🏫 ${l.teacher}</span>` : ''}
-                                ${l.room    ? `<span>📍 ${l.room}</span>` : ''}
-                                ${l.verificationType ? `<span class="cal-verify-badge">${l.verificationType}</span>` : ''}
-                            </div>
+    const renderDetail = (subjectStats) => {
+        const bubbleHtml = subjectStats && subjectStats.length > 0
+            ? `<div class="cal-subject-bubbles">
+                ${subjectStats.map(sub => {
+                    const c = sub.percentage >= 75 ? '#10b981' : sub.percentage >= 50 ? '#f59e0b' : '#ef4444';
+                    const dash = sub.percentage;
+                    const shortName = sub.subject.length > 6 ? sub.subject.substring(0, 5) + '…' : sub.subject;
+                    return `
+                    <div class="cal-bubble-wrap" title="${sub.subject}: ${sub.present}/${sub.total} (${sub.percentage}%)">
+                        <svg viewBox="0 0 36 36" class="cal-bubble-svg">
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+                            <circle cx="18" cy="18" r="15.9" fill="none" stroke="${c}" stroke-width="3"
+                                stroke-dasharray="${dash} ${100 - dash}" stroke-dashoffset="25" stroke-linecap="round"/>
+                        </svg>
+                        <div class="cal-bubble-inner">
+                            <div class="cal-bubble-name" style="color:${c}">${shortName}</div>
+                            <div class="cal-bubble-pct" style="color:${c}">${sub.percentage}%</div>
                         </div>
-                        <div class="cal-lt-status ${l.status}">${l.status === 'present' ? '✓' : '✗'}</div>
-                    </div>`).join('')}
-               </div>`}`;
+                    </div>`;
+                }).join('')}
+               </div>`
+            : '';
+
+        modalBody.innerHTML = `
+            <div class="cal-modal-header">
+                <button class="btn btn-sm btn-secondary" onclick="${backFn}" style="flex-shrink:0">← Back</button>
+                <div>
+                    <div class="cal-modal-title">${s.name || s.studentName || 'Unknown'}</div>
+                    <div class="cal-modal-sub">${enrollmentNo} · ${window._calModalDate?.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) || ''}</div>
+                </div>
+            </div>
+
+            <div class="cal-day-stats" style="margin-bottom:12px">
+                <div class="cal-ring-wrap">
+                    <svg viewBox="0 0 36 36" class="cal-ring">
+                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--border)" stroke-width="3"/>
+                        <circle cx="18" cy="18" r="15.9" fill="none" stroke="${barColor}" stroke-width="3"
+                            stroke-dasharray="${pct} ${100 - pct}" stroke-dashoffset="25" stroke-linecap="round"/>
+                    </svg>
+                    <div class="cal-ring-label" style="color:${barColor}">${pct}%</div>
+                </div>
+                <div class="cal-day-stat-grid">
+                    <div class="cal-day-stat-item">
+                        <span class="cal-day-stat-val" style="color:#10b981">${pLec}</span>
+                        <span class="cal-day-stat-lbl">Present</span>
+                    </div>
+                    <div class="cal-day-stat-item">
+                        <span class="cal-day-stat-val" style="color:#ef4444">${lectures.length - pLec}</span>
+                        <span class="cal-day-stat-lbl">Absent</span>
+                    </div>
+                    <div class="cal-day-stat-item">
+                        <span class="cal-day-stat-val" style="color:var(--primary)">${lectures.length}</span>
+                        <span class="cal-day-stat-lbl">Total</span>
+                    </div>
+                </div>
+            </div>
+
+            ${lectures.length === 0
+                ? `<div class="cal-empty"><span style="font-size:32px">📭</span><p>No lecture data for this day</p></div>`
+                : `<div class="cal-lecture-timeline">
+                    ${lectures.map(l => `
+                        <div class="cal-lt-row ${l.status}">
+                            <div class="cal-lt-dot ${l.status}"></div>
+                            <div class="cal-lt-period">${l.period || '—'}</div>
+                            <div class="cal-lt-body">
+                                <div class="cal-lt-subject">${l.subject || 'Unknown Subject'}</div>
+                                <div class="cal-lt-meta">
+                                    ${l.teacher ? `<span>👨‍🏫 ${l.teacher}</span>` : ''}
+                                    ${l.room    ? `<span>📍 ${l.room}</span>` : ''}
+                                    ${l.verificationType ? `<span class="cal-verify-badge">${l.verificationType}</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="cal-lt-status ${l.status}">${l.status === 'present' ? '✓' : '✗'}</div>
+                        </div>`).join('')}
+                   </div>`}
+
+            ${bubbleHtml}`;
+    };
+
+    renderDetail(null);
+    if (enrollmentNo) {
+        calApiFetch(`${SERVER_URL}/api/attendance/student/${enrollmentNo}/subject-stats`)
+            .then(data => { if (data.success) renderDetail(data.subjects); })
+            .catch(() => {});
+    }
 }
 
 // ── Subject-mode modal with chevron period navigation ─────────────────────────

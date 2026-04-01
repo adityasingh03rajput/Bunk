@@ -49,6 +49,7 @@ export default function CalendarScreen({
     const [currentPeriodIdx,  setCurrentPeriodIdx]   = useState(0);
     // student drill-down
     const [drillStudent,      setDrillStudent]       = useState(null); // student object with lectures
+    const [drillSubjectStats, setDrillSubjectStats]  = useState([]);   // per-subject bubbles
 
     // ── effects ───────────────────────────────────────────────────────────────
     // ── shared fetch helper with timeout ─────────────────────────────────────
@@ -698,6 +699,13 @@ export default function CalendarScreen({
                                                           })
                                                         : lecs;
                                                     setDrillStudent({ ...student, name: student.name || student.studentName, lectures: drillLecs });
+                                                    // Fetch subject stats for bubbles
+                                                    const enrollNo = student.enrollmentNo || student.studentId;
+                                                    if (enrollNo) {
+                                                        apiFetch(`${socketUrl}/api/attendance/student/${enrollNo}/subject-stats`)
+                                                            .then(d => { if (d.success) setDrillSubjectStats(d.subjects || []); })
+                                                            .catch(() => setDrillSubjectStats([]));
+                                                    }
                                                 }}>
                                                     <View style={[styles.studentCard, {
                                                         backgroundColor: isPresent ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
@@ -740,7 +748,7 @@ export default function CalendarScreen({
                                 <View style={[StyleSheet.absoluteFillObject,
                                     { backgroundColor: theme.cardBackground, borderTopLeftRadius: 20, borderTopRightRadius: 20 }]}>
                                     <View style={styles.modalHeader}>
-                                        <TouchableOpacity onPress={() => setDrillStudent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity onPress={() => setDrillStudent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                             <Text style={{ color: theme.primary, fontSize: 18 }}>‹</Text>
                                             <Text style={{ color: theme.primary, fontSize: 14 }}>Back</Text>
                                         </TouchableOpacity>
@@ -814,6 +822,28 @@ export default function CalendarScreen({
                                                 </View>
                                             );
                                         })}
+
+                                        {/* Subject bubbles row */}
+                                        {drillSubjectStats.length > 0 && (
+                                            <View style={{ marginTop: 16 }}>
+                                                <Text style={{ color: theme.textSecondary, fontSize: 12, marginBottom: 10 }}>Overall by Subject</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                                    <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 4 }}>
+                                                        {drillSubjectStats.map((sub, i) => {
+                                                            const color = sub.percentage >= 75 ? '#10b981' : sub.percentage >= 50 ? '#f59e0b' : '#ef4444';
+                                                            const shortName = sub.subject.length > 6 ? sub.subject.substring(0, 5) + '…' : sub.subject;
+                                                            return (
+                                                                <View key={i} style={[styles.bubbleWrap, { borderColor: color }]}>
+                                                                    <Text style={{ color, fontSize: 10, fontWeight: '700', textAlign: 'center' }} numberOfLines={1}>{shortName}</Text>
+                                                                    <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{sub.percentage}%</Text>
+                                                                    <Text style={{ color: theme.textSecondary, fontSize: 9 }}>{sub.present}/{sub.total}</Text>
+                                                                </View>
+                                                            );
+                                                        })}
+                                                    </View>
+                                                </ScrollView>
+                                            </View>
+                                        )}
                                     </ScrollView>
                                 </View>
                             )}
@@ -1033,6 +1063,13 @@ const styles = StyleSheet.create({
     ltDot:         { width: 10, height: 10, borderRadius: 5 },
     ltPeriodBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, minWidth: 28, alignItems: 'center' },
     ltStatus:      { width: 26, height: 26, borderRadius: 13, justifyContent: 'center', alignItems: 'center' },
+
+    // ── subject bubbles ───────────────────────────────────────────────────────
+    bubbleWrap: {
+        width: 60, height: 60, borderRadius: 30,
+        borderWidth: 2, justifyContent: 'center', alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.04)',
+    },
 
     // ── student detail (own attendance) ──────────────────────────────────────
     overallStatus:     { padding: 16, borderRadius: 12, marginBottom: 16 },

@@ -7181,3 +7181,23 @@ ture Details Styles */
 
 /* Empty state */
 .cal-empty { display: flex; flex-direction: column; align-items: center; padding: 40px 20px; color: var(--text-secondary); gap: 8px; }
+
+/* ── Subject bubble row ──────────────────────────────────────────────────── */
+.cal-subject-bubbles {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    margin-top: 16px; padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+.cal-bubble-wrap {
+    position: relative; width: 60px; height: 60px; cursor: default;
+    flex-shrink: 0;
+}
+.cal-bubble-svg { width: 60px; height: 60px; transform: rotate(-90deg); }
+.cal-bubble-inner {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px;
+}
+.cal-bubble-name { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.1; max-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-bubble-pct  { font-size: 10px; font-weight: 700; }

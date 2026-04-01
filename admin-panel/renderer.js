@@ -139,6 +139,8 @@ function handleLogout() {
 function showApp() {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('appContainer').style.display = 'flex';
+    // Start walkthrough for first-time users
+    setTimeout(() => startWalkthrough(false), 600);
 }
 
 function hideApp() {
@@ -11583,4 +11585,239 @@ switchSection = function(sectionName) {
 document.addEventListener('DOMContentLoaded', function() {
     var saved = localStorage.getItem('adminLayout') || 'default';
     applyLayout(VALID_LAYOUTS.indexOf(saved) !== -1 ? saved : 'default');
+});
+
+
+// ─── WALKTHROUGH ──────────────────────────────────────────────────────────────
+const WT_STEPS = [
+    {
+        icon: '👋',
+        title: 'Welcome to LetsBunk Admin Panel',
+        body: `You're about to set up the attendance system for your college.<br><br>
+               This quick tour walks you through the <strong>exact order</strong> to configure everything so the system works correctly from day one.<br><br>
+               <div class="wt-tip">💡 Each step depends on the previous one — follow the order and you'll be done in minutes.</div>`,
+        section: null
+    },
+    {
+        icon: '⚙️',
+        title: 'Step 1 — Settings (Start Here)',
+        body: `Go to <span class="wt-tag">⚙️ Settings</span> first. Everything else depends on this.<br><br>
+               Add your college's:<br>
+               • <strong>Branches</strong> — e.g. <em>cse comp, Data Science, ECE</em><br>
+               • <strong>Semesters</strong> — e.g. <em>1, 2, 3, 4, 5, 6, 7, 8</em><br>
+               • <strong>Departments</strong> — e.g. <em>Computer Science, Mathematics</em><br>
+               • <strong>Attendance Threshold</strong> — default 75%<br><br>
+               <div class="wt-warn">⚠️ Without branches and semesters, no other section will work — dropdowns will be empty.</div>`,
+        section: 'settings',
+        nav: 'settings'
+    },
+    {
+        icon: '⏰',
+        title: 'Step 2 — Period Settings',
+        body: `Go to <span class="wt-tag">⏰ Period Settings</span> and set your college's actual class timings.<br><br>
+               Example:<br>
+               <strong>P1:</strong> 09:00 – 09:50 &nbsp; <strong>P2:</strong> 09:50 – 10:40<br>
+               <strong>P3:</strong> 10:40 – 11:30 &nbsp; <strong>P4:</strong> 11:30 – 12:20<br>
+               <strong>P5:</strong> 12:20 – 13:10 &nbsp; <strong>P6:</strong> 13:10 – 14:00<br><br>
+               Click <strong>"Save & Apply to All Timetables"</strong> after setting times.<br><br>
+               <div class="wt-warn">⚠️ Wrong period times = wrong attendance. The system uses these times to identify which class is currently running.</div>`,
+        section: 'periods',
+        nav: 'periods'
+    },
+    {
+        icon: '🏫',
+        title: 'Step 3 — Classrooms',
+        body: `Go to <span class="wt-tag">🏫 Classrooms</span> and add every classroom.<br><br>
+               For each room you need:<br>
+               • <strong>Room Number</strong> — e.g. <em>A101</em><br>
+               • <strong>Building</strong> — e.g. <em>Block A</em><br>
+               • <strong>Capacity</strong><br>
+               • <strong>WiFi BSSID</strong> — the MAC address of the WiFi router in that room<br><br>
+               <div class="wt-warn">⚠️ The BSSID is critical — it's how the app verifies a student is physically in the correct classroom. Without it, check-in will fail.</div>
+               <div class="wt-tip">💡 To find a BSSID: connect to the classroom WiFi on your phone → use a WiFi analyzer app → copy the MAC address of that network.</div>`,
+        section: 'classrooms',
+        nav: 'classrooms'
+    },
+    {
+        icon: '📚',
+        title: 'Step 4 — Subjects',
+        body: `Go to <span class="wt-tag">📚 Subjects</span> and add every subject for each semester+branch.<br><br>
+               Required for each subject:<br>
+               • <strong>Subject Code</strong> — e.g. <em>CS301</em><br>
+               • <strong>Subject Name</strong> — e.g. <em>Data Structures</em> (this appears in attendance records)<br>
+               • <strong>Semester + Branch</strong><br>
+               • <strong>Type</strong> — Theory / Lab / Practical<br><br>
+               Use <strong>Import CSV</strong> to add many subjects at once.<br><br>
+               <div class="wt-tip">💡 Subject names must match exactly what you'll put in the timetable — the calendar filter uses these names.</div>`,
+        section: 'subjects',
+        nav: 'subjects'
+    },
+    {
+        icon: '👨‍🏫',
+        title: 'Step 5 — Teachers',
+        body: `Go to <span class="wt-tag">👨‍🏫 Teachers</span> and add every teacher.<br><br>
+               Required fields:<br>
+               • <strong>Employee ID</strong> — their login ID for the app<br>
+               • <strong>Name, Email, Password</strong><br>
+               • <strong>Department</strong> — from Step 1<br>
+               • <strong>Subjects Taught</strong> — select from the subjects you added in Step 4<br>
+               • <strong>Date of Birth</strong><br><br>
+               <div class="wt-tip">💡 Enable "Can Edit Timetable" for teachers who should be able to modify the class schedule.</div>`,
+        section: 'teachers',
+        nav: 'teachers'
+    },
+    {
+        icon: '👨‍🎓',
+        title: 'Step 6 — Students',
+        body: `Go to <span class="wt-tag">👨‍🎓 Students</span> and add all students.<br><br>
+               Use <strong>Bulk Import (CSV)</strong> for large batches. Required columns:<br>
+               <code style="font-size:12px;background:var(--bg-secondary);padding:2px 6px;border-radius:4px">enrollmentNo, name, email, branch, semester, dob</code><br><br>
+               • <strong>Enrollment No</strong> = their login ID in the app<br>
+               • <strong>Branch + Semester</strong> must match exactly what you added in Step 1<br>
+               • <strong>DOB</strong> = default password (format: YYYY-MM-DD)<br><br>
+               <div class="wt-warn">⚠️ Branch and semester must match Settings exactly — a typo means the student won't see the right timetable.</div>`,
+        section: 'students',
+        nav: 'students'
+    },
+    {
+        icon: '📅',
+        title: 'Step 7 — Timetable',
+        body: `Go to <span class="wt-tag">📅 Timetable</span> and create a schedule for each Semester+Branch.<br><br>
+               For each day, assign:<br>
+               • <strong>Subject</strong> to each period slot<br>
+               • <strong>Teacher</strong> for that subject<br>
+               • <strong>Room</strong> from your classrooms list<br><br>
+               Use <strong>Auto Fill</strong> to quickly populate all slots, then adjust manually.<br><br>
+               <div class="wt-tip">💡 Create one timetable per Semester+Branch combination. Students and teachers will see their own timetable automatically based on their profile.</div>`,
+        section: 'timetable',
+        nav: 'timetable'
+    },
+    {
+        icon: '📆',
+        title: 'Step 8 — Academic Calendar (Optional)',
+        body: `Go to <span class="wt-tag">📆 Calendar</span> to add holidays, exam dates, and events.<br><br>
+               These appear in the student and teacher app calendar view. Not required for attendance to work but recommended.<br><br>
+               <div class="wt-tip">💡 Holidays marked here will show as 🏖️ badges on the calendar so students know there's no class.</div>`,
+        section: 'calendar',
+        nav: 'calendar'
+    },
+    {
+        icon: '🔧',
+        title: 'Step 9 — Final Setup (One-Time)',
+        body: `Go to <span class="wt-tag">📆 Calendar</span> and run these three buttons in order:<br><br>
+               1. <strong>🔧 DB Migrate</strong> — fixes any data inconsistencies<br>
+               2. <strong>🔄 Backfill History</strong> — populates subject history so the calendar filter works<br>
+               3. <strong>🔁 Resync Attendance</strong> — recalculates all attendance summaries<br><br>
+               <div class="wt-tip">💡 These are safe to run multiple times. Run them again anytime you make bulk changes to students or timetables.</div>`,
+        section: 'calendar',
+        nav: 'calendar'
+    },
+    {
+        icon: '🎉',
+        title: 'You\'re All Set!',
+        body: `Your LetsBunk system is configured and ready.<br><br>
+               <strong>Students</strong> can now log in to the app with their enrollment number and DOB, start the timer when they're in class, and track their attendance.<br><br>
+               <strong>Teachers</strong> can log in to view live attendance, send random rings, and manage their timetable.<br><br>
+               <div class="wt-tip">💡 You can restart this walkthrough anytime from <strong>⚙️ Settings → Restart Setup Walkthrough</strong>.</div>`,
+        section: null
+    }
+];
+
+let wtCurrentStep = 0;
+
+function startWalkthrough(force = false) {
+    const seen = localStorage.getItem('wt_completed');
+    if (seen && !force) return;
+
+    wtCurrentStep = 0;
+    const overlay = document.getElementById('walkthroughOverlay');
+    overlay.style.display = 'block';
+    overlay.classList.add('active');
+    renderWalkthroughStep();
+}
+
+function renderWalkthroughStep() {
+    const step     = WT_STEPS[wtCurrentStep];
+    const total    = WT_STEPS.length;
+    const pct      = Math.round(((wtCurrentStep + 1) / total) * 100);
+    const isLast   = wtCurrentStep === total - 1;
+    const isFirst  = wtCurrentStep === 0;
+
+    document.getElementById('wtProgressFill').style.width = pct + '%';
+    document.getElementById('wtStepCounter').textContent  = `Step ${wtCurrentStep + 1} of ${total}`;
+    document.getElementById('wtIcon').textContent         = step.icon;
+    document.getElementById('wtTitle').textContent        = step.title;
+    document.getElementById('wtBody').innerHTML           = step.body;
+
+    const prevBtn = document.getElementById('wtPrevBtn');
+    const nextBtn = document.getElementById('wtNextBtn');
+    prevBtn.style.display = isFirst ? 'none' : 'block';
+    nextBtn.textContent   = isLast ? '✅ Finish' : 'Next →';
+    nextBtn.className     = isLast ? 'wt-btn wt-btn-finish' : 'wt-btn wt-btn-next';
+
+    // Navigate to the relevant section
+    if (step.nav) {
+        switchSection(step.nav);
+        // Spotlight the nav item
+        setTimeout(() => spotlightNav(step.nav), 100);
+    } else {
+        clearSpotlight();
+    }
+}
+
+function spotlightNav(sectionName) {
+    const navBtn    = document.querySelector(`[data-section="${sectionName}"]`);
+    const spotlight = document.getElementById('wtSpotlight');
+    if (!navBtn) { clearSpotlight(); return; }
+
+    const rect = navBtn.getBoundingClientRect();
+    spotlight.style.display = 'block';
+    spotlight.style.left    = (rect.left - 4) + 'px';
+    spotlight.style.top     = (rect.top  - 4) + 'px';
+    spotlight.style.width   = (rect.width  + 8) + 'px';
+    spotlight.style.height  = (rect.height + 8) + 'px';
+}
+
+function clearSpotlight() {
+    document.getElementById('wtSpotlight').style.display = 'none';
+}
+
+function walkthroughNext() {
+    if (wtCurrentStep < WT_STEPS.length - 1) {
+        wtCurrentStep++;
+        renderWalkthroughStep();
+    } else {
+        walkthroughFinish();
+    }
+}
+
+function walkthroughPrev() {
+    if (wtCurrentStep > 0) {
+        wtCurrentStep--;
+        renderWalkthroughStep();
+    }
+}
+
+function walkthroughSkip() {
+    if (confirm('Skip the setup walkthrough? You can restart it anytime from Settings.')) {
+        walkthroughFinish();
+    }
+}
+
+function walkthroughFinish() {
+    localStorage.setItem('wt_completed', '1');
+    const overlay = document.getElementById('walkthroughOverlay');
+    overlay.style.display = 'none';
+    overlay.classList.remove('active');
+    clearSpotlight();
+    // Go to dashboard after finishing
+    switchSection('dashboard');
+}
+
+// Auto-start on first login (after app loads)
+document.addEventListener('DOMContentLoaded', () => {
+    // Delay slightly so the app initialises first
+    setTimeout(() => {
+        if (isLoggedIn()) startWalkthrough(false);
+    }, 800);
 });

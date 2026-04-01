@@ -11,7 +11,27 @@
 
 <body>
 
-    <!-- ── LOGIN OVERLAY ─────────────────────────────────────────── -->
+    <!-- ── WALKTHROUGH OVERLAY ──────────────────────────────────── -->
+    <div id="walkthroughOverlay" style="display:none">
+        <div class="wt-backdrop"></div>
+        <div class="wt-card" id="wtCard">
+            <div class="wt-progress-bar"><div class="wt-progress-fill" id="wtProgressFill"></div></div>
+            <div class="wt-step-counter" id="wtStepCounter"></div>
+            <div class="wt-icon" id="wtIcon"></div>
+            <div class="wt-title" id="wtTitle"></div>
+            <div class="wt-body" id="wtBody"></div>
+            <div class="wt-actions">
+                <button class="wt-btn wt-btn-skip" id="wtSkipBtn" onclick="walkthroughSkip()">Skip Tour</button>
+                <div style="display:flex;gap:10px">
+                    <button class="wt-btn wt-btn-prev" id="wtPrevBtn" onclick="walkthroughPrev()">← Back</button>
+                    <button class="wt-btn wt-btn-next" id="wtNextBtn" onclick="walkthroughNext()">Next →</button>
+                </div>
+            </div>
+        </div>
+        <!-- Spotlight highlight ring -->
+        <div class="wt-spotlight" id="wtSpotlight"></div>
+    </div>
+    <!-- ─────────────────────────────────────────────────────────── -->
     <div id="loginOverlay" class="login-overlay">
         <div class="login-card">
             <div class="login-logo">
@@ -970,6 +990,11 @@
                 <!-- Settings Section -->
                 <section id="settings-section" class="section">
                     <h2 class="section-title">Settings</h2>
+                    <div style="margin-bottom:20px">
+                        <button class="btn btn-secondary" onclick="startWalkthrough(true)" style="gap:8px">
+                            🗺️ Restart Setup Walkthrough
+                        </button>
+                    </div>
 
                     <!-- Branch & Semester Configuration -->
                     <div style="margin-bottom: 40px;">

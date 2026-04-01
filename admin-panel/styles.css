@@ -7201,3 +7201,99 @@ ture Details Styles */
 }
 .cal-bubble-name { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.1; max-width: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-bubble-pct  { font-size: 10px; font-weight: 700; }
+
+/* ── Walkthrough overlay ─────────────────────────────────────────────────── */
+#walkthroughOverlay { position: fixed; inset: 0; z-index: 9999; pointer-events: none; }
+#walkthroughOverlay.active { pointer-events: all; }
+
+.wt-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(2px);
+}
+
+.wt-card {
+    position: absolute;
+    bottom: 40px; left: 50%; transform: translateX(-50%);
+    width: min(520px, calc(100vw - 40px));
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 28px 22px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    animation: wtSlideUp 0.3s ease;
+}
+@keyframes wtSlideUp {
+    from { opacity:0; transform: translateX(-50%) translateY(20px); }
+    to   { opacity:1; transform: translateX(-50%) translateY(0); }
+}
+
+.wt-progress-bar {
+    height: 3px; background: var(--border); border-radius: 2px;
+    margin-bottom: 20px; overflow: hidden;
+}
+.wt-progress-fill {
+    height: 100%; background: var(--primary);
+    border-radius: 2px; transition: width 0.4s ease;
+}
+
+.wt-step-counter {
+    font-size: 11px; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.wt-icon { font-size: 36px; margin-bottom: 10px; }
+
+.wt-title {
+    font-size: 20px; font-weight: 700;
+    color: var(--text-primary); margin-bottom: 10px;
+}
+
+.wt-body {
+    font-size: 14px; color: var(--text-secondary);
+    line-height: 1.7; margin-bottom: 22px;
+}
+.wt-body strong { color: var(--text-primary); }
+.wt-body .wt-tag {
+    display: inline-block;
+    background: rgba(0,217,255,0.12); color: var(--primary);
+    border-radius: 6px; padding: 2px 8px; font-size: 12px;
+    font-weight: 600; margin: 2px;
+}
+.wt-body .wt-warn {
+    background: rgba(245,158,11,0.12); color: #f59e0b;
+    border-radius: 8px; padding: 8px 12px; margin-top: 10px;
+    font-size: 13px;
+}
+.wt-body .wt-tip {
+    background: rgba(16,185,129,0.1); color: #10b981;
+    border-radius: 8px; padding: 8px 12px; margin-top: 10px;
+    font-size: 13px;
+}
+
+.wt-actions {
+    display: flex; justify-content: space-between; align-items: center;
+}
+.wt-btn {
+    padding: 9px 20px; border-radius: 10px; font-size: 14px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+}
+.wt-btn-skip { background: transparent; color: var(--text-secondary); }
+.wt-btn-skip:hover { color: var(--text-primary); }
+.wt-btn-prev { background: var(--bg-secondary); color: var(--text-primary); }
+.wt-btn-prev:hover { background: var(--border); }
+.wt-btn-next { background: var(--primary); color: #000; }
+.wt-btn-next:hover { opacity: 0.9; }
+.wt-btn-finish { background: #10b981; color: #fff; }
+
+/* Spotlight ring around nav item */
+.wt-spotlight {
+    position: absolute;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    box-shadow: 0 0 0 4px rgba(0,217,255,0.15), 0 0 20px rgba(0,217,255,0.3);
+    pointer-events: none;
+    transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+    display: none;
+}

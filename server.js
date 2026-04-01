@@ -1928,6 +1928,15 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
                 });
             }
             console.log(`✅ [CHECK-IN] Student found - Name: ${student.name}, Semester: ${student.semester}, Branch: ${student.branch}`);
+
+            // Validate semester/branch are configured
+            if (!student.semester || !student.branch) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Your semester/branch is not configured. Please contact admin.',
+                    enrollmentNo
+                });
+            }
         } catch (dbError) {
             console.error(`❌ [CHECK-IN] Database error fetching student - Enrollment: ${enrollmentNo}, Error: ${dbError.message}`);
             return res.status(500).json({
@@ -2249,6 +2258,29 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
         // Sync AttendanceRecord daily summary from PeriodAttendance
         syncAttendanceRecord(enrollmentNo, today, student.name, student.semester, student.branch).catch(() => {});
 
+        // Also populate lectures in AttendanceRecord from PeriodAttendance
+        try {
+            const periodRecs = await PeriodAttendance.find({
+                enrollmentNo,
+                date: { $gte: today, $lt: new Date(today.getTime() + 86400000) }
+            }).sort({ period: 1 }).lean();
+
+            if (periodRecs.length > 0) {
+                await AttendanceRecord.findOneAndUpdate(
+                    { $or: [{ enrollmentNo }, { studentId: enrollmentNo }], date: today },
+                    { $set: {
+                        lectures: periodRecs.map(p => ({
+                            period: p.period, subject: p.subject,
+                            teacher: p.teacher, teacherName: p.teacherName || p.teacher,
+                            room: p.room || '', studentCheckIn: p.checkInTime
+                        })),
+                        updatedAt: new Date()
+                    }},
+                    { upsert: false }
+                );
+            }
+        } catch (_) {}
+
         res.json({
             success: true,
             message: `Checked in from ${currentPeriod} onwards`,
@@ -2331,30 +2363,29 @@ app.post('/api/attendance/record', async (req, res) => {
         });
 
         if (!record) {
-            // Create new record
             record = new AttendanceRecord({
-                studentId: enrollmentNo,   // store enrollmentNo in both fields for consistent querying
-                studentName,
+                studentId:     enrollmentNo,
                 enrollmentNo,
-                semester: semester || 'Unknown',
-                branch: branch || 'Unknown',
-                date: today,
-                status: status || 'absent',
-                lectures: lectures || [],
-                totalAttended: totalAttended || 0,
-                totalClassTime: totalClassTime || 0,
-                dayPercentage: dayPercentage || 0,
-                timerValue: 0,
+                studentName,
+                semester:      semester || '',
+                branch:        branch   || '',
+                date:          today,
+                status:        status   || 'absent',
+                lectures:      lectures || [],
+                totalAttended:  Number(totalAttended)  || 0,
+                totalClassTime: Number(totalClassTime) || 0,
+                dayPercentage:  Number(dayPercentage)  || 0,
+                timerValue:     0,
                 createdAt: new Date(),
                 updatedAt: new Date()
             });
         } else {
-            // Update existing record
-            record.status = status || record.status;
-            record.lectures = lectures || record.lectures;
-            record.totalAttended = totalAttended || record.totalAttended;
-            record.totalClassTime = totalClassTime || record.totalClassTime;
-            record.dayPercentage = dayPercentage || record.dayPercentage;
+            record.status         = status        || record.status;
+            record.lectures       = lectures       || record.lectures;
+            record.totalAttended  = Number(totalAttended)  || record.totalAttended;
+            record.totalClassTime = Number(totalClassTime) || record.totalClassTime;
+            record.dayPercentage  = Number(dayPercentage)  || record.dayPercentage;
+            // preserve timerValue set by offline-sync — don't overwrite with 0
             record.updatedAt = new Date();
         }
 
@@ -2731,34 +2762,79 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
 
             if (!attendanceRecord) {
                 attendanceRecord = new AttendanceRecord({
-                    studentId: student._id,
-                    studentName: student.name,
+                    studentId:    student.enrollmentNo,
                     enrollmentNo: student.enrollmentNo,
-                    semester: student.semester || 'Unknown',
-                    branch: student.branch || 'Unknown',
-                    date: today,
-                    status: computedStatus,
-                    lectures: [],
-                    totalAttended: attendedMinutes,
+                    studentName:  student.name,
+                    semester:     student.semester?.toString() || '',
+                    branch:       student.branch || '',
+                    date:         today,
+                    status:       computedStatus,
+                    lectures:     [],
+                    totalAttended:  attendedMinutes,
                     totalClassTime: 0,
-                    dayPercentage: 0,
-                    timerValue: Math.floor(timerSeconds),
+                    dayPercentage:  0,
+                    timerValue:     Math.floor(timerSeconds),
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
             } else {
                 attendanceRecord.totalAttended = attendedMinutes;
-                attendanceRecord.timerValue = Math.floor(timerSeconds);
-                attendanceRecord.status = computedStatus;
-                attendanceRecord.updatedAt = new Date();
-                
+                attendanceRecord.timerValue    = Math.floor(timerSeconds);
+                attendanceRecord.status        = computedStatus;
+                attendanceRecord.updatedAt     = new Date();
+
                 if (attendanceRecord.totalClassTime > 0) {
                     attendanceRecord.dayPercentage = Math.round((attendedMinutes / attendanceRecord.totalClassTime) * 100);
                 }
             }
 
+            // Populate totalClassTime from timetable if not set
+            if (!attendanceRecord.totalClassTime || attendanceRecord.totalClassTime === 0) {
+                try {
+                    const tt = await Timetable.findOne({ semester: student.semester, branch: student.branch });
+                    if (tt) {
+                        const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+                        const dayName = days[today.getDay()];
+                        const sched   = tt.timetable[dayName] || [];
+                        let classMinutes = 0;
+                        for (let i = 0; i < sched.length; i++) {
+                            const slot = sched[i];
+                            const pInfo = tt.periods[i];
+                            if (!slot || slot.isBreak || !slot.subject || !pInfo) continue;
+                            classMinutes += timeToMinutes(pInfo.endTime) - timeToMinutes(pInfo.startTime);
+                        }
+                        if (classMinutes > 0) {
+                            attendanceRecord.totalClassTime = classMinutes;
+                            attendanceRecord.dayPercentage  = Math.round((attendedMinutes / classMinutes) * 100);
+                        }
+                    }
+                } catch (_) {}
+            }
+
+            // Populate lectures from PeriodAttendance so history page shows detail
+            try {
+                const periodRecs = await PeriodAttendance.find({
+                    enrollmentNo: student.enrollmentNo,
+                    date: { $gte: today, $lt: new Date(today.getTime() + 86400000) }
+                }).sort({ period: 1 }).lean();
+
+                if (periodRecs.length > 0) {
+                    attendanceRecord.lectures = periodRecs.map(p => ({
+                        period:      p.period,
+                        subject:     p.subject,
+                        teacher:     p.teacher,
+                        teacherName: p.teacherName || p.teacher,
+                        room:        p.room || '',
+                        startTime:   '',
+                        endTime:     '',
+                        studentCheckIn: p.checkInTime,
+                        verifications: p.checkInTime ? [{ time: p.checkInTime, type: 'face', success: p.faceVerified, event: 'check_in' }] : []
+                    }));
+                }
+            } catch (_) {}
+
             await attendanceRecord.save();
-            console.log(`📊 [OFFLINE-SYNC] Updated AttendanceRecord - Student: ${studentId}, Attended: ${attendedMinutes}min`);
+            console.log(`📊 [OFFLINE-SYNC] Updated AttendanceRecord - Student: ${studentId}, Attended: ${attendedMinutes}min, ClassTime: ${attendanceRecord.totalClassTime}min`);
 
         } catch (recordError) {
             console.error(`❌ [OFFLINE-SYNC] Error updating AttendanceRecord:`, recordError);
@@ -2771,8 +2847,8 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                // Identify which period this lecture maps to
-                const currentLectureInfo = await getCurrentLectureInfo(student.semester, student.branch, timestamp);
+                // Identify which period this lecture maps to — use server clock (IST)
+                const currentLectureInfo = await getCurrentLectureInfo(student.semester, student.branch);
                 if (currentLectureInfo) {
                     const periodId = `P${currentLectureInfo.period}`;
                     await PeriodAttendance.updateOne(

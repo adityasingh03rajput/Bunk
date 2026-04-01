@@ -1522,11 +1522,18 @@ io.on('connection', (socket) => {
 // Helper function already defined above - removed duplicate
 
 // Helper: Get current lecture info from timetable
-async function getCurrentLectureInfo(semester, branch) {
+// Helper: Get current lecture info from timetable
+// Uses clientTimestamp if provided (student's local time) — avoids UTC/IST mismatch.
+// Falls back to server UTC if no timestamp given.
+async function getCurrentLectureInfo(semester, branch, clientTimestamp = null) {
     try {
-        const now = new Date();
+        const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const currentDay = days[now.getDay()];
+
+        // Minutes since midnight in the client's local time
+        // Period times are stored as "HH:MM" in local time (whatever the admin entered)
+        // We compare against local hours/minutes from the client timestamp
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
         const timetable = await Timetable.findOne({ semester, branch });
@@ -1535,35 +1542,55 @@ async function getCurrentLectureInfo(semester, branch) {
         const daySchedule = timetable.timetable[currentDay];
         if (!daySchedule) return null;
 
+        // Find the period whose window contains currentTime
         for (let i = 0; i < daySchedule.length; i++) {
             const period = daySchedule[i];
             const periodInfo = timetable.periods[i];
-            if (!periodInfo) continue;
+            if (!periodInfo || period.isBreak || !period.subject) continue;
 
             const periodStart = timeToMinutes(periodInfo.startTime);
-            const periodEnd = timeToMinutes(periodInfo.endTime);
+            const periodEnd   = timeToMinutes(periodInfo.endTime);
 
-            if (currentTime >= periodStart && currentTime <= periodEnd && !period.isBreak) {
-                const totalSeconds = (periodEnd - periodStart) * 60;
-                const elapsedSeconds = (currentTime - periodStart) * 60;
-                const remainingSeconds = (periodEnd - currentTime) * 60;
-
+            if (currentTime >= periodStart && currentTime < periodEnd) {
                 return {
-                    subject: period.subject,
-                    teacher: period.teacher,
-                    room: period.room,
-                    period: period.period || (i + 1), // Use actual period number from timetable, fallback to index + 1
-                    startTime: periodInfo.startTime,
-                    endTime: periodInfo.endTime,
-                    totalSeconds,
-                    elapsedSeconds,
-                    remainingSeconds,
+                    subject:          period.subject,
+                    teacher:          period.teacher,
+                    room:             period.room,
+                    period:           period.period || (i + 1),
+                    startTime:        periodInfo.startTime,
+                    endTime:          periodInfo.endTime,
+                    totalSeconds:     (periodEnd - periodStart) * 60,
+                    elapsedSeconds:   (currentTime - periodStart) * 60,
+                    remainingSeconds: (periodEnd - currentTime) * 60,
                     periodStart,
                     periodEnd
                 };
             }
         }
-        return null;
+
+        // No exact match — find the most recent period that has already started
+        // (student checked in late, after a period ended)
+        let latestStarted = null;
+        for (let i = 0; i < daySchedule.length; i++) {
+            const period = daySchedule[i];
+            const periodInfo = timetable.periods[i];
+            if (!periodInfo || period.isBreak || !period.subject) continue;
+            const periodStart = timeToMinutes(periodInfo.startTime);
+            if (periodStart <= currentTime) {
+                latestStarted = {
+                    subject:   period.subject,
+                    teacher:   period.teacher,
+                    room:      period.room,
+                    period:    period.period || (i + 1),
+                    startTime: periodInfo.startTime,
+                    endTime:   periodInfo.endTime,
+                    periodStart,
+                    periodEnd: timeToMinutes(periodInfo.endTime)
+                };
+            }
+        }
+        return latestStarted;
+
     } catch (error) {
         console.error('❌ Error getting lecture info:', error);
         return null;
@@ -1933,7 +1960,7 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
         console.log(`📚 [CHECK-IN] Fetching current lecture - Semester: ${student.semester}, Branch: ${student.branch}`);
         let currentLecture;
         try {
-            currentLecture = await getCurrentLectureInfo(student.semester, student.branch);
+            currentLecture = await getCurrentLectureInfo(student.semester, student.branch, timestamp);
             if (!currentLecture) {
                 console.log(`❌ [CHECK-IN] No active lecture - Student: ${enrollmentNo}, Semester: ${student.semester}, Branch: ${student.branch}, Time: ${timestamp}`);
                 return res.status(400).json({
@@ -2091,61 +2118,97 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
             });
         }
 
-        // Mark present for current period onwards
-        console.log(`📝 [CHECK-IN] Marking attendance - Student: ${enrollmentNo}, From period: ${currentPeriod}`);
+        // Mark attendance: only the CURRENT period as present.
+        // Past periods = absent (student was late/missed). Future periods = untouched (not yet happened).
+        console.log(`📝 [CHECK-IN] Marking attendance - Student: ${enrollmentNo}, Current period: ${currentPeriod}`);
         const markedPeriods = [];
         const missedPeriods = [];
         const checkInTime = new Date(timestamp);
+        const clientNow = new Date(timestamp);
+        const clientMinutes = clientNow.getHours() * 60 + clientNow.getMinutes();
         const dbErrors = [];
 
         for (let i = 0; i < daySchedule.length; i++) {
             const period = daySchedule[i];
             const periodInfo = timetable.periods[i];
-            
-            if (!period || period.isBreak || !periodInfo) continue;
+
+            if (!period || period.isBreak || !period.subject || !periodInfo) continue;
 
             const periodNumber = i + 1;
-            const periodId = `P${periodNumber}`;
+            const periodId     = `P${periodNumber}`;
+            const periodStart  = timeToMinutes(periodInfo.startTime);
+            const periodEnd    = timeToMinutes(periodInfo.endTime);
 
-            // Mark present from current period onwards
-            if (periodNumber >= currentLecture.period) {
+            // Determine relationship of this period to current time
+            const isCurrentPeriod = clientMinutes >= periodStart && clientMinutes < periodEnd;
+            const isPastPeriod    = periodEnd <= clientMinutes;   // already ended
+            const isFuturePeriod  = periodStart > clientMinutes;  // not started yet
+
+            if (isCurrentPeriod) {
+                // Mark present — student is here right now
                 try {
                     await PeriodAttendance.findOneAndUpdate(
+                        { enrollmentNo, date: today, period: periodId },
                         {
                             enrollmentNo,
-                            date: today,
-                            period: periodId
-                        },
-                        {
-                            enrollmentNo,
-                            studentName: student.name,
-                            semester:    student.semester?.toString() || '',
-                            branch:      student.branch || '',
-                            date: today,
-                            period: periodId,
-                            subject: period.subject,
-                            teacher: period.teacher,
-                            teacherName: period.teacherName || period.teacher,
-                            room: period.room,
-                            status: 'present',
-                            checkInTime: checkInTime,
+                            studentName:  student.name,
+                            semester:     student.semester?.toString() || '',
+                            branch:       student.branch || '',
+                            date:         today,
+                            period:       periodId,
+                            subject:      period.subject,
+                            teacher:      period.teacher,
+                            teacherName:  period.teacherName || period.teacher,
+                            room:         period.room,
+                            status:       'present',
+                            checkInTime,
                             verificationType: 'initial',
                             wifiVerified: true,
                             faceVerified: true,
-                            wifiBSSID: wifiBSSID
+                            wifiBSSID
                         },
                         { upsert: true, new: true }
                     );
                     markedPeriods.push(periodId);
-                    console.log(`✅ [CHECK-IN] Marked present - Student: ${enrollmentNo}, Period: ${periodId}, Subject: ${period.subject}`);
+                    console.log(`✅ [CHECK-IN] Present - ${enrollmentNo} ${periodId} (${period.subject})`);
                 } catch (dbError) {
-                    console.error(`❌ [CHECK-IN] Database error marking period - Student: ${enrollmentNo}, Period: ${periodId}, Error: ${dbError.message}`);
+                    console.error(`❌ [CHECK-IN] DB error - ${enrollmentNo} ${periodId}: ${dbError.message}`);
                     dbErrors.push({ period: periodId, error: dbError.message });
                 }
-            } else {
-                // Periods before check-in remain absent (late arrival)
-                missedPeriods.push(periodId);
+            } else if (isPastPeriod) {
+                // Period already ended — mark absent only if no record exists yet
+                try {
+                    await PeriodAttendance.findOneAndUpdate(
+                        { enrollmentNo, date: today, period: periodId },
+                        {
+                            $setOnInsert: {
+                                enrollmentNo,
+                                studentName:  student.name,
+                                semester:     student.semester?.toString() || '',
+                                branch:       student.branch || '',
+                                date:         today,
+                                period:       periodId,
+                                subject:      period.subject,
+                                teacher:      period.teacher,
+                                teacherName:  period.teacherName || period.teacher,
+                                room:         period.room,
+                                status:       'absent',
+                                verificationType: 'initial',
+                                wifiVerified: false,
+                                faceVerified: false
+                            }
+                        },
+                        { upsert: true, new: true }
+                    );
+                    missedPeriods.push(periodId);
+                    console.log(`⏭️  [CHECK-IN] Past/absent - ${enrollmentNo} ${periodId}`);
+                } catch (dbError) {
+                    if (dbError.code !== 11000) { // ignore duplicate key — record already exists
+                        console.error(`❌ [CHECK-IN] DB error absent - ${enrollmentNo} ${periodId}: ${dbError.message}`);
+                    }
+                }
             }
+            // isFuturePeriod → do nothing, will be handled when that period starts
         }
 
         // Check if there were any database errors during marking
@@ -2685,7 +2748,7 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                 today.setHours(0, 0, 0, 0);
 
                 // Identify which period this lecture maps to
-                const currentLectureInfo = await getCurrentLectureInfo(student.semester, student.branch);
+                const currentLectureInfo = await getCurrentLectureInfo(student.semester, student.branch, timestamp);
                 if (currentLectureInfo) {
                     const periodId = `P${currentLectureInfo.period}`;
                     await PeriodAttendance.updateOne(
@@ -7669,10 +7732,10 @@ app.post('/api/random-ring', async (req, res) => {
 
         console.log(`✅ Selected ${selectedStudents.length} active students for random ring`);
 
-        // Get current period
+        // Get current period — use server time (teacher-side call, no client timestamp)
         let currentPeriod = null;
         try {
-            const lectureInfo = await getCurrentLectureInfo(semester, branch);
+            const lectureInfo = await getCurrentLectureInfo(semester, branch, new Date().toISOString());
             if (lectureInfo) currentPeriod = `P${lectureInfo.period}`;
         } catch (e) { /* ignore */ }
 

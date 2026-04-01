@@ -4319,6 +4319,52 @@ app.post('/api/db/resync-attendance', async (req, res) => {
     }
 });
 
+// ─── POST /api/db/wipe-all ───────────────────────────────────────────────────
+// Wipes ALL collection data. Requires confirmation token.
+app.post('/api/db/wipe-all', async (req, res) => {
+    const { confirm } = req.body;
+    if (confirm !== 'WIPE_ALL_DATA_CONFIRMED') {
+        return res.status(400).json({ success: false, error: 'Missing confirmation token' });
+    }
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: false, error: 'DB not connected' });
+    }
+    try {
+        const results = {};
+        const models = [
+            { name: 'StudentManagement', model: StudentManagement },
+            { name: 'Teacher',           model: Teacher },
+            { name: 'Subject',           model: Subject },
+            { name: 'Timetable',         model: Timetable },
+            { name: 'Classroom',         model: Classroom },
+            { name: 'AttendanceRecord',  model: AttendanceRecord },
+            { name: 'PeriodAttendance',  model: PeriodAttendance },
+            { name: 'DailyAttendance',   model: DailyAttendance },
+            { name: 'AttendanceAudit',   model: AttendanceAudit },
+            { name: 'TimetableHistory',  model: TimetableHistory },
+            { name: 'Holiday',           model: Holiday },
+        ];
+        for (const { name, model } of models) {
+            const r = await model.deleteMany({});
+            results[name] = r.deletedCount;
+        }
+        // Also clear in-memory fallbacks
+        studentsMemory          = [];
+        teachersMemory          = [];
+        classroomsMemory        = [];
+        attendanceRecordsMemory = [];
+        studentManagementMemory = [];
+        timetableMemory         = {};
+        liveTimerState.clear();
+
+        console.log('🗑️ [WIPE] All collections cleared:', results);
+        res.json({ success: true, message: 'All data wiped', results });
+    } catch (error) {
+        console.error('❌ Wipe error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ─── GET /api/attendance/date/:date/subject/:subject ─────────────────────────
 // Returns per-student attendance for a specific subject on a specific date.
 // Groups PeriodAttendance rows into per-student period arrays for chevron nav.

@@ -4343,6 +4343,8 @@ app.post('/api/db/wipe-all', async (req, res) => {
             { name: 'AttendanceAudit',   model: AttendanceAudit },
             { name: 'TimetableHistory',  model: TimetableHistory },
             { name: 'Holiday',           model: Holiday },
+            { name: 'Config',            model: Config },       // branches, semesters, departments
+            { name: 'RandomRing',        model: RandomRing },   // random ring sessions
         ];
         for (const { name, model } of models) {
             const r = await model.deleteMany({});

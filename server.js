@@ -1546,18 +1546,15 @@ async function syncAttendanceRecord(enrollmentNo, date, studentName, semester, b
 // Helper function already defined above - removed duplicate
 
 // Helper: Get current lecture info from timetable
-// Uses clientTimestamp if provided (student's local time) — avoids UTC/IST mismatch.
-// Falls back to server UTC if no timestamp given.
+// Azure server runs in IST — new Date() already returns IST time.
+// Period times stored as "HH:MM" IST strings. Always use server clock.
+// clientTimestamp param kept for API compat but ignored.
 async function getCurrentLectureInfo(semester, branch, clientTimestamp = null) {
     try {
-        const now = clientTimestamp ? new Date(clientTimestamp) : new Date();
+        const now = new Date(); // server clock = IST on this Azure instance
         const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const currentDay = days[now.getDay()];
-
-        // Minutes since midnight in the client's local time
-        // Period times are stored as "HH:MM" in local time (whatever the admin entered)
-        // We compare against local hours/minutes from the client timestamp
-        const currentTime = now.getHours() * 60 + now.getMinutes();
+        const currentDay  = days[now.getDay()];
+        const currentTime = now.getHours() * 60 + now.getMinutes(); // IST minutes since midnight
 
         const timetable = await Timetable.findOne({ semester, branch });
         if (!timetable) return null;
@@ -2147,8 +2144,9 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
         const markedPeriods = [];
         const missedPeriods = [];
         const checkInTime = new Date(timestamp);
-        const clientNow = new Date(timestamp);
-        const clientMinutes = clientNow.getHours() * 60 + clientNow.getMinutes();
+        // Use server clock (IST) for period matching — period times are stored in IST
+        const serverNow     = new Date();
+        const serverMinutes = serverNow.getHours() * 60 + serverNow.getMinutes();
         const dbErrors = [];
 
         for (let i = 0; i < daySchedule.length; i++) {
@@ -2162,10 +2160,10 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
             const periodStart  = timeToMinutes(periodInfo.startTime);
             const periodEnd    = timeToMinutes(periodInfo.endTime);
 
-            // Determine relationship of this period to current time
-            const isCurrentPeriod = clientMinutes >= periodStart && clientMinutes < periodEnd;
-            const isPastPeriod    = periodEnd <= clientMinutes;   // already ended
-            const isFuturePeriod  = periodStart > clientMinutes;  // not started yet
+            // Determine relationship of this period to current server time (IST)
+            const isCurrentPeriod = serverMinutes >= periodStart && serverMinutes < periodEnd;
+            const isPastPeriod    = periodEnd <= serverMinutes;
+            const isFuturePeriod  = periodStart > serverMinutes;
 
             if (isCurrentPeriod) {
                 // Mark present — student is here right now

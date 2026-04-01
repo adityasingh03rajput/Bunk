@@ -1519,9 +1519,32 @@ io.on('connection', (socket) => {
     });
 });
 
+// ─── Helper: sync AttendanceRecord.status from PeriodAttendance ──────────────
+async function syncAttendanceRecord(enrollmentNo, date, studentName, semester, branch, threshold = 75) {
+    try {
+        const midnight = new Date(date); midnight.setHours(0, 0, 0, 0);
+        const nextDay  = new Date(midnight); nextDay.setDate(nextDay.getDate() + 1);
+        const periods  = await PeriodAttendance.find({ enrollmentNo, date: { $gte: midnight, $lt: nextDay } }).lean();
+        const presentCount  = periods.filter(p => p.status === 'present').length;
+        const totalCount    = periods.length;
+        const dayPercentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+        const dayStatus     = dayPercentage >= threshold ? 'present' : 'absent';
+        await AttendanceRecord.findOneAndUpdate(
+            { $or: [{ enrollmentNo }, { studentId: enrollmentNo }], date: midnight },
+            { $set: { studentId: enrollmentNo, enrollmentNo, studentName: studentName || enrollmentNo,
+                      semester: semester?.toString() || '', branch: branch || '',
+                      status: dayStatus, dayPercentage, updatedAt: new Date() } },
+            { upsert: true }
+        );
+        return { dayStatus, dayPercentage, presentCount, totalCount };
+    } catch (err) {
+        console.error('❌ syncAttendanceRecord error:', err.message);
+        return null;
+    }
+}
+
 // Helper function already defined above - removed duplicate
 
-// Helper: Get current lecture info from timetable
 // Helper: Get current lecture info from timetable
 // Uses clientTimestamp if provided (student's local time) — avoids UTC/IST mismatch.
 // Falls back to server UTC if no timestamp given.
@@ -2224,6 +2247,9 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
 
         const duration = Date.now() - startTime;
         console.log(`✅ [CHECK-IN] Success - Student: ${enrollmentNo} (${student.name}), Period: ${currentPeriod}, Marked: ${markedPeriods.join(', ')}, Missed: ${missedPeriods.join(', ')}, Duration: ${duration}ms`);
+
+        // Sync AttendanceRecord daily summary from PeriodAttendance
+        syncAttendanceRecord(enrollmentNo, today, student.name, student.semester, student.branch).catch(() => {});
 
         res.json({
             success: true,
@@ -4148,6 +4174,39 @@ app.post('/api/db/migrate', async (req, res) => {
         res.json({ success: true, report });
     } catch (error) {
         console.error('❌ Migration error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ─── POST /api/db/resync-attendance ──────────────────────────────────────────
+// Recalculates AttendanceRecord.status for all students from PeriodAttendance.
+// Fixes historical records where status was wrong.
+app.post('/api/db/resync-attendance', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) return res.json({ success: false, error: 'DB not connected' });
+    try {
+        // Get all distinct enrollmentNo+date combos from PeriodAttendance
+        const groups = await PeriodAttendance.aggregate([
+            { $group: { _id: { enrollmentNo: '$enrollmentNo', date: { $dateToString: { format: '%Y-%m-%d', date: '$date' } } },
+                        studentName: { $first: '$studentName' },
+                        semester:    { $first: '$semester' },
+                        branch:      { $first: '$branch' } } }
+        ]);
+
+        let updated = 0;
+        for (const g of groups) {
+            const { enrollmentNo, date } = g._id;
+            // Fill missing semester/branch from StudentManagement if blank
+            let sem = g.semester, br = g.branch;
+            if (!sem || !br) {
+                const s = await StudentManagement.findOne({ enrollmentNo }, { semester: 1, branch: 1 }).lean();
+                if (s) { sem = s.semester?.toString(); br = s.branch; }
+            }
+            await syncAttendanceRecord(enrollmentNo, new Date(date), g.studentName, sem, br);
+            updated++;
+        }
+        res.json({ success: true, message: `Resynced ${updated} student-day records` });
+    } catch (error) {
+        console.error('❌ Resync error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

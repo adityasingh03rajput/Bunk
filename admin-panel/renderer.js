@@ -6211,6 +6211,29 @@ async function runDbMigration() {
     }
 }
 
+async function runAttendanceResync() {
+    if (!confirm('Recalculate all AttendanceRecord statuses from PeriodAttendance?\nThis fixes historical present/absent status. Safe to run multiple times.')) return;
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Resyncing…'; }
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 120000);
+        const res  = await fetch(`${SERVER_URL}/api/db/resync-attendance`, { method: 'POST', signal: controller.signal });
+        clearTimeout(timer);
+        const data = await res.json();
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Resync failed: ' + (data.error || 'Unknown'), 'error');
+        }
+    } catch (err) {
+        const msg = err.name === 'AbortError' ? 'Resync timed out' : err.message;
+        showNotification('Resync error: ' + msg, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔁 Resync Attendance'; }
+    }
+}
+
 document.getElementById('addHolidayBtn').addEventListener('click', () => {
     showAddHolidayModal(new Date());
 });

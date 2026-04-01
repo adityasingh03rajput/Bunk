@@ -1,4 +1,0 @@
-<step title="Incoming Request" date="2026-03-26T15:35:48.593" instance="6c578d" url="/api/settings/branch" method="GET" type="request" pid="831,1,26" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="Azure-WebSites-Controller/107.0.7.33" Authorization="Bas..." x-ms-request-id="6485f500-eb27-4190-ad28-d489165ae3a6" X-ARR-LOG-ID="6485f500-eb27-4190-ad28-d489165ae3a6" CLIENT-IP="20.192.170.15:1922" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-MS-PLATFORM-INTERNAL="True" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/settings/branch" X-Client-IP="20.192.170.15" X-Client-Port="1922" >
-  <step title="Cleanup Xml Logs" date="2026-03-26T15:35:48.597" /><!-- duration: 8ms -->
-  <step title="Outgoing response" date="2026-03-26T15:35:48.616" type="response" statusCode="200" statusText="OK" /><!-- duration: 5ms -->
-</step><!-- duration: 36ms -->

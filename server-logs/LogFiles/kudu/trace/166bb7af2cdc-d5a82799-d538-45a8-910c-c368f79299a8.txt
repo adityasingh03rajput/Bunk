@@ -1,1 +1,0 @@
-2026-04-01T07:00:51  Startup Request, url: /diagnostics/runtime, method: GET, type: request, pid: 830,1,6, ScmType: ExternalGit

@@ -1,5 +1,0 @@
-<step title="Incoming Request" date="2026-03-26T15:41:19.735" instance="6c578d" url="/diagnostics/runtime" method="GET" type="request" pid="831,1,20" Host="letsbunk-server.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_df5c903796c03ef4e3dc8fb86f83b73664c25cdb18ad93406dfbc6d6f57673d2_v3.0.7" Authorization="Bas..." Content-Type="application/json; charset=utf-8" Content-Length="0" X-ARR-LOG-ID="c52e66f5-544c-46bd-a309-c4f65fc514f2" CLIENT-IP="128.24.161.91:47192" X-SITE-DEPLOYMENT-ID="letsbunk-server" WAS-DEFAULT-HOSTNAME="letsbunk-server.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/diagnostics/runtime" X-Client-IP="128.24.161.91" X-Client-Port="47192" >
-  <step title="Cleanup Xml Logs" date="2026-03-26T15:41:19.738" /><!-- duration: 12ms -->
-  <step title="RuntimeController.GetRuntimeVersions" date="2026-03-26T15:41:19.758" /><!-- duration: 4ms -->
-  <step title="Outgoing response" date="2026-03-26T15:41:19.767" type="response" statusCode="200" statusText="OK" /><!-- duration: 4ms -->
-</step><!-- duration: 40ms -->

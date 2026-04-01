@@ -215,7 +215,7 @@ export default function App() {
   const [selectedSemesterForTimetable] = useState(null);
 
   // Login states
-  const [showLogin, setShowLogin] = useState(false);
+  const [showLogin, setShowLogin] = useState(true); // start with login until session is verified
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -3446,48 +3446,69 @@ export default function App() {
 
   // Logout function
   const handleLogout = async () => {
-    // Deactivate keep awake
-    try {
-      deactivateKeepAwake('attendance-tracking');
-      console.log('✅ Keep awake deactivated');
-    } catch (error) {
-      console.log('Error deactivating keep awake:', error);
-    }
+    console.log('🚪 Logging out — cleaning up all services...');
 
-    // Clear all stored data FIRST
+    // 1. Stop timer service completely
+    try {
+      await OfflineTimerService.stopTimer('logout');
+      OfflineTimerService.cleanup();
+      console.log('✅ OfflineTimerService stopped and cleaned up');
+    } catch (e) { console.warn('OfflineTimerService cleanup error:', e.message); }
+
+    // 2. Disconnect socket
+    try {
+      if (socketRef.current) {
+        socketRef.current.removeAllListeners();
+        socketRef.current.disconnect();
+        socketRef.current = null;
+        console.log('✅ Socket disconnected');
+      }
+    } catch (e) { console.warn('Socket cleanup error:', e.message); }
+
+    // 3. Deactivate keep awake
+    try { deactivateKeepAwake('attendance-tracking'); } catch (_) {}
+
+    // 4. Clear ALL AsyncStorage keys including semester/branch
     try {
       await AsyncStorage.multiRemove([
-        ROLE_KEY,
-        STUDENT_NAME_KEY,
-        STUDENT_ID_KEY,
-        USER_DATA_KEY,
-        LOGIN_ID_KEY,
-        DAILY_VERIFICATION_KEY
+        ROLE_KEY, STUDENT_NAME_KEY, STUDENT_ID_KEY,
+        USER_DATA_KEY, LOGIN_ID_KEY, DAILY_VERIFICATION_KEY,
+        SEMESTER_KEY, BRANCH_KEY, CACHE_KEY
       ]);
-      
-      // Clear face data from secure storage
       await SecureStorage.clearFaceData();
-      console.log('🗑️ Face data cleared on logout');
-      
-      // Clear BSSID schedule cache
       await BSSIDStorage.clearSchedule();
-      console.log('🗑️ BSSID schedule cleared on logout');
-    } catch (error) {
-      console.log('Error clearing storage:', error);
-    }
+      console.log('✅ All storage cleared');
+    } catch (e) { console.warn('Storage clear error:', e.message); }
 
-    // Then clear state
-    // Timer removed - period-based attendance
+    // 5. Clear all intervals
     clearInterval(intervalRef.current);
+
+    // 6. Reset ALL state to initial values
     setUserData(null);
     setLoginId('');
     setLoginPassword('');
-    setLoggedInUserId(''); // Clear logged-in user ID
+    setLoggedInUserId('');
     setStudentName('');
     setStudentId(null);
+    setSemester(null);
+    setBranch(null);
     setSelectedRole(null);
+    setTimetable(null);
+    setStudents([]);
+    setTodayAttendance({
+      date: new Date().toDateString(),
+      lectures: [], totalAttended: 0, totalClassTime: 0, dayPresent: false
+    });
+    setOfflineTimerState({
+      isRunning: false, isPaused: false, timerSeconds: 0,
+      currentLecture: null, isOnline: true, hasInternetConnection: true,
+      isConnectedToAuthorizedWiFi: false, lastSyncTime: null,
+      queuedSyncs: 0, pendingSyncCount: 0
+    });
+    setOfflineTimerInitialized(false);
+    setActiveTab('home');
     setShowLogin(true);
-    // Face verification removed - no longer needed
+    console.log('✅ Logout complete');
   };
 
   // Teacher action handler for random ring accept/reject
@@ -3960,7 +3981,6 @@ export default function App() {
         <StatusBar style={theme.statusBar} />
         <CalendarScreen
           theme={theme}
-          studentId={userData?._id}
           semester={semester}
           branch={branch}
           socketUrl={SOCKET_URL}

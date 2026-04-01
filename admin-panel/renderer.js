@@ -6075,6 +6075,33 @@ async function backfillTimetableHistory() {
     }
 }
 
+async function runDbMigration() {
+    if (!confirm('Run DB migration?\n\nThis will:\n• Add semester/branch to PeriodAttendance records\n• Deduplicate AttendanceRecord\n• Normalise studentId = enrollmentNo\n\nSafe to run multiple times.')) return;
+    const btn = event?.target;
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Migrating…'; }
+    try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 120000);
+        const res  = await fetch(`${SERVER_URL}/api/db/migrate`, { method: 'POST', signal: controller.signal });
+        clearTimeout(timer);
+        const data = await res.json();
+        if (data.success) {
+            const r = data.report;
+            showNotification(
+                `Migration done — PA updated: ${r.periodAttendanceUpdated}, AR dupes removed: ${r.arDuplicatesRemoved}, AR normalised: ${r.arNormalised}`,
+                'success'
+            );
+        } else {
+            showNotification('Migration failed: ' + (data.error || 'Unknown'), 'error');
+        }
+    } catch (err) {
+        const msg = err.name === 'AbortError' ? 'Migration timed out (120s)' : err.message;
+        showNotification('Migration error: ' + msg, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔧 DB Migrate'; }
+    }
+}
+
 document.getElementById('addHolidayBtn').addEventListener('click', () => {
     showAddHolidayModal(new Date());
 });

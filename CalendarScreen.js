@@ -109,7 +109,11 @@ export default function CalendarScreen({
 
     // ── teacher: day mode ─────────────────────────────────────────────────────
     const fetchTeacherMonthData = async () => {
-        if (!semester || !branch) return;
+        if (!semester || !branch) {
+            setFetchError('Select a semester and branch to view attendance.');
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setFetchError(null);
         // Optimistic: keep previous data visible while loading

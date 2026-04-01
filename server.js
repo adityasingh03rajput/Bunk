@@ -282,104 +282,95 @@ const Subject = mongoose.model('Subject', subjectSchema);
 
 // Attendance Record Schema (Daily summary)
 const attendanceRecordSchema = new mongoose.Schema({
-    studentId: { type: String, required: true },
-    studentName: { type: String, required: true },
-    enrollmentNo: { type: String, required: true },
-    date: { type: Date, required: true },
+    // ── Identity ──────────────────────────────────────────────────────────────
+    studentId:    { type: String, required: true },   // always = enrollmentNo (legacy field kept for compat)
+    enrollmentNo: { type: String, required: true },   // canonical student key
+    studentName:  { type: String, required: true },
+    semester:     { type: String, required: true },
+    branch:       { type: String, required: true },
+
+    // ── Date & Status ─────────────────────────────────────────────────────────
+    date:   { type: Date, required: true },           // midnight UTC
     status: { type: String, enum: ['present', 'absent', 'leave'], required: true },
 
-    // Detailed lecture-wise attendance
+    // ── Timer ─────────────────────────────────────────────────────────────────
+    timerValue:      { type: Number, default: 0 },    // total seconds in college
+    totalAttended:   { type: Number, default: 0 },    // minutes attended
+    totalClassTime:  { type: Number, default: 0 },    // total scheduled minutes
+    dayPercentage:   { type: Number, default: 0 },    // 0-100
+
+    // ── Check-in/out ──────────────────────────────────────────────────────────
+    checkInTime:  { type: Date },
+    checkOutTime: { type: Date },
+
+    // ── Lecture detail (populated from PeriodAttendance on save) ─────────────
     lectures: [{
-        period: String,                    // P1, P2, P3, etc.
-        subject: String,
-        teacher: String,                   // Teacher ID (e.g., TEACH001)
-        teacherName: String,               // Teacher's full name
-        room: String,
-        startTime: String,                 // HH:MM format
-        endTime: String,
-
-        // Time tracking
-        lectureStartedAt: Date,            // ISO timestamp
-        lectureEndedAt: Date,
-        studentCheckIn: Date,              // When student checked in
-
-        // Timer-based fields removed - period-based system uses discrete present/absent
-
-        // Verification events
+        period:          String,
+        subject:         String,
+        teacher:         String,
+        teacherName:     String,
+        room:            String,
+        startTime:       String,
+        endTime:         String,
+        lectureStartedAt: Date,
+        lectureEndedAt:   Date,
+        studentCheckIn:   Date,
         verifications: [{
-            time: Date,
-            type: { type: String, enum: ['face', 'random_ring', 'manual'] },
+            time:    Date,
+            type:    { type: String, enum: ['face', 'random_ring', 'manual'] },
             success: Boolean,
-            event: String                  // 'morning_checkin', 'random_ring', 'periodic'
+            event:   String
         }]
     }],
 
-    // Timer-based daily totals removed - period-based system handles this differently
-
-    // Timer tracking
-    timerValue: { type: Number, default: 0 },         // Total seconds in college
-    checkInTime: Date,                                 // First check-in
-    checkOutTime: Date,                                // Last check-out
-
-    semester: String,
-    branch: String,
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
 });
 
-// Indexes for faster queries
 attendanceRecordSchema.index({ enrollmentNo: 1, date: -1 });
+attendanceRecordSchema.index({ semester: 1, branch: 1, date: -1 });
 attendanceRecordSchema.index({ date: -1 });
-attendanceRecordSchema.index({ 'lectures.teacher': 1, date: -1 });
 
 const AttendanceRecord = mongoose.model('AttendanceRecord', attendanceRecordSchema);
 
 // PeriodAttendance Schema - Period-based attendance tracking
 const periodAttendanceSchema = new mongoose.Schema({
+    // ── Identity ──────────────────────────────────────────────────────────────
     enrollmentNo: { type: String, required: true },
-    studentName: { type: String, required: true },
-    date: { type: Date, required: true },
-    period: { 
-        type: String, 
-        required: true,
-        enum: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8']
-    },
-    
-    // Timetable context
-    subject: { type: String, required: true },
-    teacher: { type: String, required: true },
+    studentName:  { type: String, required: true },
+    semester:     { type: String, default: '' },   // added — populated on write
+    branch:       { type: String, default: '' },   // added — populated on write
+
+    // ── Date & Period ─────────────────────────────────────────────────────────
+    date:   { type: Date, required: true },
+    period: { type: String, required: true, enum: ['P1','P2','P3','P4','P5','P6','P7','P8'] },
+
+    // ── Timetable context ─────────────────────────────────────────────────────
+    subject:     { type: String, required: true },
+    teacher:     { type: String, required: true },
     teacherName: { type: String },
-    room: { type: String },
-    
-    // Attendance status
-    status: { 
-        type: String, 
-        required: true,
-        enum: ['present', 'absent']
-    },
+    room:        { type: String },
+
+    // ── Status ────────────────────────────────────────────────────────────────
+    status:      { type: String, required: true, enum: ['present', 'absent'] },
     checkInTime: { type: Date },
-    
-    // Verification details
-    verificationType: { 
-        type: String, 
-        required: true,
-        enum: ['initial', 'random', 'manual']
-    },
+
+    // ── Verification ──────────────────────────────────────────────────────────
+    verificationType: { type: String, required: true, enum: ['initial', 'random', 'manual'] },
     wifiVerified: { type: Boolean, default: false },
     faceVerified: { type: Boolean, default: false },
-    wifiBSSID: { type: String },
-    
-    // Audit trail
-    markedBy: { type: String },
-    reason: { type: String }
-}, { 
-    timestamps: true 
-});
+    wifiBSSID:    { type: String },
 
-// Indexes for PeriodAttendance
+    // ── Audit ─────────────────────────────────────────────────────────────────
+    markedBy: { type: String },
+    reason:   { type: String }
+}, { timestamps: true });
+
 periodAttendanceSchema.index({ enrollmentNo: 1, date: 1, period: 1 }, { unique: true });
+periodAttendanceSchema.index({ semester: 1, branch: 1, date: 1 });   // new — enables class-level queries
+periodAttendanceSchema.index({ subject: 1, semester: 1, branch: 1 }); // new — enables subject queries
 periodAttendanceSchema.index({ date: 1 });
 periodAttendanceSchema.index({ teacher: 1, date: 1 });
-periodAttendanceSchema.index({ status: 1, date: 1 });
 
 const PeriodAttendance = mongoose.model('PeriodAttendance', periodAttendanceSchema);
 
@@ -2128,6 +2119,8 @@ app.post('/api/attendance/check-in', checkInLimiter, async (req, res) => {
                         {
                             enrollmentNo,
                             studentName: student.name,
+                            semester:    student.semester?.toString() || '',
+                            branch:      student.branch || '',
                             date: today,
                             period: periodId,
                             subject: period.subject,
@@ -3006,20 +2999,22 @@ app.post('/api/attendance/manual-mark', async (req, res) => {
                 // Create new record
                 periodRecord = await PeriodAttendance.create({
                     enrollmentNo,
-                    studentName: student.name,
-                    date: markingDate,
-                    period: p,
-                    subject: pLecture.subject,
-                    teacher: pLecture.teacher,
-                    teacherName: pLecture.teacherName,
-                    room: pLecture.room,
+                    studentName:  student.name,
+                    semester:     student.semester?.toString() || '',
+                    branch:       student.branch || '',
+                    date:         markingDate,
+                    period:       p,
+                    subject:      pLecture.subject,
+                    teacher:      pLecture.teacher,
+                    teacherName:  pLecture.teacherName,
+                    room:         pLecture.room,
                     status,
-                    checkInTime: status === 'present' ? new Date() : null,
+                    checkInTime:      status === 'present' ? new Date() : null,
                     verificationType: 'manual',
                     wifiVerified: false,
                     faceVerified: false,
-                    markedBy: teacherId,
-                    reason: reason || 'Manual marking by teacher'
+                    markedBy:     teacherId,
+                    reason:       reason || 'Manual marking by teacher'
                 });
                 console.log(`? [MANUAL-MARK] Created new record - Period: ${p}, Status: ${status}`);
             }
@@ -3773,7 +3768,10 @@ app.get('/api/attendance/stats', async (req, res) => {
     }
 });
 
-// Get students attendance for a specific date (for teachers)
+// ─── GET /api/attendance/date/:date ──────────────────────────────────────────
+// Returns all students for a class on a specific date with their attendance.
+// Primary: PeriodAttendance (has semester+branch after migration).
+// Fallback: AttendanceRecord + StudentManagement join for old records.
 app.get('/api/attendance/date/:date', async (req, res) => {
     try {
         const { date } = req.params;
@@ -3782,29 +3780,41 @@ app.get('/api/attendance/date/:date', async (req, res) => {
         if (!date || !semester || !branch) {
             return res.status(400).json({ success: false, error: 'date, semester and branch are required' });
         }
-
-        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay   = new Date(date); endOfDay.setHours(23, 59, 59, 999);
-
         if (mongoose.connection.readyState !== 1) {
             return res.json({ success: true, students: [], date, semester, branch });
         }
 
-        // Use PeriodAttendance — it has real per-period data with subject names
-        const periods = await PeriodAttendance.find({
-            date: { $gte: startOfDay, $lte: endOfDay },
-            semester, branch
-        }).sort({ period: 1 }).lean();
+        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay   = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+        const sem        = semester.toString();
 
-        // Group by enrollmentNo
+        // ── Get class roster from StudentManagement ───────────────────────────
+        const classStudents = await StudentManagement.find(
+            { semester: sem, branch },
+            { enrollmentNo: 1, name: 1 }
+        ).lean();
+        const nameMap = {};
+        classStudents.forEach(s => { if (s.enrollmentNo) nameMap[s.enrollmentNo] = s.name; });
+        const enrollmentNos = Object.keys(nameMap);
+
+        // ── Query PeriodAttendance (direct if semester/branch set, else by enrollmentNo) ──
+        const paQuery = {
+            date: { $gte: startOfDay, $lte: endOfDay },
+            $or: [
+                { semester: sem, branch },
+                { enrollmentNo: { $in: enrollmentNos } }
+            ]
+        };
+        const periods = await PeriodAttendance.find(paQuery).sort({ period: 1 }).lean();
+
+        // ── Group by enrollmentNo ─────────────────────────────────────────────
         const studentMap = {};
         for (const p of periods) {
             const key = p.enrollmentNo;
             if (!studentMap[key]) {
                 studentMap[key] = {
                     enrollmentNo: key,
-                    studentId:    key,
-                    name:         p.studentName || 'Unknown',
+                    name:         p.studentName || nameMap[key] || 'Unknown',
                     status:       'absent',
                     lectures:     []
                 };
@@ -3815,40 +3825,50 @@ app.get('/api/attendance/date/:date', async (req, res) => {
                 teacher:          p.teacherName || p.teacher || '',
                 room:             p.room || '',
                 status:           p.status,
-                verificationType: p.verificationType,
-                checkInTime:      p.checkInTime
+                verificationType: p.verificationType || '',
+                checkInTime:      p.checkInTime || null
             });
-            // Mark present if any period is present
             if (p.status === 'present') studentMap[key].status = 'present';
         }
 
-        // Also pull any students who have an AttendanceRecord but no PeriodAttendance
-        // (older records) so they still appear
+        // ── Fallback: AttendanceRecord for students with no PeriodAttendance ──
         const arRecords = await AttendanceRecord.find({
             date: { $gte: startOfDay, $lte: endOfDay },
-            semester, branch
+            $or: [{ semester: sem, branch }, { enrollmentNo: { $in: enrollmentNos } }]
         }).lean();
 
         for (const r of arRecords) {
             const key = r.enrollmentNo || r.studentId;
-            if (!studentMap[key]) {
-                studentMap[key] = {
-                    enrollmentNo: key,
-                    studentId:    key,
-                    name:         r.studentName || 'Unknown',
-                    status:       r.status || 'absent',
-                    lectures:     (r.lectures || []).map(l => ({
-                        period:  l.period || '',
-                        subject: l.subject || '',
-                        teacher: l.teacherName || l.teacher || '',
-                        room:    l.room || '',
-                        status:  l.present ? 'present' : 'absent'
-                    }))
+            if (!key || studentMap[key]) continue; // skip if already have PeriodAttendance data
+            studentMap[key] = {
+                enrollmentNo: key,
+                name:         r.studentName || nameMap[key] || 'Unknown',
+                status:       r.status || 'absent',
+                lectures:     (r.lectures || []).map(l => ({
+                    period:  l.period || '',
+                    subject: l.subject || '',
+                    teacher: l.teacherName || l.teacher || '',
+                    room:    l.room || '',
+                    status:  l.present ? 'present' : 'absent',
+                    verificationType: '',
+                    checkInTime: null
+                }))
+            };
+        }
+
+        // ── Ensure every class student appears (absent if no record) ──────────
+        for (const enrollmentNo of enrollmentNos) {
+            if (!studentMap[enrollmentNo]) {
+                studentMap[enrollmentNo] = {
+                    enrollmentNo,
+                    name:     nameMap[enrollmentNo] || 'Unknown',
+                    status:   'absent',
+                    lectures: []
                 };
             }
         }
 
-        const students = Object.values(studentMap);
+        const students = Object.values(studentMap).sort((a, b) => a.name.localeCompare(b.name));
         res.json({ success: true, students, date, semester, branch });
 
     } catch (error) {
@@ -4007,10 +4027,71 @@ app.post('/api/timetable-history/backfill', async (req, res) => {
     }
 });
 
+// ─── POST /api/db/migrate ─────────────────────────────────────────────────────
+// One-time migration:
+// 1. Backfills semester+branch into PeriodAttendance from StudentManagement
+// 2. Deduplicates AttendanceRecord (keeps best record per enrollmentNo+date)
+// 3. Normalises AttendanceRecord.studentId = enrollmentNo
+app.post('/api/db/migrate', async (req, res) => {
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: false, error: 'DB not connected' });
+    }
+    const report = { periodAttendanceUpdated: 0, arDuplicatesRemoved: 0, arNormalised: 0 };
+    try {
+        // ── 1. Build enrollmentNo → {semester, branch} map from StudentManagement ──
+        const students = await StudentManagement.find({}, { enrollmentNo: 1, semester: 1, branch: 1 }).lean();
+        const studentMap = {};
+        students.forEach(s => { if (s.enrollmentNo) studentMap[s.enrollmentNo] = { semester: s.semester?.toString(), branch: s.branch }; });
+
+        // ── 2. Backfill semester+branch into PeriodAttendance ─────────────────
+        const paDocs = await PeriodAttendance.find({ $or: [{ semester: '' }, { semester: { $exists: false } }] }, { enrollmentNo: 1 }).lean();
+        for (const doc of paDocs) {
+            const info = studentMap[doc.enrollmentNo];
+            if (info?.semester && info?.branch) {
+                await PeriodAttendance.updateOne({ _id: doc._id }, { $set: { semester: info.semester, branch: info.branch } });
+                report.periodAttendanceUpdated++;
+            }
+        }
+
+        // ── 3. Deduplicate AttendanceRecord (same enrollmentNo + same date) ───
+        const pipeline = [
+            { $group: { _id: { enrollmentNo: '$enrollmentNo', date: { $dateToString: { format: '%Y-%m-%d', date: '$date' } } }, ids: { $push: '$_id' }, count: { $sum: 1 } } },
+            { $match: { count: { $gt: 1 } } }
+        ];
+        const dupes = await AttendanceRecord.aggregate(pipeline);
+        for (const group of dupes) {
+            // Keep the first (oldest), delete the rest
+            const [keep, ...remove] = group.ids;
+            await AttendanceRecord.deleteMany({ _id: { $in: remove } });
+            report.arDuplicatesRemoved += remove.length;
+        }
+
+        // ── 4. Normalise studentId = enrollmentNo ─────────────────────────────
+        const mismatch = await AttendanceRecord.find({ $expr: { $ne: ['$studentId', '$enrollmentNo'] } }, { _id: 1, enrollmentNo: 1 }).lean();
+        for (const doc of mismatch) {
+            await AttendanceRecord.updateOne({ _id: doc._id }, { $set: { studentId: doc.enrollmentNo } });
+            report.arNormalised++;
+        }
+
+        // ── 5. Ensure semester+branch on AttendanceRecord ─────────────────────
+        const arMissing = await AttendanceRecord.find({ $or: [{ semester: { $exists: false } }, { semester: '' }] }, { _id: 1, enrollmentNo: 1 }).lean();
+        for (const doc of arMissing) {
+            const info = studentMap[doc.enrollmentNo];
+            if (info?.semester && info?.branch) {
+                await AttendanceRecord.updateOne({ _id: doc._id }, { $set: { semester: info.semester, branch: info.branch } });
+            }
+        }
+
+        res.json({ success: true, report });
+    } catch (error) {
+        console.error('❌ Migration error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ─── GET /api/attendance/date/:date/subject/:subject ─────────────────────────
 // Returns per-student attendance for a specific subject on a specific date.
-// Groups all PeriodAttendance rows for that date+subject into per-student
-// arrays so the UI can show chevron-navigable period slots.
+// Groups PeriodAttendance rows into per-student period arrays for chevron nav.
 app.get('/api/attendance/date/:date/subject/:subject', async (req, res) => {
     try {
         const { date, subject } = req.params;
@@ -4022,57 +4103,68 @@ app.get('/api/attendance/date/:date/subject/:subject', async (req, res) => {
             return res.json({ success: true, students: [], totalPeriods: 0 });
         }
 
-        const targetDate = new Date(date);
-        const startOfDay = new Date(targetDate); startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay   = new Date(targetDate); endOfDay.setHours(23, 59, 59, 999);
+        const startOfDay = new Date(date); startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay   = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+        const sem        = semester.toString();
 
+        // ── Class roster ──────────────────────────────────────────────────────
+        const classStudents = await StudentManagement.find(
+            { semester: sem, branch },
+            { enrollmentNo: 1, name: 1 }
+        ).lean();
+        const nameMap = {};
+        classStudents.forEach(s => { if (s.enrollmentNo) nameMap[s.enrollmentNo] = s.name; });
+        const enrollmentNos = Object.keys(nameMap);
+
+        // ── Query PeriodAttendance (direct if migrated, else by enrollmentNo) ─
         const records = await PeriodAttendance.find({
             date: { $gte: startOfDay, $lte: endOfDay },
             subject,
-            semester,
-            branch
+            $or: [
+                { semester: sem, branch },
+                { enrollmentNo: { $in: enrollmentNos } }
+            ]
         }).sort({ period: 1 }).lean();
 
-        // Group by enrollmentNo
+        // ── Group by enrollmentNo ─────────────────────────────────────────────
         const studentMap = {};
         for (const r of records) {
             if (!studentMap[r.enrollmentNo]) {
                 studentMap[r.enrollmentNo] = {
                     enrollmentNo: r.enrollmentNo,
-                    studentName: r.studentName,
-                    periods: []
+                    studentName:  r.studentName || nameMap[r.enrollmentNo] || 'Unknown',
+                    periods:      []
                 };
             }
             studentMap[r.enrollmentNo].periods.push({
                 period:           r.period,
                 status:           r.status,
-                verificationType: r.verificationType,
-                checkInTime:      r.checkInTime,
-                room:             r.room,
-                teacher:          r.teacherName || r.teacher
+                verificationType: r.verificationType || '',
+                checkInTime:      r.checkInTime || null,
+                room:             r.room || '',
+                teacher:          r.teacherName || r.teacher || ''
             });
         }
 
-        // Distinct period slots that existed that day for this subject
+        // ── Ensure every class student appears ────────────────────────────────
+        for (const enrollmentNo of enrollmentNos) {
+            if (!studentMap[enrollmentNo]) {
+                studentMap[enrollmentNo] = {
+                    enrollmentNo,
+                    studentName: nameMap[enrollmentNo] || 'Unknown',
+                    periods:     []
+                };
+            }
+        }
+
         const allPeriods = [...new Set(records.map(r => r.period))].sort();
 
         const students = Object.values(studentMap).map(s => ({
             ...s,
-            // Ensure every student has an entry for every period (absent if missing)
-            periods: allPeriods.map(p => {
-                const found = s.periods.find(x => x.period === p);
-                return found || { period: p, status: 'absent', verificationType: null };
-            })
-        }));
+            periods: allPeriods.map(p => s.periods.find(x => x.period === p) || { period: p, status: 'absent', verificationType: null })
+        })).sort((a, b) => a.studentName.localeCompare(b.studentName));
 
-        res.json({
-            success: true,
-            students,
-            subject,
-            date,
-            allPeriods,          // e.g. ['P1','P3'] — the actual period slots
-            totalPeriods: allPeriods.length
-        });
+        res.json({ success: true, students, subject, date, allPeriods, totalPeriods: allPeriods.length });
     } catch (error) {
         console.error('❌ Error fetching subject attendance for date:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -6003,48 +6095,49 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
 
         let dateFilter = {};
         if (startDate && endDate) {
-            dateFilter = {
-                date: {
-                    $gte: new Date(startDate),
-                    $lte: new Date(endDate)
-                }
-            };
+            dateFilter = { date: { $gte: new Date(startDate), $lte: new Date(endDate) } };
         }
 
         const records = await AttendanceRecord.find({
-            $or: [
-                { enrollmentNo },
-                { studentId: enrollmentNo }
-            ],
+            $or: [{ enrollmentNo }, { studentId: enrollmentNo }],
             ...dateFilter
         })
-            .select('date status dayPercentage totalAttended totalClassTime lectures')
-            .sort({ date: -1 });
+        .select('date status dayPercentage totalAttended totalClassTime lectures')
+        .sort({ date: -1 })
+        .lean();
 
-        // Calculate summary
-        const totalDays = records.length;
-        const presentDays = records.filter(r => r.status === 'present').length;
-        const overallPercentage = totalDays > 0
-            ? Math.round((presentDays / totalDays) * 100)
-            : 0;
+        // Deduplicate by midnight date — keep the record with the best status
+        const dateMap = new Map();
+        for (const r of records) {
+            const midnight = new Date(r.date); midnight.setHours(0,0,0,0);
+            const key = midnight.toISOString();
+            const existing = dateMap.get(key);
+            // Prefer 'present' over 'absent', and more lectures over fewer
+            if (!existing ||
+                (r.status === 'present' && existing.status !== 'present') ||
+                (r.status === existing.status && (r.lectures?.length || 0) > (existing.lectures?.length || 0))) {
+                dateMap.set(key, { ...r, date: midnight });
+            }
+        }
+        const deduped = [...dateMap.values()].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Aggregate total time across all records
-        const totalAttendedMinutes = records.reduce((sum, r) => sum + (Number(r.totalAttended) || 0), 0);
-        const totalClassMinutes   = records.reduce((sum, r) => sum + (Number(r.totalClassTime) || 0), 0);
+        const totalDays      = deduped.length;
+        const presentDays    = deduped.filter(r => r.status === 'present').length;
+        const overallPct     = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+        const totalAttended  = deduped.reduce((s, r) => s + (Number(r.totalAttended)  || 0), 0);
+        const totalClassTime = deduped.reduce((s, r) => s + (Number(r.totalClassTime) || 0), 0);
 
         res.json({
             success: true,
             student: {
-                enrollmentNo,
-                totalDays,
-                presentDays,
-                overallPercentage,
-                totalHours: Math.floor(totalAttendedMinutes / 60),
-                totalMinutes: totalAttendedMinutes % 60
+                enrollmentNo, totalDays, presentDays,
+                overallPercentage: overallPct,
+                totalHours:   Math.floor(totalAttended / 60),
+                totalMinutes: totalAttended % 60
             },
-            dates: records.map(r => {
-                const attended   = Number(r.totalAttended)  || 0; // minutes
-                const total      = Number(r.totalClassTime) || 0; // minutes
+            dates: deduped.map(r => {
+                const attended   = Number(r.totalAttended)  || 0;
+                const total      = Number(r.totalClassTime) || 0;
                 const percentage = total > 0
                     ? Math.round((attended / total) * 100)
                     : (Number(r.dayPercentage) || (r.status === 'present' ? 100 : 0));
@@ -6052,7 +6145,7 @@ app.get('/api/attendance/student/:enrollmentNo/dates', async (req, res) => {
                     date:         r.date,
                     status:       r.status || 'absent',
                     lectureCount: r.lectures ? r.lectures.length : 0,
-                    attended:     attended * 60,  // admin panel expects seconds
+                    attended:     attended * 60,
                     total:        total * 60,
                     percentage
                 };

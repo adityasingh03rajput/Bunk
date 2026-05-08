@@ -699,7 +699,8 @@ export default function CalendarScreen({
                 </View>
             </View>
 
-            {/* ── Details Modal ── */}
+            {/* ── Details Modal — only mounted when needed ── */}
+            {showDetailsModal && (
             <Modal
                 visible={showDetailsModal}
                 transparent
@@ -1071,6 +1072,7 @@ export default function CalendarScreen({
                     </View>
                 </View>
             </Modal>
+            )}
         </ScrollView>
     );
 }

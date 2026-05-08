@@ -892,7 +892,8 @@ export default function TimetableScreen({
 
       <View style={{ height: 100 }} />
 
-      {/* Edit Modal */}
+      {/* Edit Modal — only mounted when editing */}
+      {editingCell !== null && editModeEnabled && (
       <Modal
         visible={editingCell !== null && editModeEnabled}
         transparent={true}
@@ -1232,8 +1233,10 @@ export default function TimetableScreen({
           </View>
         </View>
       </Modal>
+      )}
 
-      {/* Three-dot Menu Modal */}
+      {/* Three-dot Menu Modal — only mounted when open */}
+      {showMenu && (
       <Modal
         visible={showMenu}
         transparent={true}
@@ -1389,6 +1392,7 @@ export default function TimetableScreen({
           </View>
         </TouchableOpacity>
       </Modal>
+      )}
     </ScrollView>
   );
 }

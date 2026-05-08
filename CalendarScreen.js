@@ -705,6 +705,9 @@ export default function CalendarScreen({
                 visible={showDetailsModal}
                 transparent
                 animationType="slide"
+                presentationStyle="overFullScreen"
+                statusBarTranslucent
+                navigationBarTranslucent
                 onRequestClose={() => { setShowDetailsModal(false); setDrillStudent(null); }}
             >
                 <View style={styles.modalOverlay}>
@@ -1190,21 +1193,24 @@ const styles = StyleSheet.create({
     skeletonBadge:  { width: 28, height: 28, borderRadius: 14 },
 
     // ── modal ─────────────────────────────────────────────────────────────────
-    // The overlay uses paddingBottom (not marginBottom) so the dim backdrop
-    // still covers the full screen while the sheet itself sits above the
-    // BottomNavigation bar (height 70px).
     modalOverlay:  {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
-        paddingBottom: 70,  // lifts sheet above BottomNavigation (height 70)
+        // Keep the sheet anchored to the true viewport bottom.
+        // Fixed offsets break on different device heights and nav overlays.
+        paddingBottom: 0,
+        zIndex: 9999,
+        elevation: 9999,
     },
     modalContent:  {
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '85%',
-        // flex: 1 is intentionally omitted — maxHeight controls the cap,
-        // the sheet grows to fit its content up to that limit.
+        width: '100%',
+        overflow: 'hidden',
+        zIndex: 10000,
+        elevation: 10000,
     },
     modalHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',

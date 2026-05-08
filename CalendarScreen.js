@@ -623,8 +623,8 @@ export default function CalendarScreen({
 
                             {/* Teacher day-mode: present student count badge */}
                             {isTeacher && filterMode === 'day' && stats && !holiday && (
-                                <View style={styles.teacherDateBadge}>
-                                    <Text style={[styles.teacherDateCount, { color: '#10b981' }]}>
+                                <View style={[styles.teacherDateBadge, { backgroundColor: stats.present > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }]}>
+                                    <Text style={[styles.teacherDateCount, { color: stats.present > 0 ? '#10b981' : '#ef4444' }]}>
                                         {stats.present}
                                     </Text>
                                 </View>
@@ -662,7 +662,7 @@ export default function CalendarScreen({
                         filterMode === 'day' ? (
                             <>
                                 <View style={styles.legendItem}>
-                                    <View style={[styles.legendDot, { backgroundColor: 'rgba(16,185,129,0.15)' }]} />
+                                    <View style={[styles.legendDot, { backgroundColor: 'rgba(0,217,255,0.25)' }]} />
                                     <Text style={[styles.legendText, { color: theme.textSecondary }]}>Has data</Text>
                                 </View>
                                 <View style={styles.legendItem}>
@@ -723,8 +723,8 @@ export default function CalendarScreen({
 
                         {/* ── Teacher view ── */}
                         {isTeacher ? (
-                            <View style={{ flex: 1 }}>
-                            <ScrollView style={styles.modalBody}>
+                            <View style={{ flex: 1, minHeight: 300 }}>
+                            <ScrollView style={styles.modalBody} contentContainerStyle={{ paddingBottom: 20 }}>
                                 {loadingStudents ? (
                                     /* ── Skeleton placeholder while data loads ── */
                                     <View>
@@ -1157,7 +1157,7 @@ const styles = StyleSheet.create({
     statusIcon:     { position: 'absolute', bottom: 4 },
     teacherDateBadge: {
         position: 'absolute', bottom: 2, right: 2,
-        backgroundColor: 'rgba(0,217,255,0.2)', borderRadius: 8,
+        borderRadius: 8,
         paddingHorizontal: 4, paddingVertical: 2, minWidth: 16, alignItems: 'center',
     },
     teacherDateCount: { fontSize: 8, fontWeight: 'bold' },
@@ -1190,8 +1190,22 @@ const styles = StyleSheet.create({
     skeletonBadge:  { width: 28, height: 28, borderRadius: 14 },
 
     // ── modal ─────────────────────────────────────────────────────────────────
-    modalOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-    modalContent:  { borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' },
+    // The overlay uses paddingBottom (not marginBottom) so the dim backdrop
+    // still covers the full screen while the sheet itself sits above the
+    // BottomNavigation bar (height 70px).
+    modalOverlay:  {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'flex-end',
+        paddingBottom: 70,  // lifts sheet above BottomNavigation (height 70)
+    },
+    modalContent:  {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '85%',
+        // flex: 1 is intentionally omitted — maxHeight controls the cap,
+        // the sheet grows to fit its content up to that limit.
+    },
     modalHeader: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb',

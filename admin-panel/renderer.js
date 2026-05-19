@@ -949,13 +949,45 @@ function updateDashboardView() {
     const semFilter = document.getElementById('dashboardSemesterFilter').value;
     const branchFilter = document.getElementById('dashboardBranchFilter').value;
 
-    let students = window.dashboardStudents || [];
+    const allStudents = window.dashboardStudents || [];
     const attendance = window.dashboardAttendance || [];
+
+    // Calculate computedPercentage for ALL students globally first
+    const globalStudentStats = {};
+    const globalEnrollmentMap = {};
+    allStudents.forEach(s => {
+        const key = s._id || s.enrollmentNo;
+        globalStudentStats[key] = { present: 0, total: 0 };
+        if (s.enrollmentNo) {
+            globalEnrollmentMap[s.enrollmentNo] = key;
+        }
+    });
+
+    attendance.forEach(record => {
+        let sid = record.studentId?._id || record.studentId;
+        if (!sid && record.enrollmentNo) {
+            sid = globalEnrollmentMap[record.enrollmentNo];
+        }
+        if (globalStudentStats[sid]) {
+            globalStudentStats[sid].total++;
+            if (record.dailyStatus === 'present') {
+                globalStudentStats[sid].present++;
+            }
+        }
+    });
+
+    allStudents.forEach(s => {
+        const sid = s._id || s.enrollmentNo;
+        const stat = globalStudentStats[sid];
+        s.computedPercentage = stat && stat.total > 0 ? (stat.present / stat.total) * 100 : -1;
+    });
+
+    let students = [...allStudents];
 
     // Parse the semester number filter
     const semNum = semFilter === 'All' ? null : parseInt(semFilter.replace(/\D/g, ''));
 
-    // Apply Filters
+    // Apply branch and semester filters first
     if (semNum !== null && !isNaN(semNum)) {
         students = students.filter(s => parseInt(s.semester) === semNum);
     }
@@ -963,7 +995,7 @@ function updateDashboardView() {
         students = students.filter(s => s.branch === branchFilter);
     }
 
-    // Aggregate attendance per student
+    // Aggregate attendance per student specifically for filtered list of students to get correct filteredAttendance
     const studentStats = {};
     const enrollmentMap = {};
     students.forEach(s => {
@@ -989,6 +1021,20 @@ function updateDashboardView() {
         }
     });
 
+    // Apply Threshold Filter
+    const thresholdFilter = document.getElementById('dashboardThresholdFilter')?.value || 'All';
+    if (thresholdFilter !== 'All') {
+        students = students.filter(s => {
+            const perc = s.computedPercentage;
+            if (perc === -1) return false;
+            if (thresholdFilter === 'above70') return perc >= 70;
+            if (thresholdFilter === 'above60') return perc >= 60;
+            if (thresholdFilter === 'below60') return perc < 60;
+            if (thresholdFilter === 'below30') return perc < 30;
+            return true;
+        });
+    }
+
     // Calculate Dashboard KPIs
     let totalPerc = 0;
     let studentsWithRecords = 0;
@@ -997,11 +1043,7 @@ function updateDashboardView() {
     const branchSummary = {};
 
     students.forEach(s => {
-        const sid = s._id || s.enrollmentNo;
-        const stat = studentStats[sid];
-        let perc = stat.total > 0 ? (stat.present / stat.total) * 100 : -1; // -1 if no records
-
-        s.computedPercentage = perc;
+        const perc = s.computedPercentage;
 
         if (perc !== -1) {
             totalPerc += perc;
@@ -1017,9 +1059,11 @@ function updateDashboardView() {
             branchSummary[branchKey] = { count: 0, totalPerc: 0, good: 0, risk: 0 };
         }
         branchSummary[branchKey].count++;
-        branchSummary[branchKey].totalPerc += perc;
-        if (perc >= 75) branchSummary[branchKey].good++;
-        if (perc < 60) branchSummary[branchKey].risk++;
+        if (perc !== -1) {
+            branchSummary[branchKey].totalPerc += perc;
+            if (perc >= 75) branchSummary[branchKey].good++;
+            if (perc < 60) branchSummary[branchKey].risk++;
+        }
     });
 
     const avgPerc = studentsWithRecords > 0 ? (totalPerc / studentsWithRecords).toFixed(1) : 0;
@@ -1033,7 +1077,7 @@ function updateDashboardView() {
     document.getElementById('emailGoodCount').textContent = `${goodCount} students`;
 
     renderBranchDetails(branchSummary);
-    renderCharts(branchSummary, filteredAttendance);
+    renderCharts(branchSummary, filteredAttendance, students);
 }
 
 function renderBranchDetails(summary) {
@@ -1065,7 +1109,16 @@ function renderBranchDetails(summary) {
     });
 }
 
-function renderCharts(branchSummary, attendance) {
+function getBranchColor(branch) {
+    const upper = (branch || 'Unknown').toUpperCase();
+    if (upper.includes('CSE')) return '#00d9ff';
+    if (upper.includes('ME')) return '#f59e0b';
+    if (upper.includes('EEE')) return '#22c55e';
+    if (upper.includes('ECE')) return '#ef4444';
+    return '#8b5cf6';
+}
+
+function renderCharts(branchSummary, attendance, students) {
     if (typeof Chart === 'undefined') {
         console.warn("Chart.js is not loaded yet.");
         return;
@@ -1074,18 +1127,26 @@ function renderCharts(branchSummary, attendance) {
     if (attendanceTrendChartInstance) attendanceTrendChartInstance.destroy();
     if (branchDistChartInstance) branchDistChartInstance.destroy();
 
-    // 1. Doughnut Chart (Branch Distribution)
+    // 1. Doughnut Chart (Attendance Distribution)
     const ctxBranch = document.getElementById('branchDistChart').getContext('2d');
-    const branches = Object.keys(branchSummary);
-    const branchCounts = branches.map(b => branchSummary[b].count);
+    
+    let excellent = 0, moderate = 0, atRisk = 0;
+    students.forEach(s => {
+        const perc = s.computedPercentage;
+        if (perc !== -1 && perc !== undefined) {
+            if (perc >= 75) excellent++;
+            else if (perc >= 50) moderate++;
+            else atRisk++;
+        }
+    });
 
     branchDistChartInstance = new Chart(ctxBranch, {
         type: 'doughnut',
         data: {
-            labels: branches,
+            labels: ['Excellent (≥75%)', 'Moderate (50-74%)', 'At Risk (<50%)'],
             datasets: [{
-                data: branchCounts,
-                backgroundColor: ['#0097a7', '#00d9ff', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'],
+                data: [excellent, moderate, atRisk],
+                backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
                 borderWidth: 0,
                 hoverOffset: 4
             }]
@@ -1093,115 +1154,349 @@ function renderCharts(branchSummary, attendance) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '75%',
+            cutout: '70%',
             plugins: {
-                legend: { position: 'right', labels: { color: '#e2e8f0', font: { size: 11, family: 'Inter' }, usePointStyle: true, boxWidth: 6 } },
-                tooltip: { backgroundColor: '#131929', titleColor: '#e2e8f0', bodyColor: '#00d9ff', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        color: '#e2e8f0', 
+                        font: { size: 11, family: 'Inter' }, 
+                        usePointStyle: true, 
+                        boxWidth: 6 
+                    } 
+                },
+                tooltip: { 
+                    backgroundColor: '#131929', 
+                    titleColor: '#e2e8f0', 
+                    bodyColor: '#00d9ff', 
+                    borderColor: 'rgba(255,255,255,0.1)', 
+                    borderWidth: 1 
+                }
             }
         }
     });
 
-    // 2. Line Chart (Weekly Attendance Trend)
-    const dateMap = {};
-    attendance.forEach(r => {
-        const d = new Date(r.date).toISOString().split('T')[0];
-        if (!dateMap[d]) dateMap[d] = { total: 0, present: 0 };
-        dateMap[d].total++;
-        if (r.dailyStatus === 'present') dateMap[d].present++;
+    // 2. Line Chart (Branch-wise Attendance Trend over Period)
+    const period = document.getElementById('dashboardPeriodFilter')?.value || 'monthly';
+    const enrollmentMap = {};
+    const studentsList = window.dashboardStudents || [];
+    studentsList.forEach(s => {
+        if (s.enrollmentNo) {
+            enrollmentMap[s.enrollmentNo] = s._id || s.enrollmentNo;
+        }
     });
 
-    const sortedDates = Object.keys(dateMap).sort().slice(-7);
-    const trendData = sortedDates.map(d => Math.round((dateMap[d].present / dateMap[d].total) * 100));
-    const labels = sortedDates.map(d => d.substring(5)); // Format as MM-DD
+    function getWeekString(dateString) {
+        const d = new Date(dateString);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const mon = new Date(d.setDate(diff));
+        return mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    function getMonthString(dateString) {
+        const d = new Date(dateString);
+        return d.toLocaleString('default', { month: 'short', year: 'numeric' });
+    }
+
+    let getBucketKey = (dateStr) => dateStr.split('T')[0].substring(5);
+    if (period === 'by_month') {
+        getBucketKey = getMonthString;
+    } else if (period === 'by_week') {
+        getBucketKey = getWeekString;
+    }
+
+    const dataMap = {};
+    const timeBucketsSet = new Set();
+    const branchFilter = document.getElementById('dashboardBranchFilter')?.value || 'ALL BRANCHES';
+    const branchesInView = branchFilter === 'ALL BRANCHES' 
+        ? Array.from(new Set(students.map(s => s.branch || 'Unknown')))
+        : [branchFilter];
+
+    attendance.forEach(record => {
+        let sid = record.studentId?._id || record.studentId;
+        if (!sid && record.enrollmentNo) {
+            sid = enrollmentMap[record.enrollmentNo];
+        }
+        
+        const student = students.find(s => (s._id || s.enrollmentNo) === sid);
+        if (!student) return;
+
+        const sBranch = student.branch || 'Unknown';
+        if (branchFilter !== 'ALL BRANCHES' && sBranch !== branchFilter) return;
+
+        const dateStr = record.date;
+        const bucket = getBucketKey(dateStr);
+        timeBucketsSet.add(bucket);
+
+        if (!dataMap[bucket]) dataMap[bucket] = {};
+        if (!dataMap[bucket][sBranch]) dataMap[bucket][sBranch] = { total: 0, present: 0 };
+
+        dataMap[bucket][sBranch].total++;
+        if (record.dailyStatus === 'present') {
+            dataMap[bucket][sBranch].present++;
+        }
+    });
+
+    let sortedBuckets = Array.from(timeBucketsSet);
+    if (period === 'by_month') {
+        sortedBuckets.sort((a, b) => new Date(a) - new Date(b));
+    } else if (period === 'by_week') {
+        sortedBuckets.sort((a, b) => new Date(a) - new Date(b));
+    } else {
+        sortedBuckets.sort().slice(-10);
+    }
+
+    const datasets = branchesInView.map(branch => {
+        const data = sortedBuckets.map(bucket => {
+            const stats = dataMap[bucket]?.[branch];
+            return stats && stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : null;
+        });
+
+        let lastValue = 75;
+        const interpolatedData = data.map(val => {
+            if (val !== null) {
+                lastValue = val;
+                return val;
+            }
+            return lastValue;
+        });
+
+        const color = getBranchColor(branch);
+        return {
+            label: branch,
+            data: interpolatedData,
+            borderColor: color,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointBackgroundColor: color,
+            pointRadius: 4,
+            tension: 0.3,
+            fill: false
+        };
+    });
 
     const ctxTrend = document.getElementById('attendanceTrendChart').getContext('2d');
     attendanceTrendChartInstance = new Chart(ctxTrend, {
         type: 'line',
         data: {
-            labels: labels,
-            datasets: [{
-                label: 'Attendance %',
-                data: trendData,
-                borderColor: '#0097a7',
-                backgroundColor: 'rgba(0,151,167,0.1)',
-                borderWidth: 2,
-                pointBackgroundColor: '#0097a7',
-                pointRadius: 3,
-                fill: true,
-                tension: 0.4
-            }]
+            labels: sortedBuckets,
+            datasets: datasets
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } },
-                x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                y: { 
+                    beginAtZero: true, 
+                    max: 100, 
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                }
             },
             plugins: {
-                legend: { display: false },
-                tooltip: { backgroundColor: '#131929', titleColor: '#e2e8f0', bodyColor: '#00d9ff', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+                legend: { 
+                    display: true, 
+                    position: 'top',
+                    labels: { 
+                        color: '#e2e8f0', 
+                        font: { size: 10, family: 'Inter' }, 
+                        usePointStyle: true, 
+                        boxWidth: 6 
+                    } 
+                },
+                tooltip: { 
+                    backgroundColor: '#131929', 
+                    titleColor: '#e2e8f0', 
+                    bodyColor: '#00d9ff', 
+                    borderColor: 'rgba(255,255,255,0.1)', 
+                    borderWidth: 1 
+                }
             }
         }
     });
 }
+
 let currentEmailCohort = null;
 
 function openBulkEmailModal(mode) {
     currentEmailCohort = mode;
     const modal = document.getElementById('bulkEmailModal');
-    const badge = document.getElementById('bulkEmailTargetBadge');
+    const badge = document.getElementById('bulkEmailModalSubtitle');
+    const title = document.getElementById('bulkEmailModalTitle');
     const subject = document.getElementById('bulkEmailSubject');
     const body = document.getElementById('bulkEmailBody');
-    const listContainer = document.getElementById('bulkEmailRecipientList');
-
-    // Reset Select All
-    const selectAllCb = document.getElementById('bulkEmailSelectAll');
-    if (selectAllCb) selectAllCb.checked = true;
 
     let students = window.dashboardStudents || [];
-    let targetsHtml = '';
 
+    // Copy branch list from dashboard
+    const dashboardBranchOptions = document.getElementById('dashboardBranchFilter').innerHTML;
+    document.getElementById('bulkEmailBranchFilter').innerHTML = dashboardBranchOptions;
+    document.getElementById('bulkEmailBranchFilter').value = 'ALL BRANCHES';
+
+    // Populate semesters
+    const semSelect = document.getElementById('bulkEmailSemesterFilter');
+    const semesters = Array.from(new Set(students.map(s => s.semester))).filter(Boolean).sort();
+    semSelect.innerHTML = '<option value="All">All Semesters</option>';
+    semesters.forEach(sem => {
+        const opt = document.createElement('option');
+        opt.value = `Sem ${sem}`;
+        opt.textContent = `Semester ${sem}`;
+        semSelect.appendChild(opt);
+    });
+    semSelect.value = 'All';
+
+    // Populate Threshold options depending on mode
+    const thresholdSelect = document.getElementById('bulkEmailThresholdFilter');
+    thresholdSelect.innerHTML = '';
     if (mode === 'at-risk') {
-        badge.textContent = 'At-Risk Students (< 60%)';
-        badge.style.background = 'rgba(245,158,11,0.15)';
-        badge.style.color = '#f59e0b';
+        title.textContent = 'Bulk Email — At-Risk Students';
+        badge.textContent = 'Attendance below 60%';
+        
+        const options = [
+            { value: 'below60', label: 'Below 60%' },
+            { value: 'below50', label: 'Below 50%' },
+            { value: 'below40', label: 'Below 40%' },
+            { value: 'below30', label: 'Below 30%' },
+            { value: 'All', label: 'All Students' }
+        ];
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.label;
+            thresholdSelect.appendChild(o);
+        });
+        thresholdSelect.value = 'below60';
+
         subject.value = 'Important: Attendance Warning';
         body.value = 'Dear {name},\n\nYour current attendance is {attendance}%, which is below the required threshold of 60%. Please ensure you attend upcoming classes regularly to avoid detention.\n\nRegards,\nAdmin';
-
-        students.forEach(s => {
-            let perc = s.computedPercentage !== undefined ? s.computedPercentage : 100;
-            if (perc < 60) {
-                targetsHtml += `<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer;"><input type="checkbox" class="email-recipient-cb" value="${s.enrollmentNo || s._id}" checked data-name="${s.name}" data-email="${s.email}" data-perc="${perc.toFixed(1)}"> ${s.name} (${s.enrollmentNo || s._id}) - ${perc.toFixed(1)}%</label>`;
-            }
-        });
     } else {
-        badge.textContent = 'High Performers (>= 75%)';
-        badge.style.background = 'rgba(34,197,94,0.15)';
-        badge.style.color = '#22c55e';
+        title.textContent = 'Bulk Email — High Performers';
+        badge.textContent = 'Attendance above 75%';
+
+        const options = [
+            { value: 'above75', label: 'Above 75%' },
+            { value: 'above80', label: 'Above 80%' },
+            { value: 'above85', label: 'Above 85%' },
+            { value: 'above90', label: 'Above 90%' },
+            { value: 'All', label: 'All Students' }
+        ];
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.label;
+            thresholdSelect.appendChild(o);
+        });
+        thresholdSelect.value = 'above75';
+
         subject.value = 'Appreciation for Excellent Attendance';
         body.value = 'Dear {name},\n\nWe would like to appreciate your excellent attendance record of {attendance}%. Keep up the great work!\n\nRegards,\nAdmin';
-
-        students.forEach(s => {
-            let perc = s.computedPercentage !== undefined ? s.computedPercentage : 100;
-            if (perc >= 75) {
-                targetsHtml += `<label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer;"><input type="checkbox" class="email-recipient-cb" value="${s.enrollmentNo || s._id}" checked data-name="${s.name}" data-email="${s.email}" data-perc="${perc.toFixed(1)}"> ${s.name} (${s.enrollmentNo || s._id}) - ${perc.toFixed(1)}%</label>`;
-            }
-        });
     }
 
-    if (targetsHtml === '') {
-        listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; font-style: italic;">No students match this criteria.</div>';
-    } else {
-        listContainer.innerHTML = targetsHtml;
-    }
+    // Run filter
+    filterBulkEmailRecipients();
 
     modal.style.display = 'flex';
 }
 
+function filterBulkEmailRecipients() {
+    const branch = document.getElementById('bulkEmailBranchFilter').value;
+    const sem = document.getElementById('bulkEmailSemesterFilter').value;
+    const threshold = document.getElementById('bulkEmailThresholdFilter').value;
+
+    let students = window.dashboardStudents || [];
+    
+    // Parse semester number
+    const semNum = sem === 'All' ? null : parseInt(sem.replace(/\D/g, ''));
+
+    // Filter by branch
+    if (branch !== 'ALL BRANCHES') {
+        students = students.filter(s => s.branch === branch);
+    }
+    // Filter by semester
+    if (semNum !== null && !isNaN(semNum)) {
+        students = students.filter(s => parseInt(s.semester) === semNum);
+    }
+    // Filter by threshold
+    students = students.filter(s => {
+        const perc = s.computedPercentage !== undefined ? s.computedPercentage : -1;
+        
+        if (threshold === 'All') return true;
+        if (perc === -1) return false;
+
+        if (threshold === 'below60') return perc < 60;
+        if (threshold === 'below50') return perc < 50;
+        if (threshold === 'below40') return perc < 40;
+        if (threshold === 'below30') return perc < 30;
+
+        if (threshold === 'above75') return perc >= 75;
+        if (threshold === 'above80') return perc >= 80;
+        if (threshold === 'above85') return perc >= 85;
+        if (threshold === 'above90') return perc >= 90;
+
+        return true;
+    });
+
+    // Populate checkboxes in listContainer
+    const listContainer = document.getElementById('bulkEmailRecipientList');
+    let targetsHtml = '';
+
+    students.forEach(s => {
+        const perc = s.computedPercentage !== undefined && s.computedPercentage !== -1 ? s.computedPercentage : 0;
+        targetsHtml += `
+        <div class="bulk-email-recipient-row" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                <input type="checkbox" class="email-recipient-cb" value="${s.enrollmentNo || s._id}" checked data-name="${s.name}" data-email="${s.email}" data-perc="${perc.toFixed(1)}" onchange="updateSelectedBulkEmailCounts()" style="width: 16px; height: 16px; cursor: pointer;">
+                <div>
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">${s.name}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${s.branch || 'N/A'} · Sem ${s.semester || 'N/A'} · ${s.email || 'No email'}</div>
+                </div>
+            </div>
+            <div style="font-weight: bold; font-size: 14px; color: ${perc >= 75 ? '#22c55e' : (perc < 60 ? '#f59e0b' : 'var(--text-primary)')};">${perc.toFixed(1)}%</div>
+        </div>
+        `;
+    });
+
+    if (targetsHtml === '') {
+        listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; font-style: italic; padding: 20px; text-align: center;">No students match this filter.</div>';
+    } else {
+        listContainer.innerHTML = targetsHtml;
+    }
+
+    const selectAllCb = document.getElementById('bulkEmailSelectAll');
+    if (selectAllCb) selectAllCb.checked = true;
+
+    updateSelectedBulkEmailCounts();
+}
+
+function updateSelectedBulkEmailCounts() {
+    const totalCheckboxes = document.querySelectorAll('.email-recipient-cb');
+    const checkedCheckboxes = document.querySelectorAll('.email-recipient-cb:checked');
+
+    const totalCount = totalCheckboxes.length;
+    const selectedCount = checkedCheckboxes.length;
+
+    const selectAllCb = document.getElementById('bulkEmailSelectAll');
+    if (selectAllCb) {
+        selectAllCb.checked = totalCount > 0 && selectedCount === totalCount;
+    }
+
+    document.getElementById('bulkEmailSelectedCountBadge').textContent = `${selectedCount} / ${totalCount}`;
+    document.getElementById('bulkEmailToFieldText').textContent = `${selectedCount} students selected`;
+    document.getElementById('bulkEmailFooterRecipientText').textContent = `${selectedCount} recipients will receive this email`;
+    document.getElementById('sendBulkEmailBtnText').textContent = `Send to ${selectedCount} Students`;
+}
+
 function toggleAllEmailRecipients(isChecked) {
     const checkboxes = document.querySelectorAll('.email-recipient-cb');
-    checkboxes.forEach(cb => cb.checked = isChecked);
+    checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+    });
+    updateSelectedBulkEmailCounts();
 }
 
 function closeBulkEmailModal() {
@@ -1227,7 +1522,8 @@ async function sendBulkEmail() {
     }
 
     const btn = document.getElementById('sendBulkEmailBtn');
-    btn.innerHTML = '<span>Sending...</span>';
+    const btnText = document.getElementById('sendBulkEmailBtnText');
+    btnText.textContent = 'Sending...';
     btn.disabled = true;
     btn.style.opacity = '0.7';
 
@@ -1248,7 +1544,6 @@ async function sendBulkEmail() {
     }
 
     try {
-        // Here we hit the verified server bulk email API route endpoint.
         const response = await fetch(POST_EMAIL_BULK, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1272,7 +1567,7 @@ async function sendBulkEmail() {
         console.error("Bulk email error:", err);
         alert(`[Simulation] Drafted emails for ${targets.length} students.\n(Backend route not found: ${POST_EMAIL_BULK})`);
     } finally {
-        btn.innerHTML = '<span>Send Emails</span>';
+        btnText.textContent = `Send to ${targets.length} Students`;
         btn.disabled = false;
         btn.style.opacity = '1';
         closeBulkEmailModal();
@@ -1420,6 +1715,43 @@ function renderDashStudentList(resetPage = true) {
     });
 }
 
+async function redirectToStudentHistory(enrollmentNo, studentName, dateToHighlight) {
+    document.getElementById('dashAttendanceDetailModal').style.display = 'none';
+    if (typeof switchSection === 'function') switchSection('attendance');
+
+    if (typeof showStudentAttendance === 'function') {
+        await showStudentAttendance(enrollmentNo, studentName);
+
+        if (dateToHighlight) {
+            const dateStr = new Date(dateToHighlight).toLocaleDateString();
+            setTimeout(() => {
+                const modal = document.getElementById('attendanceModalBody');
+                if (!modal) return;
+
+                const rows = modal.querySelectorAll('tr[onclick^="showDayDetails"]');
+                for (let row of rows) {
+                    if (row.cells && row.cells[0] && row.cells[0].textContent.trim() === dateStr) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        row.style.transition = 'background-color 0.5s';
+                        row.style.backgroundColor = 'rgba(0, 151, 167, 0.4)';
+                        setTimeout(() => row.style.backgroundColor = '', 2000);
+
+                        // Expand lecture details automatically if it's not already expanded
+                        const idMatch = row.getAttribute('onclick').match(/showDayDetails\('([^']+)'\)/);
+                        if (idMatch) {
+                            const detailsRow = document.getElementById('details_' + idMatch[1]);
+                            if (detailsRow && detailsRow.style.display === 'none') {
+                                row.click();
+                            }
+                        }
+                        break;
+                    }
+                }
+            }, 200);
+        }
+    }
+}
+
 async function openAttendanceDetailModal(enrollmentNo, studentName) {
     document.getElementById('dashAttendanceDetailTitle').textContent = `Attendance Details - ${studentName}`;
     document.getElementById('dashAttendanceDetailModal').style.display = 'flex';
@@ -1429,30 +1761,13 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
     document.getElementById('dashDetailPresent').textContent = '...';
     document.getElementById('dashDetailAbsent').textContent = '...';
     document.getElementById('dashDetailMissedBody').innerHTML = '<tr><td colspan="2">Loading...</td></tr>';
+    document.getElementById('studentEmailSubject').value = '';
+    document.getElementById('studentEmailBody').value = '';
 
     try {
         let baseUrl = typeof GET_STUDENT_ATTENDANCE_DATES === 'function' ? GET_STUDENT_ATTENDANCE_DATES(enrollmentNo) : `/api/attendance/student/${encodeURIComponent(enrollmentNo)}/dates`;
 
-        // Calculate date filters
-        const period = document.getElementById('dashboardPeriodFilter')?.value || 'today';
-        let startDate, endDate;
-        const now = new Date();
-
-        if (period === 'today') {
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-        } else if (period === 'monthly') {
-            const selectedMonth = parseInt(document.getElementById('dashboardMonthFilter')?.value || now.getMonth());
-            startDate = new Date(now.getFullYear(), selectedMonth, 1).toISOString();
-            endDate = new Date(now.getFullYear(), selectedMonth + 1, 0, 23, 59, 59).toISOString();
-        }
-
-        let url = baseUrl;
-        if (startDate && endDate) {
-            url += `${url.includes('?') ? '&' : '?'}startDate=${startDate}&endDate=${endDate}`;
-        }
-
-        const res = await fetch(url);
+        const res = await fetch(baseUrl);
         const data = await res.json();
 
         if (!data.success) {
@@ -1460,116 +1775,216 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
             return;
         }
 
+        window.currentDetailEnrollmentNo = enrollmentNo;
+        window.currentDetailStudentName = studentName;
+        window.currentDetailRecords = data.dates || [];
+        window.currentDetailStudentEmail = data.student?.email || '';
+
+        // Populate Subject filter dynamically
+        const subjects = Array.from(new Set(window.currentDetailRecords.map(r => r.subjectName).filter(Boolean))).sort();
+        const subSelect = document.getElementById('dashDetailSubjectFilter');
+        subSelect.innerHTML = '<option value="all">All Subjects</option>';
+        subjects.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            subSelect.appendChild(opt);
+        });
+
+        // Set default filter values
+        document.getElementById('dashDetailRangeFilter').value = '30';
+        subSelect.value = 'all';
+
+        // Prepopulate custom email fields
         const totalDays = data.student.totalDays || 0;
         const presentDays = data.student.presentDays || 0;
-        const absentDays = totalDays - presentDays;
+        const avgPerc = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(1) : '0';
+        window.currentDetailStudentAttendance = avgPerc;
+        document.getElementById('studentEmailSubject').value = `Attendance Alert — ${studentName}`;
+        document.getElementById('studentEmailBody').value = `Dear ${studentName},\n\nYour current attendance is ${avgPerc}%, which is below the required threshold of 60%. Please ensure you attend upcoming classes regularly to avoid detention.\n\nRegards,\nAdmin`;
 
-        document.getElementById('dashDetailTotal').textContent = totalDays;
-        document.getElementById('dashDetailPresent').textContent = presentDays;
-        document.getElementById('dashDetailAbsent').textContent = absentDays;
-
-        const records = data.dates || [];
-        const missed = records.filter(r => r.status === 'absent' || r.status === 'bunked');
-
-        // Helper function to redirect to History tab
-        const redirectToHistory = async (dateToHighlight) => {
-            document.getElementById('dashAttendanceDetailModal').style.display = 'none';
-            if (typeof switchSection === 'function') switchSection('attendance');
-
-            if (typeof showStudentAttendance === 'function') {
-                await showStudentAttendance(enrollmentNo, studentName);
-
-                if (dateToHighlight) {
-                    const dateStr = new Date(dateToHighlight).toLocaleDateString();
-                    setTimeout(() => {
-                        const modal = document.getElementById('attendanceModalBody');
-                        if (!modal) return;
-
-                        const rows = modal.querySelectorAll('tr[onclick^="showDayDetails"]');
-                        for (let row of rows) {
-                            if (row.cells && row.cells[0] && row.cells[0].textContent.trim() === dateStr) {
-                                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                row.style.transition = 'background-color 0.5s';
-                                row.style.backgroundColor = 'rgba(0, 151, 167, 0.4)';
-                                setTimeout(() => row.style.backgroundColor = '', 2000);
-
-                                // Expand lecture details automatically if it's not already expanded
-                                const idMatch = row.getAttribute('onclick').match(/showDayDetails\('([^']+)'\)/);
-                                if (idMatch) {
-                                    const detailsRow = document.getElementById('details_' + idMatch[1]);
-                                    if (detailsRow && detailsRow.style.display === 'none') {
-                                        row.click();
-                                    }
-                                }
-                                break;
-                            }
-                        }
-                    }, 100); // 100ms buffer for DOM paint after await
-                }
-            }
-        };
-
-        const tbody = document.getElementById('dashDetailMissedBody');
-        tbody.innerHTML = '';
-        if (missed.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: var(--text-secondary);">No missed classes</td></tr>';
-        } else {
-            missed.slice(0, 10).forEach(m => {
-                const tr = document.createElement('tr');
-                tr.style.cursor = 'pointer';
-                tr.onclick = () => redirectToHistory(m.date);
-                tr.title = "Click to view full attendance history";
-                tr.innerHTML = `<td>${new Date(m.date).toLocaleDateString()}</td><td><span style="color:var(--danger-color); font-weight:600;">Absent</span></td>`;
-                tbody.appendChild(tr);
-            });
-        }
-
-        // Render the chart logic
-        if (typeof Chart === 'undefined') return;
-
-        if (dashDetailChartInstance) dashDetailChartInstance.destroy();
-
-        // Take last 7 days of records, sort ascending for chart
-        const recentRecords = records.slice(0, 7).reverse();
-
-        const trendData = recentRecords.map(r => r.percentage !== undefined ? r.percentage : (r.status === 'present' ? 100 : 0));
-        const labels = recentRecords.map(r => new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-
-        const ctx = document.getElementById('dashDetailChart').getContext('2d');
-
-        const style = getComputedStyle(document.body);
-        const primaryColor = style.getPropertyValue('--primary-color') || '#0097a7';
-        const dangerColor = style.getPropertyValue('--danger-color') || '#ef4444';
-
-        dashDetailChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Attendance %',
-                    data: trendData,
-                    backgroundColor: trendData.map(v => v >= 75 ? primaryColor : (v > 0 ? '#f59e0b' : dangerColor))
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, max: 100 }
-                },
-                onClick: (e, elements) => {
-                    if (elements.length > 0) {
-                        const index = elements[0].index;
-                        const clickedRecord = recentRecords[index];
-                        redirectToHistory(clickedRecord.date);
-                    }
-                }
-            }
-        });
+        refreshStudentDetailView();
 
     } catch (err) {
         console.error("Error fetching student details:", err);
         document.getElementById('dashDetailMissedBody').innerHTML = '<tr><td colspan="2" style="color:red;">Error loading data</td></tr>';
+    }
+}
+
+function refreshStudentDetailView() {
+    const range = document.getElementById('dashDetailRangeFilter').value;
+    const subject = document.getElementById('dashDetailSubjectFilter').value;
+    const records = window.currentDetailRecords || [];
+
+    const now = new Date();
+    let filteredRecords = records;
+
+    // Filter by range
+    if (range === '7') {
+        const past = new Date();
+        past.setDate(now.getDate() - 7);
+        filteredRecords = filteredRecords.filter(r => new Date(r.date) >= past);
+    } else if (range === '30') {
+        const past = new Date();
+        past.setDate(now.getDate() - 30);
+        filteredRecords = filteredRecords.filter(r => new Date(r.date) >= past);
+    } else if (range === 'month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        filteredRecords = filteredRecords.filter(r => new Date(r.date) >= startOfMonth);
+    }
+
+    // Filter by subject
+    if (subject !== 'all') {
+        filteredRecords = filteredRecords.filter(r => r.subjectName === subject);
+    }
+
+    // Compute stats
+    const totalDays = filteredRecords.length;
+    const presentDays = filteredRecords.filter(r => r.status === 'present').length;
+    const absentDays = totalDays - presentDays;
+
+    document.getElementById('dashDetailTotal').textContent = totalDays;
+    document.getElementById('dashDetailPresent').textContent = presentDays;
+    document.getElementById('dashDetailAbsent').textContent = absentDays;
+
+    // Update missed classes list
+    const missed = filteredRecords.filter(r => r.status === 'absent' || r.status === 'bunked');
+    const tbody = document.getElementById('dashDetailMissedBody');
+    tbody.innerHTML = '';
+
+    if (missed.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: var(--text-secondary); padding: 8px;">No missed classes</td></tr>';
+    } else {
+        missed.forEach(m => {
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.onclick = () => redirectToStudentHistory(window.currentDetailEnrollmentNo, window.currentDetailStudentName, m.date);
+            tr.title = "Click to view full attendance history";
+            tr.innerHTML = `<td>${new Date(m.date).toLocaleDateString()}</td><td><span style="color:#ef4444; font-weight:600;">Absent</span></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Draw Line Chart
+    if (typeof Chart === 'undefined') return;
+    if (dashDetailChartInstance) dashDetailChartInstance.destroy();
+
+    const sortedRecords = [...filteredRecords].sort((a, b) => new Date(a.date) - new Date(b.date));
+    let runningPresent = 0;
+    let runningTotal = 0;
+    const trendData = [];
+    const labels = [];
+
+    sortedRecords.forEach(r => {
+        runningTotal++;
+        if (r.status === 'present') runningPresent++;
+        trendData.push(Math.round((runningPresent / runningTotal) * 100));
+        labels.push(new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    });
+
+    const ctx = document.getElementById('dashDetailChart').getContext('2d');
+    const style = getComputedStyle(document.body);
+    const primaryColor = style.getPropertyValue('--primary-color') || '#0097a7';
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+    gradient.addColorStop(0, 'rgba(0, 151, 167, 0.2)');
+    gradient.addColorStop(1, 'rgba(0, 151, 167, 0)');
+
+    dashDetailChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Attendance Trend %',
+                data: trendData,
+                borderColor: primaryColor,
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointBackgroundColor: primaryColor,
+                pointRadius: trendData.length > 15 ? 2 : 4,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { 
+                    beginAtZero: true, 
+                    max: 100, 
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: '#64748b', font: { size: 10 } } 
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { 
+                    backgroundColor: '#131929', 
+                    titleColor: '#e2e8f0', 
+                    bodyColor: '#00d9ff', 
+                    borderColor: 'rgba(255,255,255,0.1)', 
+                    borderWidth: 1 
+                }
+            }
+        }
+    });
+}
+
+async function sendIndividualStudentEmail() {
+    const studentName = window.currentDetailStudentName;
+    const studentEmail = window.currentDetailStudentEmail;
+    const subject = document.getElementById('studentEmailSubject').value.trim();
+    const message = document.getElementById('studentEmailBody').value.trim();
+
+    if (!studentEmail) {
+        alert("This student does not have a registered email address.");
+        return;
+    }
+    if (!subject || !message) {
+        alert("Please provide both subject and message.");
+        return;
+    }
+
+    const btn = document.getElementById('sendStudentEmailBtn');
+    btn.textContent = 'Sending...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(POST_EMAIL_BULK, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                target: 'custom',
+                subject: subject,
+                message: message,
+                count: 1,
+                recipients: [{
+                    name: studentName,
+                    email: studentEmail,
+                    attendance: window.currentDetailStudentAttendance || 'N/A'
+                }]
+            })
+        });
+
+        if (response.ok) {
+            alert(`Email successfully sent to ${studentName}!`);
+            document.getElementById('studentEmailSubject').value = '';
+            document.getElementById('studentEmailBody').value = '';
+        } else {
+            console.warn("Bulk endpoint returned error for individual email. Simulating success.");
+            alert(`[Simulation] Drafted individual email to ${studentName}.\n(Ensure backend endpoint is fully verified)`);
+        }
+    } catch (err) {
+        console.error("Failed to send individual email:", err);
+        alert(`[Simulation] Drafted individual email to ${studentName}.\n(Ensure backend server is running)`);
+    } finally {
+        btn.textContent = 'Send Email';
+        btn.disabled = false;
     }
 }
 

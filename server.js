@@ -10891,17 +10891,17 @@ app.post('/api/email/bulk', async (req, res) => {
                     continue;
                 }
 
-                // Replace template tags
+                // Replace template tags case-insensitively
                 let personalizedMessage = message
-                    .replace(/{name}/g, recipient.name)
-                    .replace(/{attendance}/g, recipient.attendance);
+                    .replace(/{name}/gi, recipient.name)
+                    .replace(/{attendance}/gi, recipient.attendance);
 
                 // Convert newlines to HTML line breaks
                 const htmlMessage = personalizedMessage.replace(/\n/g, '<br>');
 
                 try {
                     const response = await resendInstance.emails.send({
-                        from: process.env.RESEND_FROM_EMAIL || 'LetsBunk <no-reply@letsbunk.co>',
+                        from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
                         to: studentEmail,
                         subject: subject,
                         html: `<div style="font-family: sans-serif; line-height: 1.5; color: #333;">${htmlMessage}</div>`

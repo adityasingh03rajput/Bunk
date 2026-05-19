@@ -225,10 +225,13 @@
                     <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <h2 class="section-title" style="margin: 0; font-size: 22px; font-weight: 600;">Dashboard Overview</h2>
                         <div class="dashboard-filters" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                            <select id="dashboardPeriodFilter" class="filter-select" style="min-width: 130px;" onchange="handlePeriodChange()">
-                                <option value="today">Today</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="sessional">Sessional</option>
+                            <select id="dashboardPeriodFilter" class="filter-select" style="min-width: 150px;" onchange="handlePeriodChange()">
+                                <option value="monthly" selected>MONTHLY VIEW</option>
+                                <option value="weekly">WEEKLY VIEW</option>
+                                <option value="today">DAYWISE VIEW</option>
+                                <option value="by_date">BY DATE</option>
+                                <option value="by_week">BY WEEK</option>
+                                <option value="by_month">BY MONTH</option>
                             </select>
                             <select id="dashboardMonthFilter" class="filter-select" style="min-width: 130px; display: none;" onchange="loadDashboardData()">
                                 <option value="0">January</option>
@@ -254,6 +257,13 @@
                                 <option value="ME">ME</option>
                                 <option value="EEE">EEE</option>
                                 <option value="ECE">ECE</option>
+                            </select>
+                            <select id="dashboardThresholdFilter" class="filter-select" style="min-width: 140px;" onchange="updateDashboardView()">
+                                <option value="All">All Students</option>
+                                <option value="above70">Above 70%</option>
+                                <option value="above60">Above 60%</option>
+                                <option value="below60">Below 60%</option>
+                                <option value="below30">Below 30%</option>
                             </select>
                         </div>
                     </div>
@@ -300,7 +310,7 @@
                         </div>
                         <div class="bento-card chart-card">
                             <div class="bento-card-header" style="margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
-                                <h3 style="margin: 0; font-size: 14px; color: var(--text-primary)">Branch Distribution</h3>
+                                <h3 style="margin: 0; font-size: 14px; color: var(--text-primary)">Attendance Distribution</h3>
                             </div>
                             <div class="chart-wrapper" style="height: 250px; position: relative;">
                                 <canvas id="branchDistChart"></canvas>
@@ -394,40 +404,82 @@
 
                     <!-- Dashboard Attendance Detail Modal (Vanilla Theme) -->
                     <div id="dashAttendanceDetailModal" class="modal" style="z-index: 1001;">
-                        <div class="modal-content" style="max-width: 600px; width: 90%;">
-                            <div class="modal-header">
-                                <h3 id="dashAttendanceDetailTitle">Attendance Details</h3>
-                                <button class="close-btn" onclick="closeAttendanceDetailModal()">×</button>
+                        <div class="modal-content" style="max-width: 700px; width: 95%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;">
+                                <h3 id="dashAttendanceDetailTitle" style="margin: 0; font-size: 18px; color: var(--text-primary);">Attendance Details</h3>
+                                <button class="close-btn" onclick="closeAttendanceDetailModal()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 24px;">×</button>
                             </div>
-                            <div class="modal-body">
-                                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 15px;">
-                                    <div class="stat-card" style="padding: 10px;">
-                                        <p style="margin:0; font-size:12px;">Total</p>
-                                        <h4 id="dashDetailTotal" style="margin:5px 0 0;">0</h4>
+                            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
+                                <!-- Top Stats -->
+                                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                                    <div class="stat-card" style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                                        <p style="margin:0; font-size:12px; color: var(--text-secondary);">Total Classes</p>
+                                        <h4 id="dashDetailTotal" style="margin:6px 0 0; font-size: 20px; font-weight: 600; color: var(--text-primary);">0</h4>
                                     </div>
-                                    <div class="stat-card" style="padding: 10px;">
-                                        <p style="margin:0; font-size:12px;">Present</p>
-                                        <h4 id="dashDetailPresent" style="margin:5px 0 0; color:var(--success-color);">0</h4>
+                                    <div class="stat-card" style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                                        <p style="margin:0; font-size:12px; color: var(--text-secondary);">Present</p>
+                                        <h4 id="dashDetailPresent" style="margin:6px 0 0; font-size: 20px; font-weight: 600; color: var(--teal);">0</h4>
                                     </div>
-                                    <div class="stat-card" style="padding: 10px;">
-                                        <p style="margin:0; font-size:12px;">Absent</p>
-                                        <h4 id="dashDetailAbsent" style="margin:5px 0 0; color:var(--danger-color);">0</h4>
+                                    <div class="stat-card" style="padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; text-align: center;">
+                                        <p style="margin:0; font-size:12px; color: var(--text-secondary);">Absent</p>
+                                        <h4 id="dashDetailAbsent" style="margin:6px 0 0; font-size: 20px; font-weight: 600; color: #ef4444;">0</h4>
                                     </div>
                                 </div>
-                                <div class="chart-wrapper" style="height: 200px; margin-bottom: 20px;">
+
+                                <!-- Trend Graph Filters -->
+                                <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.01); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-top: 4px;">
+                                    <span style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">Trend Filters:</span>
+                                    <div style="display: flex; gap: 10px;">
+                                        <select id="dashDetailRangeFilter" class="filter-select" style="margin: 0; min-width: 120px;" onchange="refreshStudentDetailView()">
+                                            <option value="7">Last 7 Days</option>
+                                            <option value="30" selected>Last 30 Days</option>
+                                            <option value="month">Current Month</option>
+                                            <option value="all">Sessional</option>
+                                        </select>
+                                        <select id="dashDetailSubjectFilter" class="filter-select" style="margin: 0; min-width: 140px;" onchange="refreshStudentDetailView()">
+                                            <option value="all">All Subjects</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Line Graph -->
+                                <div class="chart-wrapper" style="height: 220px; position: relative;">
                                     <canvas id="dashDetailChart"></canvas>
                                 </div>
-                                <h4>Missed Classes</h4>
-                                <div class="table-container" style="max-height: 150px; overflow-y: auto;">
-                                    <table class="data-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="dashDetailMissedBody"></tbody>
-                                    </table>
+
+                                <!-- Missed Classes -->
+                                <div>
+                                    <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-primary);">Missed Classes</h4>
+                                    <div class="table-container" style="max-height: 120px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px;">
+                                        <table class="data-table" style="margin: 0; width: 100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="dashDetailMissedBody"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <hr style="border: 0; border-top: 1px solid var(--border); margin: 8px 0;">
+
+                                <!-- Custom Email Section -->
+                                <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(255,255,255,0.02); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+                                    <h4 style="margin: 0; font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--text-primary);">
+                                        📧 Send Custom Email to Student
+                                    </h4>
+                                    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                                        <input type="text" id="studentEmailSubject" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: 13px;" placeholder="Subject: e.g. Attendance Inquiry">
+                                        <textarea id="studentEmailBody" rows="3" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: 13px; resize: vertical;" placeholder="Type your personalized message here..."></textarea>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                                            <span style="font-size: 11px; color: var(--text-muted);">Recipient will receive individual email</span>
+                                            <button id="sendStudentEmailBtn" onclick="sendIndividualStudentEmail()" style="padding: 8px 16px; background: var(--teal); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; transition: opacity 0.2s;">
+                                                Send Email
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -435,40 +487,81 @@
 
                     <!-- Bulk Email Modal (injected into Dashboard Section) -->
                     <div id="bulkEmailModal" class="modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
-                        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; max-width: 500px; width: 90%; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
-                            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px; margin-bottom: 16px;">
-                                <h3 id="bulkEmailModalTitle" style="margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">📧 Compose Bulk Email</h3>
-                                <button onclick="closeBulkEmailModal()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 20px;">×</button>
+                        <div class="modal-content" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; max-width: 900px; width: 95%; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; flex-direction: column; gap: 16px;">
+                            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                                <div>
+                                    <h3 id="bulkEmailModalTitle" style="margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">Bulk Email — At-Risk Students</h3>
+                                    <p id="bulkEmailModalSubtitle" style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-secondary);">Attendance below 60%</p>
+                                </div>
+                                <button onclick="closeBulkEmailModal()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; font-size: 24px;">×</button>
                             </div>
-                            <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px;">
-                                <div>
-                                    <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">Target Audience</label>
-                                    <div id="bulkEmailTargetBadge" style="display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 8px;"></div>
-                                    <div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;">
-                                        <span style="color: var(--text-secondary);">Select Recipients:</span>
-                                        <label style="cursor: pointer; color: var(--teal);"><input type="checkbox" id="bulkEmailSelectAll" checked onchange="toggleAllEmailRecipients(this.checked)"> Select All</label>
+                            
+                            <!-- Filter Bar -->
+                            <div class="modal-filters" style="display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid var(--border);">
+                                <span style="font-size: 13px; color: var(--text-secondary);">Filter by:</span>
+                                <select id="bulkEmailBranchFilter" class="filter-select" style="min-width: 140px; margin: 0;" onchange="filterBulkEmailRecipients()">
+                                    <option value="ALL BRANCHES">ALL BRANCHES</option>
+                                    <option value="CSE">CSE</option>
+                                    <option value="ME">ME</option>
+                                    <option value="EEE">EEE</option>
+                                    <option value="ECE">ECE</option>
+                                </select>
+                                <select id="bulkEmailSemesterFilter" class="filter-select" style="min-width: 140px; margin: 0;" onchange="filterBulkEmailRecipients()">
+                                    <option value="All">All Semesters</option>
+                                </select>
+                                <select id="bulkEmailThresholdFilter" class="filter-select" style="min-width: 140px; margin: 0;" onchange="filterBulkEmailRecipients()">
+                                    <!-- Populated dynamically depending on mode -->
+                                </select>
+                            </div>
+
+                            <!-- Content Columns -->
+                            <div class="modal-body-columns" style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; min-height: 350px;">
+                                <!-- Left Column: Students Selection -->
+                                <div style="display: flex; flex-direction: column; gap: 10px; border-right: 1px solid var(--border); padding-right: 20px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                        <label style="cursor: pointer; color: var(--teal); display: flex; align-items: center; gap: 6px; font-weight: 500;">
+                                            <input type="checkbox" id="bulkEmailSelectAll" checked onchange="toggleAllEmailRecipients(this.checked)"> Select all
+                                        </label>
+                                        <span id="bulkEmailSelectedCountBadge" style="background: rgba(245,158,11,0.15); color: #f59e0b; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">0 / 0</span>
                                     </div>
-                                    <div id="bulkEmailRecipientList" style="max-height: 150px; overflow-y: auto; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px;">
-                                        <!-- Recipient checkboxes will be injected here -->
+                                    <div id="bulkEmailRecipientList" style="flex: 1; max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+                                        <!-- Checkbox items populated by js -->
                                     </div>
                                 </div>
-                                <div>
-                                    <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">Subject</label>
-                                    <input type="text" id="bulkEmailSubject" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: inherit;" placeholder="e.g. Important: Attendance Warning">
-                                </div>
-                                <div>
-                                    <label style="display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px;">Message Template</label>
-                                    <textarea id="bulkEmailBody" rows="5" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: inherit; resize: vertical;" placeholder="Type your message here..."></textarea>
-                                </div>
-                                <div style="font-size: 11px; color: var(--text-muted);">
-                                    Available tags: <span style="background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">{name}</span> <span style="background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px;">{attendance}</span>
+
+                                <!-- Right Column: Message Inputs -->
+                                <div style="display: flex; flex-direction: column; gap: 12px;">
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+                                        <span style="color: var(--text-secondary);">✉️ To:</span>
+                                        <span id="bulkEmailToFieldText" style="font-weight: 600; color: #f59e0b;">0 students selected</span>
+                                    </div>
+                                    <div>
+                                        <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500;">Subject</label>
+                                        <input type="text" id="bulkEmailSubject" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 13px;" placeholder="e.g. Attendance Warning">
+                                    </div>
+                                    <div style="display: flex; flex-direction: column; flex: 1;">
+                                        <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500;">Message</label>
+                                        <textarea id="bulkEmailBody" style="width: 100%; box-sizing: border-box; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 13px; resize: none; flex: 1; min-height: 180px;" placeholder="Type your message here..."></textarea>
+                                    </div>
+                                    <div style="font-size: 11px; color: var(--text-muted); display: flex; gap: 10px;">
+                                        <span>Available tags:</span>
+                                        <span style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 4px; font-family: monospace;">{name}</span>
+                                        <span style="background: rgba(255,255,255,0.08); padding: 1px 4px; border-radius: 4px; font-family: monospace;">{attendance}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px;">
-                                <button onclick="closeBulkEmailModal()" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; cursor: pointer; transition: background 0.2s;">Cancel</button>
-                                <button id="sendBulkEmailBtn" onclick="sendBulkEmail()" style="padding: 8px 16px; background: var(--teal); border: none; color: white; border-radius: 6px; cursor: pointer; font-weight: 500; transition: opacity 0.2s; display: flex; align-items: center; gap: 8px;">
-                                    <span>Send Emails</span>
-                                </button>
+
+                            <!-- Footer -->
+                            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;">
+                                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px;">
+                                    👥 <span id="bulkEmailFooterRecipientText">0 recipients will receive this email</span>
+                                </div>
+                                <div style="display: flex; gap: 12px;">
+                                    <button onclick="closeBulkEmailModal()" style="padding: 8px 16px; background: transparent; border: 1px solid var(--border); color: var(--text-primary); border-radius: 6px; cursor: pointer; transition: background 0.2s; font-size: 13px;">Cancel</button>
+                                    <button id="sendBulkEmailBtn" onclick="sendBulkEmail()" style="padding: 8px 20px; background: #f59e0b; border: none; color: black; border-radius: 6px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                                        🚀 <span id="sendBulkEmailBtnText">Send to 0 Students</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

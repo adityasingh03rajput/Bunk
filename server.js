@@ -10872,58 +10872,63 @@ app.post('/api/email/bulk', async (req, res) => {
             return res.status(400).json({ success: false, error: 'No recipients resolved for this cohort.' });
         }
 
-        const errors = [];
-        const successes = [];
-
-        // Send emails sequentially or in parallel batches
-        for (const recipient of targets) {
-            const studentEmail = recipient.email;
-            if (!studentEmail) {
-                errors.push({ name: recipient.name, error: 'No email address registered.' });
-                continue;
-            }
-
-            // Replace template tags
-            let personalizedMessage = message
-                .replace(/{name}/g, recipient.name)
-                .replace(/{attendance}/g, recipient.attendance);
-
-            // Convert newlines to HTML line breaks
-            const htmlMessage = personalizedMessage.replace(/\n/g, '<br>');
-
-            try {
-                // If they have verified letsbunk.co (or letsbunk.com) on Resend, they can use it.
-                // Otherwise, Resend will throw a domain verification error.
-                const response = await resendInstance.emails.send({
-                    from: 'LetsBunk <no-reply@letsbunk.co>',
-                    to: studentEmail,
-                    subject: subject,
-                    html: `<div style="font-family: sans-serif; line-height: 1.5; color: #333;">${htmlMessage}</div>`
-                });
-
-                if (response.error) {
-                    errors.push({ name: recipient.name, email: studentEmail, error: response.error.message });
-                } else {
-                    successes.push({ name: recipient.name, email: studentEmail });
-                }
-            } catch (err) {
-                errors.push({ name: recipient.name, email: studentEmail, error: err.message });
-            }
-        }
-
-        console.log(`📧 Resend bulk emails completed. Successes: ${successes.length}, Errors: ${errors.length}`);
-        
+        // Return immediate success to client to avoid gateway timeouts
         res.json({
             success: true,
-            message: `Successfully processed emails. Sent: ${successes.length}, Failed: ${errors.length}`,
-            details: {
-                successCount: successes.length,
-                errorCount: errors.length,
-                errors: errors
-            }
+            message: `Initiated email broadcast for ${targets.length} students. Sending in background.`
         });
+
+        // Run actual sending in background using setImmediate
+        setImmediate(async () => {
+            console.log(`🚀 Starting background bulk email dispatch for ${targets.length} recipients...`);
+            const errors = [];
+            const successes = [];
+
+            for (const recipient of targets) {
+                const studentEmail = recipient.email;
+                if (!studentEmail) {
+                    errors.push({ name: recipient.name, error: 'No email address registered.' });
+                    continue;
+                }
+
+                // Replace template tags
+                let personalizedMessage = message
+                    .replace(/{name}/g, recipient.name)
+                    .replace(/{attendance}/g, recipient.attendance);
+
+                // Convert newlines to HTML line breaks
+                const htmlMessage = personalizedMessage.replace(/\n/g, '<br>');
+
+                try {
+                    const response = await resendInstance.emails.send({
+                        from: 'LetsBunk <no-reply@letsbunk.co>',
+                        to: studentEmail,
+                        subject: subject,
+                        html: `<div style="font-family: sans-serif; line-height: 1.5; color: #333;">${htmlMessage}</div>`
+                    });
+
+                    if (response.error) {
+                        errors.push({ name: recipient.name, email: studentEmail, error: response.error.message });
+                        console.warn(`⚠️ Failed to send email to ${recipient.name} (${studentEmail}): ${response.error.message}`);
+                    } else {
+                        successes.push({ name: recipient.name, email: studentEmail });
+                    }
+                } catch (err) {
+                    errors.push({ name: recipient.name, email: studentEmail, error: err.message });
+                    console.error(`❌ Error sending email to ${recipient.name} (${studentEmail}):`, err.message);
+                }
+
+                // Introduce a minor delay to avoid rate limit spikes
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+
+            console.log(`📧 Background bulk emails completed. Successes: ${successes.length}, Errors: ${errors.length}`);
+        });
+
     } catch (error) {
         console.error('Error sending bulk email:', error);
-        res.status(500).json({ success: false, error: 'Failed to send bulk emails: ' + error.message });
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to send bulk emails: ' + error.message });
+        }
     }
 });

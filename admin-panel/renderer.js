@@ -31,7 +31,7 @@ async function ensureConfigLoaded(force = false) {
                 fetch(GET_CONFIG_SEMESTERS),
                 fetch(GET_CONFIG_DEPARTMENTS)
             ]);
-            
+
             const [br, sem, dept] = await Promise.all([
                 brRes.json(),
                 semRes.json(),
@@ -62,23 +62,23 @@ async function ensureConfigLoaded(force = false) {
  */
 async function initApp() {
     console.log(' [App] Initializing Admin Panel...');
-    
+
     // 1. Auth check
     if (!isLoggedIn()) {
         hideApp();
         return;
     }
-    
+
     showApp();
     checkServerConnection(); // Starts polling (optimized to 30s)
-    
+
     // 2. Load layout and theme
     const savedLayout = localStorage.getItem('adminLayout') || 'default';
     if (typeof applyLayout === 'function') {
         const valid = ['default', 'compact'];
         applyLayout(valid.includes(savedLayout) ? savedLayout : 'default');
     }
-    
+
     // 3. Concurrent initialization of components
     // We use Promise.all to fetch data in parallel, significantly faster than serial calls
     try {
@@ -93,7 +93,7 @@ async function initApp() {
     } catch (err) {
         console.warn(' [App] Some initialization steps failed:', err);
     }
-    
+
     // 4. Background / Delayed tasks
     setTimeout(() => {
         if (typeof attachBulkEditListener === 'function') attachBulkEditListener();
@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 //
 // To regenerate:  crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
 //   then convert to hex.
-const ADMIN_EMAIL_HASH    = 'b0c3b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2'; // placeholder  set at runtime
+const ADMIN_EMAIL_HASH = 'b0c3b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2'; // placeholder  set at runtime
 const ADMIN_PASSWORD_HASH = 'b0c3b2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2'; // placeholder  set at runtime
 
 // Compute SHA-256 hex of a string
@@ -126,10 +126,10 @@ async function sha256(str) {
 }
 
 // Actual credential hashes  computed once at module load
-let _emailHash    = null;
+let _emailHash = null;
 let _passwordHash = null;
 (async () => {
-    _emailHash    = await sha256('adityarajsir162@gmail.com');
+    _emailHash = await sha256('adityarajsir162@gmail.com');
     _passwordHash = await sha256('Adi*3tya');
 })();
 
@@ -170,16 +170,16 @@ function isLoggedIn() {
 async function handleLogin(e) {
     e.preventDefault();
 
-    const emailRaw    = document.getElementById('loginEmail').value;
+    const emailRaw = document.getElementById('loginEmail').value;
     const passwordRaw = document.getElementById('loginPassword').value;
 
     // Clear previous errors
-    document.getElementById('emailError').textContent    = '';
+    document.getElementById('emailError').textContent = '';
     document.getElementById('passwordError').textContent = '';
     document.getElementById('loginErrorBanner').style.display = 'none';
 
     // Sanitise
-    const email    = sanitizeEmail(emailRaw);
+    const email = sanitizeEmail(emailRaw);
     const password = sanitizePassword(passwordRaw);
 
     // Client-side validation
@@ -201,9 +201,9 @@ async function handleLogin(e) {
     if (hasError) return;
 
     // Show spinner
-    document.getElementById('loginBtnText').style.display    = 'none';
+    document.getElementById('loginBtnText').style.display = 'none';
     document.getElementById('loginBtnSpinner').style.display = 'inline';
-    document.getElementById('loginSubmitBtn').disabled       = true;
+    document.getElementById('loginSubmitBtn').disabled = true;
 
     // Small artificial delay to prevent timing attacks
     await new Promise(r => setTimeout(r, 400));
@@ -226,9 +226,9 @@ async function handleLogin(e) {
         banner.style.display = 'block';
 
         // Reset spinner
-        document.getElementById('loginBtnText').style.display    = 'inline';
+        document.getElementById('loginBtnText').style.display = 'inline';
         document.getElementById('loginBtnSpinner').style.display = 'none';
-        document.getElementById('loginSubmitBtn').disabled       = false;
+        document.getElementById('loginSubmitBtn').disabled = false;
 
         // Clear password field on failure
         document.getElementById('loginPassword').value = '';
@@ -238,10 +238,10 @@ async function handleLogin(e) {
 function handleLogout() {
     sessionStorage.removeItem(SESSION_KEY);
     // Clear sensitive fields
-    document.getElementById('loginEmail').value    = '';
+    document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
     document.getElementById('loginErrorBanner').style.display = 'none';
-    document.getElementById('emailError').textContent    = '';
+    document.getElementById('emailError').textContent = '';
     document.getElementById('passwordError').textContent = '';
     hideApp();
 }
@@ -394,23 +394,23 @@ let dynamicData = {
 };
 
 // Initialize
-    if (isLoggedIn()) {
-        showApp();
-    } else {
-        hideApp();
-        // Focus email field
-        setTimeout(() => document.getElementById('loginEmail')?.focus(), 100);
-    }
+if (isLoggedIn()) {
+    showApp();
+} else {
+    hideApp();
+    // Focus email field
+    setTimeout(() => document.getElementById('loginEmail')?.focus(), 100);
+}
 
-    initializeApp();
-    setupEventListeners();
-    checkServerConnection();
+initializeApp();
+setupEventListeners();
+checkServerConnection();
 
-    // Load dynamic data from server
-    loadDynamicDropdownData();
+// Load dynamic data from server
+loadDynamicDropdownData();
 
-    // Load departments filter on page load
-    loadDepartmentsFilter();
+// Load departments filter on page load
+loadDepartmentsFilter();
 
 
 // Load dynamic dropdown data from server
@@ -421,11 +421,11 @@ async function loadDynamicDropdownData() {
         // Fetch branches/courses
         const branchesResponse = await fetch(GET_CONFIG_BRANCHES);
         console.log(' Branches API response status:', branchesResponse.status);
-        
+
         if (branchesResponse.ok) {
             const branchesData = await branchesResponse.json();
             console.log(' Branches data received:', branchesData);
-            
+
             if (branchesData.success && branchesData.branches) {
                 dynamicData.branches = branchesData.branches.map(b => ({
                     value: b.name,
@@ -480,7 +480,7 @@ async function loadDynamicDropdownData() {
     } catch (error) {
         console.error(' Error loading dynamic data:', error);
         showNotification('Failed to load configuration from server. Please check connection.', 'error');
-        
+
         // Populate filter dropdowns even if empty
         populateFilterDropdowns();
     }
@@ -489,26 +489,26 @@ async function loadDynamicDropdownData() {
 // Helper function to generate branch dropdown options
 function generateBranchOptions(selectedValue = '') {
     console.log(' Generating branch options. Selected:', selectedValue, 'Available branches:', dynamicData.branches);
-    
+
     // If no branches loaded, show a message
     if (dynamicData.branches.length === 0) {
         return '<option value="">No branches configured - Add in Settings</option>';
     }
-    
+
     // Check if selected value exists in branches
     const selectedExists = dynamicData.branches.some(b => b.value === selectedValue);
-    
+
     // If student has a branch that's not in the list, add it
     let options = '';
     if (selectedValue && !selectedExists) {
         options += `<option value="${selectedValue}" selected>${selectedValue} (Current)</option>`;
     }
-    
+
     // Add all branches from API
     options += dynamicData.branches.map(branch =>
         `<option value="${branch.value}" ${selectedValue === branch.value ? 'selected' : ''}>${branch.label}</option>`
     ).join('');
-    
+
     return options;
 }
 
@@ -740,7 +740,7 @@ function setupEventListeners() {
             }
         });
     });
-    
+
     // Close modal when clicking outside
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
@@ -870,7 +870,7 @@ async function loadDashboardData() {
     try {
         let baseUrl = GET_ATTENDANCE_DAILY_REPORT.split('?')[0];
         let attendanceUrl = `${baseUrl}?limit=100000`;
-        
+
         const period = document.getElementById('dashboardPeriodFilter')?.value || 'today';
         let startDate, endDate;
         const now = new Date();
@@ -898,7 +898,7 @@ async function loadDashboardData() {
         // Store globally to use in updateDashboardView
         window.dashboardStudents = studentsData.students || [];
         window.dashboardAttendance = dailyAttendanceData.records || [];
-        
+
         // Ensure dynamic branch filters are loaded
         if (document.getElementById('dashboardBranchFilter').options.length <= 5) {
             try {
@@ -948,13 +948,13 @@ async function loadDashboardData() {
 function updateDashboardView() {
     const semFilter = document.getElementById('dashboardSemesterFilter').value;
     const branchFilter = document.getElementById('dashboardBranchFilter').value;
-    
+
     let students = window.dashboardStudents || [];
     const attendance = window.dashboardAttendance || [];
-    
+
     // Parse the semester number filter
     const semNum = semFilter === 'All' ? null : parseInt(semFilter.replace(/\D/g, ''));
-    
+
     // Apply Filters
     if (semNum !== null && !isNaN(semNum)) {
         students = students.filter(s => parseInt(s.semester) === semNum);
@@ -973,7 +973,7 @@ function updateDashboardView() {
             enrollmentMap[s.enrollmentNo] = key;
         }
     });
-    
+
     const filteredAttendance = [];
     attendance.forEach(record => {
         let sid = record.studentId?._id || record.studentId;
@@ -988,29 +988,29 @@ function updateDashboardView() {
             filteredAttendance.push(record);
         }
     });
-    
+
     // Calculate Dashboard KPIs
     let totalPerc = 0;
     let studentsWithRecords = 0;
     let goodCount = 0;
     let riskCount = 0;
     const branchSummary = {};
-    
+
     students.forEach(s => {
         const sid = s._id || s.enrollmentNo;
         const stat = studentStats[sid];
         let perc = stat.total > 0 ? (stat.present / stat.total) * 100 : -1; // -1 if no records
-        
+
         s.computedPercentage = perc;
-        
+
         if (perc !== -1) {
             totalPerc += perc;
             studentsWithRecords++;
-            
+
             if (perc >= 75) goodCount++;
             if (perc < 60) riskCount++;
         }
-        
+
         // Build Branch Breakdown
         const branchKey = s.branch || 'Unknown';
         if (!branchSummary[branchKey]) {
@@ -1039,13 +1039,13 @@ function updateDashboardView() {
 function renderBranchDetails(summary) {
     const container = document.getElementById('branchDetailsContainer');
     container.innerHTML = '';
-    
+
     const branches = Object.keys(summary);
     if (branches.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted); font-size:12px; padding: 10px;">No branch data available.</p>';
         return;
     }
-    
+
     branches.forEach(b => {
         const data = summary[b];
         const avg = data.count > 0 ? (data.totalPerc / data.count).toFixed(1) : 0;
@@ -1073,12 +1073,12 @@ function renderCharts(branchSummary, attendance) {
 
     if (attendanceTrendChartInstance) attendanceTrendChartInstance.destroy();
     if (branchDistChartInstance) branchDistChartInstance.destroy();
-    
+
     // 1. Doughnut Chart (Branch Distribution)
     const ctxBranch = document.getElementById('branchDistChart').getContext('2d');
     const branches = Object.keys(branchSummary);
     const branchCounts = branches.map(b => branchSummary[b].count);
-    
+
     branchDistChartInstance = new Chart(ctxBranch, {
         type: 'doughnut',
         data: {
@@ -1105,15 +1105,15 @@ function renderCharts(branchSummary, attendance) {
     const dateMap = {};
     attendance.forEach(r => {
         const d = new Date(r.date).toISOString().split('T')[0];
-        if(!dateMap[d]) dateMap[d] = { total: 0, present: 0 };
+        if (!dateMap[d]) dateMap[d] = { total: 0, present: 0 };
         dateMap[d].total++;
-        if(r.dailyStatus === 'present') dateMap[d].present++;
+        if (r.dailyStatus === 'present') dateMap[d].present++;
     });
-    
+
     const sortedDates = Object.keys(dateMap).sort().slice(-7);
     const trendData = sortedDates.map(d => Math.round((dateMap[d].present / dateMap[d].total) * 100));
     const labels = sortedDates.map(d => d.substring(5)); // Format as MM-DD
-    
+
     const ctxTrend = document.getElementById('attendanceTrendChart').getContext('2d');
     attendanceTrendChartInstance = new Chart(ctxTrend, {
         type: 'line',
@@ -1154,7 +1154,7 @@ function openBulkEmailModal(mode) {
     const subject = document.getElementById('bulkEmailSubject');
     const body = document.getElementById('bulkEmailBody');
     const listContainer = document.getElementById('bulkEmailRecipientList');
-    
+
     // Reset Select All
     const selectAllCb = document.getElementById('bulkEmailSelectAll');
     if (selectAllCb) selectAllCb.checked = true;
@@ -1168,7 +1168,7 @@ function openBulkEmailModal(mode) {
         badge.style.color = '#f59e0b';
         subject.value = 'Important: Attendance Warning';
         body.value = 'Dear {name},\n\nYour current attendance is {attendance}%, which is below the required threshold of 60%. Please ensure you attend upcoming classes regularly to avoid detention.\n\nRegards,\nAdmin';
-        
+
         students.forEach(s => {
             let perc = s.computedPercentage !== undefined ? s.computedPercentage : 100;
             if (perc < 60) {
@@ -1190,7 +1190,7 @@ function openBulkEmailModal(mode) {
         });
     }
 
-    if(targetsHtml === '') {
+    if (targetsHtml === '') {
         listContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 12px; font-style: italic;">No students match this criteria.</div>';
     } else {
         listContainer.innerHTML = targetsHtml;
@@ -1211,10 +1211,10 @@ function closeBulkEmailModal() {
 
 async function sendBulkEmail() {
     if (!currentEmailCohort) return;
-    
+
     const subject = document.getElementById('bulkEmailSubject').value.trim();
     const bodyTemplate = document.getElementById('bulkEmailBody').value.trim();
-    
+
     if (!subject || !bodyTemplate) {
         alert("Please provide both subject and message body.");
         return;
@@ -1234,10 +1234,10 @@ async function sendBulkEmail() {
     // Identify Targets from checked boxes
     let targets = [];
     checkboxes.forEach(cb => {
-        targets.push({ 
-            name: cb.getAttribute('data-name'), 
-            email: cb.getAttribute('data-email') || '', 
-            attendance: cb.getAttribute('data-perc') 
+        targets.push({
+            name: cb.getAttribute('data-name'),
+            email: cb.getAttribute('data-email') || '',
+            attendance: cb.getAttribute('data-perc')
         });
     });
 
@@ -1287,7 +1287,7 @@ const dashStudentItemsPerPage = 50;
 function openStudentListModal(threshold) {
     const branchSelect = document.getElementById('dashStudentListBranch');
     const thresholdSelect = document.getElementById('dashStudentListThreshold');
-    
+
     // Populate branch select dynamically
     branchSelect.innerHTML = '<option value="ALL BRANCHES">All Branches</option>';
     let branches = new Set();
@@ -1309,16 +1309,16 @@ function closeStudentListModal() {
 function checkDashStudentInfiniteScroll() {
     const container = document.getElementById('dashStudentScrollContainer');
     if (!container) return;
-    
+
     // Check if scrolled to bottom (within 50px)
     if (container.scrollTop + container.clientHeight >= container.scrollHeight - 50) {
         // Prevent multiple simultaneous triggers by checking if we have more pages
         const branchFilter = document.getElementById('dashStudentListBranch').value;
         const thresholdFilter = document.getElementById('dashStudentListThreshold').value;
         let students = window.dashboardStudents || [];
-        
+
         if (branchFilter !== 'ALL BRANCHES') students = students.filter(s => s.branch === branchFilter);
-        
+
         let validCount = 0;
         students.forEach(s => {
             let perc = s.computedPercentage !== undefined ? s.computedPercentage : -1;
@@ -1343,7 +1343,7 @@ function renderDashStudentList(resetPage = true) {
     const branchFilter = document.getElementById('dashStudentListBranch').value;
     const thresholdFilter = document.getElementById('dashStudentListThreshold').value;
     const tbody = document.getElementById('dashStudentListBody');
-    
+
     if (resetPage) {
         tbody.innerHTML = '';
         const container = document.getElementById('dashStudentScrollContainer');
@@ -1351,7 +1351,7 @@ function renderDashStudentList(resetPage = true) {
     }
 
     let students = window.dashboardStudents || [];
-    
+
     if (branchFilter !== 'ALL BRANCHES') {
         students = students.filter(s => s.branch === branchFilter);
     }
@@ -1360,22 +1360,22 @@ function renderDashStudentList(resetPage = true) {
     let filteredStudents = [];
     students.forEach(s => {
         let perc = s.computedPercentage !== undefined ? s.computedPercentage : -1;
-        
+
         let status = 'GOOD';
-        let statusClass = 'status-active'; 
-        
+        let statusClass = 'status-active';
+
         if (perc === -1) {
             status = 'NO DATA';
             statusClass = 'status-inactive';
-        } else if (perc >= 75) { 
-            status = 'EXCELLENT'; 
-            statusClass = 'status-active'; 
-        } else if (perc < 30) { 
-            status = 'DETAINED'; 
-            statusClass = 'status-inactive'; 
-        } else if (perc < 60) { 
-            status = 'AT RISK'; 
-            statusClass = 'status-inactive'; 
+        } else if (perc >= 75) {
+            status = 'EXCELLENT';
+            statusClass = 'status-active';
+        } else if (perc < 30) {
+            status = 'DETAINED';
+            statusClass = 'status-inactive';
+        } else if (perc < 60) {
+            status = 'AT RISK';
+            statusClass = 'status-inactive';
         }
 
         if (thresholdFilter === 'EXCELLENT' && perc < 75) return;
@@ -1404,9 +1404,9 @@ function renderDashStudentList(resetPage = true) {
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
         tr.onclick = () => openAttendanceDetailModal(s.enrollmentNo || s._id, s.name);
-        
+
         const percDisplay = perc === -1 ? 'N/A' : `${perc.toFixed(1)}%`;
-        
+
         // Use standard table cell rendering
         tr.innerHTML = `
             <td>${s.name}</td>
@@ -1423,7 +1423,7 @@ function renderDashStudentList(resetPage = true) {
 async function openAttendanceDetailModal(enrollmentNo, studentName) {
     document.getElementById('dashAttendanceDetailTitle').textContent = `Attendance Details - ${studentName}`;
     document.getElementById('dashAttendanceDetailModal').style.display = 'flex';
-    
+
     // Set loading states
     document.getElementById('dashDetailTotal').textContent = '...';
     document.getElementById('dashDetailPresent').textContent = '...';
@@ -1432,7 +1432,7 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
 
     try {
         let baseUrl = typeof GET_STUDENT_ATTENDANCE_DATES === 'function' ? GET_STUDENT_ATTENDANCE_DATES(enrollmentNo) : `/api/attendance/student/${encodeURIComponent(enrollmentNo)}/dates`;
-        
+
         // Calculate date filters
         const period = document.getElementById('dashboardPeriodFilter')?.value || 'today';
         let startDate, endDate;
@@ -1454,7 +1454,7 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
 
         const res = await fetch(url);
         const data = await res.json();
-        
+
         if (!data.success) {
             console.error("Failed to fetch student dates");
             return;
@@ -1475,16 +1475,16 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
         const redirectToHistory = async (dateToHighlight) => {
             document.getElementById('dashAttendanceDetailModal').style.display = 'none';
             if (typeof switchSection === 'function') switchSection('attendance');
-            
+
             if (typeof showStudentAttendance === 'function') {
                 await showStudentAttendance(enrollmentNo, studentName);
-                
+
                 if (dateToHighlight) {
                     const dateStr = new Date(dateToHighlight).toLocaleDateString();
                     setTimeout(() => {
                         const modal = document.getElementById('attendanceModalBody');
                         if (!modal) return;
-                        
+
                         const rows = modal.querySelectorAll('tr[onclick^="showDayDetails"]');
                         for (let row of rows) {
                             if (row.cells && row.cells[0] && row.cells[0].textContent.trim() === dateStr) {
@@ -1492,7 +1492,7 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
                                 row.style.transition = 'background-color 0.5s';
                                 row.style.backgroundColor = 'rgba(0, 151, 167, 0.4)';
                                 setTimeout(() => row.style.backgroundColor = '', 2000);
-                                
+
                                 // Expand lecture details automatically if it's not already expanded
                                 const idMatch = row.getAttribute('onclick').match(/showDayDetails\('([^']+)'\)/);
                                 if (idMatch) {
@@ -1526,17 +1526,17 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
 
         // Render the chart logic
         if (typeof Chart === 'undefined') return;
-        
+
         if (dashDetailChartInstance) dashDetailChartInstance.destroy();
-        
+
         // Take last 7 days of records, sort ascending for chart
         const recentRecords = records.slice(0, 7).reverse();
-        
+
         const trendData = recentRecords.map(r => r.percentage !== undefined ? r.percentage : (r.status === 'present' ? 100 : 0));
         const labels = recentRecords.map(r => new Date(r.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
 
         const ctx = document.getElementById('dashDetailChart').getContext('2d');
-        
+
         const style = getComputedStyle(document.body);
         const primaryColor = style.getPropertyValue('--primary-color') || '#0097a7';
         const dangerColor = style.getPropertyValue('--danger-color') || '#ef4444';
@@ -1554,7 +1554,7 @@ async function openAttendanceDetailModal(enrollmentNo, studentName) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: { 
+                scales: {
                     y: { beginAtZero: true, max: 100 }
                 },
                 onClick: (e, elements) => {
@@ -2005,11 +2005,11 @@ function renderTeachers(teachersToRender) {
             <td>${teacher.department}</td>
             <td>
                 ${(() => {
-                    const subs = teacher.subjects?.length ? teacher.subjects : (teacher.subject ? [teacher.subject] : []);
-                    return subs.length
-                        ? subs.map(s => `<span style="display:inline-block;background:rgba(0,217,255,0.12);color:var(--primary);border-radius:10px;padding:2px 8px;font-size:11px;margin:2px">${s}</span>`).join('')
-                        : '<span style="color:var(--text-secondary)">N/A</span>';
-                })()}
+                const subs = teacher.subjects?.length ? teacher.subjects : (teacher.subject ? [teacher.subject] : []);
+                return subs.length
+                    ? subs.map(s => `<span style="display:inline-block;background:rgba(0,217,255,0.12);color:var(--primary);border-radius:10px;padding:2px 8px;font-size:11px;margin:2px">${s}</span>`).join('')
+                    : '<span style="color:var(--text-secondary)">N/A</span>';
+            })()}
             </td>
             <td>${formatDate(teacher.dob)}</td>
             <td>
@@ -2096,7 +2096,7 @@ async function showAddTeacherModal() {
     try {
         const r = await calApiFetch(GET_SUBJECTS);
         if (r.success) allSubjects = r.subjects || [];
-    } catch (_) {}
+    } catch (_) { }
 
     const subjectOptions = allSubjects.map(s =>
         `<option value="${s.subjectName}">${s.subjectName} (${s.branch} Sem ${s.semester})</option>`
@@ -2134,15 +2134,15 @@ async function showAddTeacherModal() {
                     <small style="color:var(--text-secondary);font-weight:normal">  hold Ctrl/Cmd to select multiple</small>
                 </label>
                 ${allSubjects.length > 0
-                    ? `<select id="teacherSubjectsSelect" class="form-select" multiple size="5" style="height:auto">
+            ? `<select id="teacherSubjectsSelect" class="form-select" multiple size="5" style="height:auto">
                         ${subjectOptions}
                        </select>
                        <small style="color:var(--text-secondary);margin-top:4px;display:block">
                            Or type manually: <input type="text" id="teacherSubjectManual" class="form-input" style="margin-top:6px" placeholder="e.g. Mathematics, Physics">
                        </small>`
-                    : `<input type="text" name="subject" id="teacherSubjectManual" class="form-input" placeholder="e.g., Data Structures, Mathematics" required>
+            : `<input type="text" name="subject" id="teacherSubjectManual" class="form-input" placeholder="e.g., Data Structures, Mathematics" required>
                        <small style="color:var(--text-secondary)">No subjects configured yet  type manually (comma separated)</small>`
-                }
+        }
             </div>
             <div class="form-group">
                 <label>Date of Birth *</label>
@@ -2198,11 +2198,11 @@ async function handleAddTeacher(e) {
     teacherData.canEditTimetable = formData.has('canEditTimetable');
 
     // Collect subjects from multi-select + manual input
-    const selectEl  = document.getElementById('teacherSubjectsSelect');
-    const manualEl  = document.getElementById('teacherSubjectManual');
-    const selected  = selectEl  ? Array.from(selectEl.selectedOptions).map(o => o.value) : [];
-    const manual    = manualEl  ? manualEl.value.split(',').map(s => s.trim()).filter(Boolean) : [];
-    const subjects  = [...new Set([...selected, ...manual])];
+    const selectEl = document.getElementById('teacherSubjectsSelect');
+    const manualEl = document.getElementById('teacherSubjectManual');
+    const selected = selectEl ? Array.from(selectEl.selectedOptions).map(o => o.value) : [];
+    const manual = manualEl ? manualEl.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const subjects = [...new Set([...selected, ...manual])];
 
     if (subjects.length === 0) {
         showNotification('Please select or enter at least one subject.', 'error');
@@ -2210,7 +2210,7 @@ async function handleAddTeacher(e) {
     }
 
     teacherData.subjects = subjects;
-    teacherData.subject  = subjects[0]; // keep legacy field as first subject
+    teacherData.subject = subjects[0]; // keep legacy field as first subject
     delete teacherData.photoData; // handled separately below
 
     // Upload photo to server if captured
@@ -2627,14 +2627,14 @@ function renderClassrooms(classroomsToRender) {
     const tbody = document.getElementById('classroomsTableBody');
     tbody.innerHTML = classroomsToRender.map((classroom, index) => {
         // Display all BSSIDs from array
-        const bssids = classroom.wifiBSSIDs && classroom.wifiBSSIDs.length > 0 
-            ? classroom.wifiBSSIDs 
+        const bssids = classroom.wifiBSSIDs && classroom.wifiBSSIDs.length > 0
+            ? classroom.wifiBSSIDs
             : [];
-        
+
         const bssidDisplay = bssids.length > 0
             ? bssids.map(b => `<code class="bssid-code">${b}</code>`).join('<br>')
             : '<span style="color: var(--text-secondary);">N/A</span>';
-        
+
         return `
         <tr>
             <td>${classroom.roomNumber}</td>
@@ -2697,7 +2697,7 @@ function showAddClassroomModal() {
 async function handleAddClassroom(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     // Collect all BSSID inputs
     const wifiBSSIDs = [];
     let index = 0;
@@ -3160,7 +3160,7 @@ async function applyCurrentPeriodDot() {
     document.querySelectorAll('.tt-cell-live').forEach(el => el.classList.remove('tt-cell-live'));
 
     try {
-        const res  = await fetch(GET_TIMETABLE_CURRENT_PERIOD);
+        const res = await fetch(GET_TIMETABLE_CURRENT_PERIOD);
         if (!res.ok) return;
         const data = await res.json();
         if (!data.success || !data.active?.length) return;
@@ -3174,20 +3174,20 @@ async function applyCurrentPeriodDot() {
         if (!match) return;
 
         // Days shown in the grid (0-based row index, skipping header row)
-        const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayRowIdx = dayNames.indexOf(match.day); // 0=Sun … 6=Sat
         if (dayRowIdx === -1) return;
 
         const cellId = `cell-${dayRowIdx}-${match.periodIdx}`;
-        const cell   = document.getElementById(cellId);
+        const cell = document.getElementById(cellId);
         if (!cell) return;
 
         cell.classList.add('tt-cell-live');
 
         const dot = document.createElement('div');
         dot.className = 'tt-live-dot';
-        dot.title     = `Now: ${match.subject} (${match.startTime}–${match.endTime})`;
+        dot.title = `Now: ${match.subject} (${match.startTime}–${match.endTime})`;
         cell.appendChild(dot);
     } catch (_) { /* silent — timetable still works without the dot */ }
 }
@@ -4219,7 +4219,7 @@ function addBSSIDField() {
 function removeBSSIDField(button) {
     const fieldGroup = button.parentElement;
     fieldGroup.remove();
-    
+
     // Reindex remaining fields
     const container = document.getElementById('bssidContainer');
     const inputs = container.querySelectorAll('input[name^="wifiBSSID_"]');
@@ -4233,16 +4233,16 @@ async function editStudent(id) {
     try {
         console.log(' Edit student called with ID:', id);
         console.log(' Available students:', students.length);
-        
+
         const student = students.find(s => s._id === id || s.enrollmentNo === id);
-        
+
         if (!student) {
             console.error(' Student not found with ID:', id);
             console.log('Available student IDs:', students.map(s => ({ _id: s._id, enrollmentNo: s.enrollmentNo })));
             showNotification('Student not found. Please refresh the page and try again.', 'error');
             return;
         }
-        
+
         console.log(' Found student:', student.name);
 
         // Get current photo
@@ -4423,7 +4423,7 @@ async function editTeacher(id) {
     try {
         const r = await calApiFetch(GET_SUBJECTS);
         if (r.success) allSubjects = r.subjects || [];
-    } catch (_) {}
+    } catch (_) { }
 
     // Existing subjects on this teacher (array or legacy single string)
     const existingSubjects = Array.isArray(teacher.subjects) && teacher.subjects.length > 0
@@ -4538,7 +4538,7 @@ async function editTeacher(id) {
         const selectEl = document.getElementById('teacherSubjectsSelect');
         const manualEl = document.getElementById('teacherSubjectManual');
         const selected = selectEl ? Array.from(selectEl.selectedOptions).map(o => o.value) : [];
-        const manual   = manualEl ? manualEl.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const manual = manualEl ? manualEl.value.split(',').map(s => s.trim()).filter(Boolean) : [];
         const subjects = [...new Set([...selected, ...manual])];
 
         if (subjects.length === 0) {
@@ -4547,7 +4547,7 @@ async function editTeacher(id) {
         }
 
         teacherData.subjects = subjects;
-        teacherData.subject  = subjects[0]; // keep legacy field
+        teacherData.subject = subjects[0]; // keep legacy field
 
         // Remove password if empty
         if (!teacherData.password) {
@@ -4616,8 +4616,8 @@ async function editClassroom(id) {
     }
 
     // Ensure wifiBSSIDs array exists
-    const bssids = classroom.wifiBSSIDs && classroom.wifiBSSIDs.length > 0 
-        ? classroom.wifiBSSIDs 
+    const bssids = classroom.wifiBSSIDs && classroom.wifiBSSIDs.length > 0
+        ? classroom.wifiBSSIDs
         : [''];
 
     const modalBody = document.getElementById('modalBody');
@@ -4660,7 +4660,7 @@ async function editClassroom(id) {
     document.getElementById('editClassroomForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        
+
         // Collect all BSSID inputs
         const wifiBSSIDs = [];
         let index = 0;
@@ -5093,7 +5093,7 @@ async function showStudentAttendance(studentId, studentName) {
 
     // Track open modal for live refresh
     _openAttendanceEnrollmentNo = studentId;
-    _openAttendanceStudentName  = studentName;
+    _openAttendanceStudentName = studentName;
 
     modalBody.innerHTML = '<div class="loading">Loading attendance data...</div>';
     modal.classList.add('active');
@@ -5102,7 +5102,7 @@ async function showStudentAttendance(studentId, studentName) {
     // Trigger an immediate server-side sync for this student so data is fresh
     // (fire-and-forget — don't wait, modal will refresh via student_timer_sync event)
     fetch(GET_ATTENDANCE_RECORDS + '?studentId=' + studentId)
-        .catch(() => {});
+        .catch(() => { });
 
     try {
         // Fetch student details
@@ -5266,10 +5266,10 @@ async function showStudentAttendance(studentId, studentName) {
                                                     </thead>
                                                     <tbody>
                                                         ${record.lectures.map((lec, idx) => {
-                                                            const attMin = Math.floor((lec.attended || 0) / 60);
-                                                            const totMin = Math.floor((lec.total || 0) / 60);
-                                                            const pct = lec.percentage || 0;
-                                                            return `
+                const attMin = Math.floor((lec.attended || 0) / 60);
+                const totMin = Math.floor((lec.total || 0) / 60);
+                const pct = lec.percentage || 0;
+                return `
                                                         <tr>
                                                             <td>${idx + 1}</td>
                                                             <td><strong>${lec.subject}</strong></td>
@@ -5281,7 +5281,7 @@ async function showStudentAttendance(studentId, studentName) {
                                                             <td><span class="status-badge ${lec.present ? 'status-present' : 'status-absent'}">${lec.present ? '✅ Present' : '❌ Absent'}</span></td>
                                                         </tr>
                                                         `;
-                                                        }).join('')}
+            }).join('')}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -5309,7 +5309,7 @@ function closeAttendanceModal() {
     document.getElementById('attendanceModal').style.display = '';
     // Clear live refresh tracking
     _openAttendanceEnrollmentNo = null;
-    _openAttendanceStudentName  = null;
+    _openAttendanceStudentName = null;
     clearTimeout(_attendanceModalRefreshTimer);
 }
 
@@ -6674,13 +6674,13 @@ let holidays = [];
 let academicEvents = [];
 
 //  Attendance filter state 
-let calFilterMode     = 'day';      // 'day' | 'subject'
+let calFilterMode = 'day';      // 'day' | 'subject'
 let calFilterSemester = '';
-let calFilterBranch   = '';
-let calFilterSubject  = '';
-let calSubjectList    = [];
-let calActiveDates    = new Set();  // ISO midnight strings (subject mode)
-let calDayData        = {};         // dateKey  { present, absent, total } (day mode)
+let calFilterBranch = '';
+let calFilterSubject = '';
+let calSubjectList = [];
+let calActiveDates = new Set();  // ISO midnight strings (subject mode)
+let calDayData = {};         // dateKey  { present, absent, total } (day mode)
 let calCurrentPeriodIdx = 0;        // chevron index inside subject modal
 
 async function loadCalendar() {
@@ -6717,7 +6717,7 @@ function _subscribeCalendarLiveUpdates() {
                 }, 2000); // 2 second debounce
             }
         });
-    } catch (_) {}
+    } catch (_) { }
 }
 
 // Populate semester/branch dropdowns from existing dynamicData
@@ -6739,21 +6739,21 @@ async function calApiFetch(url, timeoutMs = 10000) {
 
 async function loadCalendarFilterDropdowns() {
     const semEl = document.getElementById('calSemesterFilter');
-    const brEl  = document.getElementById('calBranchFilter');
+    const brEl = document.getElementById('calBranchFilter');
     if (!semEl || !brEl) return;
 
     const config = await ensureConfigLoaded();
 
     semEl.innerHTML = '<option value="">All Semesters</option>' +
         (config.semesters || []).map(s => `<option value="${s}">Semester ${s}</option>`).join('');
-    brEl.innerHTML  = '<option value="">All Branches</option>' +
-        (config.branches  || []).map(b => `<option value="${b.value}">${b.label}</option>`).join('');
+    brEl.innerHTML = '<option value="">All Branches</option>' +
+        (config.branches || []).map(b => `<option value="${b.value}">${b.label}</option>`).join('');
 }
 
 // Load subject list for the selected semester+branch
 async function loadCalendarSubjects() {
     const sem = calFilterSemester;
-    const br  = calFilterBranch;
+    const br = calFilterBranch;
     if (!sem || !br) { calSubjectList = []; renderCalendarSubjectDropdown(); return; }
     try {
         const data = await calApiFetch(GET_ATTENDANCE_SUBJECTS);
@@ -6784,17 +6784,17 @@ function renderCalendarSubjectDropdown() {
 
 // Called when any filter changes
 async function onCalendarFilterChange() {
-    const semEl  = document.getElementById('calSemesterFilter');
-    const brEl   = document.getElementById('calBranchFilter');
+    const semEl = document.getElementById('calSemesterFilter');
+    const brEl = document.getElementById('calBranchFilter');
     const modeEl = document.getElementById('calModeFilter');
-    const subEl  = document.getElementById('calSubjectFilter');
+    const subEl = document.getElementById('calSubjectFilter');
 
     const prevSem = calFilterSemester;
-    const prevBr  = calFilterBranch;
+    const prevBr = calFilterBranch;
 
-    calFilterSemester = semEl  ? semEl.value  : '';
-    calFilterBranch   = brEl   ? brEl.value   : '';
-    calFilterMode     = modeEl ? modeEl.value : 'day';
+    calFilterSemester = semEl ? semEl.value : '';
+    calFilterBranch = brEl ? brEl.value : '';
+    calFilterMode = modeEl ? modeEl.value : 'day';
 
     if (subEl) subEl.style.display = calFilterMode === 'subject' ? 'inline-block' : 'none';
 
@@ -6829,7 +6829,7 @@ async function fetchCalendarDayData() {
                 const key = new Date(r.date).toDateString();
                 if (!calDayData[key]) calDayData[key] = { present: 0, absent: 0, total: 0 };
                 if (r.status === 'present') calDayData[key].present++;
-                else                        calDayData[key].absent++;
+                else calDayData[key].absent++;
                 calDayData[key].total++;
             });
         }
@@ -6901,36 +6901,36 @@ function getDefaultHolidays() {
 }
 
 function renderCalendar() {
-    const calendar  = document.getElementById('adminCalendar');
+    const calendar = document.getElementById('adminCalendar');
     const monthYear = document.getElementById('calendarMonthYear');
     if (!calendar || !monthYear) return;
 
-    const year  = currentCalendarDate.getFullYear();
+    const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
-    const monthNames = ['January','February','March','April','May','June',
-                        'July','August','September','October','November','December'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
     monthYear.textContent = `${monthNames[month]} ${year}`;
 
-    const firstDay    = new Date(year, month, 1);
+    const firstDay = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startDow    = firstDay.getDay();
+    const startDow = firstDay.getDay();
 
     let html = '<div class="calendar-grid">';
-    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
         html += `<div class="calendar-day-header">${d}</div>`;
     });
     for (let i = 0; i < startDow; i++) html += '<div class="calendar-cell empty"></div>';
 
     for (let day = 1; day <= daysInMonth; day++) {
-        const date    = new Date(year, month, day);
+        const date = new Date(year, month, day);
         const dateStr = date.toDateString();
-        const today   = new Date().toDateString() === dateStr;
+        const today = new Date().toDateString() === dateStr;
         const holiday = holidays.find(h => new Date(h.date).toDateString() === dateStr);
-        const isSun   = date.getDay() === 0;
+        const isSun = date.getDay() === 0;
 
         // Determine if this date is "active" under current filter
         let isActive = false;
-        let badge    = '';
+        let badge = '';
         if (calFilterMode === 'day' && calFilterSemester && calFilterBranch) {
             const stats = calDayData[dateStr];
             if (stats) {
@@ -6938,7 +6938,7 @@ function renderCalendar() {
                 badge = `<div class="cal-badge">${stats.total}</div>`;
             }
         } else if (calFilterMode === 'subject' && calFilterSubject) {
-            const midnight = new Date(date); midnight.setHours(0,0,0,0);
+            const midnight = new Date(date); midnight.setHours(0, 0, 0, 0);
             if (calActiveDates.has(midnight.toISOString())) {
                 isActive = true;
                 badge = `<div class="cal-badge cal-badge-subject"></div>`;
@@ -6951,7 +6951,7 @@ function renderCalendar() {
             <div class="calendar-date">${day}</div>
             ${holiday ? `
                 <div class="calendar-event" style="background:${holiday.color}">${holiday.name}</div>
-                <button class="cal-edit-btn" onclick="event.stopPropagation();editHoliday(${JSON.stringify(holiday).replace(/"/g,'&quot;')})" title="Edit holiday"></button>
+                <button class="cal-edit-btn" onclick="event.stopPropagation();editHoliday(${JSON.stringify(holiday).replace(/"/g, '&quot;')})" title="Edit holiday"></button>
             ` : badge}
         </div>`;
     }
@@ -7006,7 +7006,7 @@ function nextMonth() {
 
 // Unified date click handler
 async function selectCalendarDate(dateStr) {
-    const date    = new Date(dateStr);
+    const date = new Date(dateStr);
     const holiday = holidays.find(h => new Date(h.date).toDateString() === dateStr);
 
     // If semester+branch filters are active  always show attendance modal
@@ -7028,7 +7028,7 @@ function selectDate(dateStr) { selectCalendarDate(dateStr); }
 
 //  Day-mode modal 
 async function showDayAttendanceModal(date) {
-    const dateStr   = date.toISOString().split('T')[0];
+    const dateStr = date.toISOString().split('T')[0];
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `<h2> ${date.toDateString()}</h2><p style="color:var(--text-secondary)">Loading</p>`;
     openModal();
@@ -7055,18 +7055,18 @@ async function showDayAttendanceModal(date) {
 
 function renderDayModal(date, students) {
     const modalBody = document.getElementById('modalBody');
-    const present   = students.filter(s => s.status === 'present').length;
-    const absent    = students.filter(s => s.status === 'absent').length;
-    const pct       = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
-    const barColor  = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+    const present = students.filter(s => s.status === 'present').length;
+    const absent = students.filter(s => s.status === 'absent').length;
+    const pct = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
+    const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
     window._calModalStudents = students;
-    window._calModalDate     = date;
+    window._calModalDate = date;
 
     modalBody.innerHTML = `
         <div class="cal-modal-header">
             <div>
-                <div class="cal-modal-title"> ${date.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+                <div class="cal-modal-title"> ${date.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 <div class="cal-modal-sub">Sem ${calFilterSemester}  ${calFilterBranch}</div>
             </div>
         </div>
@@ -7105,12 +7105,12 @@ function renderDayModal(date, students) {
         <!-- Student cards -->
         <div class="cal-student-grid">
             ${students.map((s, i) => {
-                const lc = s.lectures?.length || 0;
-                const sp = s.lectures?.filter(l => l.status === 'present').length || 0;
-                const isP = s.status === 'present';
-                return `
+        const lc = s.lectures?.length || 0;
+        const sp = s.lectures?.filter(l => l.status === 'present').length || 0;
+        const isP = s.status === 'present';
+        return `
                 <div class="cal-student-card ${isP ? 'present' : 'absent'}" onclick="showStudentLectureDetail(${i},'day')">
-                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.name||'?')[0].toUpperCase()}</div>
+                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.name || '?')[0].toUpperCase()}</div>
                     <div class="cal-sc-info">
                         <div class="cal-sc-name">${s.name || s.studentName || 'Unknown'}</div>
                         <div class="cal-sc-id">${s.enrollmentNo || ''}</div>
@@ -7118,26 +7118,26 @@ function renderDayModal(date, students) {
                     </div>
                     <div class="cal-sc-badge ${isP ? 'present' : 'absent'}">${isP ? '' : ''}</div>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>`;
 }
 
 function showStudentLectureDetail(idx, mode) {
     const students = window._calModalStudents;
     if (!students || !students[idx]) return;
-    const s        = students[idx];
+    const s = students[idx];
     const lectures = s.lectures || [];
     const modalBody = document.getElementById('modalBody');
-    const pLec     = lectures.filter(l => l.status === 'present').length;
-    const pct      = lectures.length > 0 ? Math.round((pLec / lectures.length) * 100) : (s.status === 'present' ? 100 : 0);
+    const pLec = lectures.filter(l => l.status === 'present').length;
+    const pct = lectures.length > 0 ? Math.round((pLec / lectures.length) * 100) : (s.status === 'present' ? 100 : 0);
     const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
-    const backFn   = mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)';
+    const backFn = mode === 'subject' ? 'renderSubjectModal(window._calModalDate)' : 'renderDayModal(window._calModalDate, window._calModalStudents)';
     const enrollmentNo = s.enrollmentNo || s.studentId || '';
 
     const renderDetail = () => {
         // Build period bubbles  P1 to P8 (or however many periods exist in the timetable)
         // Determine max period number from lectures or default to 8
-        const maxPeriod = Math.max(8, ...lectures.map(l => parseInt((l.period || 'P0').replace('P','')) || 0));
+        const maxPeriod = Math.max(8, ...lectures.map(l => parseInt((l.period || 'P0').replace('P', '')) || 0));
         const periodSlots = Array.from({ length: maxPeriod }, (_, i) => {
             const pid = `P${i + 1}`;
             const lec = lectures.find(l => l.period === pid);
@@ -7149,9 +7149,9 @@ function showStudentLectureDetail(idx, mode) {
                 <div style="font-size:11px;color:var(--text-secondary);margin-bottom:10px">Periods</div>
                 <div class="cal-subject-bubbles">
                     ${periodSlots.map(({ pid, lec }) => {
-                        if (!lec) {
-                            // Empty ghost bubble  period not in timetable or no data
-                            return `
+            if (!lec) {
+                // Empty ghost bubble  period not in timetable or no data
+                return `
                             <div class="cal-bubble-wrap" title="${pid}: No class">
                                 <svg viewBox="0 0 36 36" class="cal-bubble-svg">
                                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2.5"/>
@@ -7160,12 +7160,12 @@ function showStudentLectureDetail(idx, mode) {
                                     <div style="font-size:9px;color:rgba(255,255,255,0.2);font-weight:600">${pid}</div>
                                 </div>
                             </div>`;
-                        }
-                        const isPresent = lec.status === 'present';
-                        const c = isPresent ? '#10b981' : '#ef4444';
-                        const dash = isPresent ? 100 : 0; // full ring if present, empty if absent
-                        const shortName = (lec.subject || '').length > 5 ? (lec.subject || '').substring(0, 4) + '' : (lec.subject || pid);
-                        return `
+            }
+            const isPresent = lec.status === 'present';
+            const c = isPresent ? '#10b981' : '#ef4444';
+            const dash = isPresent ? 100 : 0; // full ring if present, empty if absent
+            const shortName = (lec.subject || '').length > 5 ? (lec.subject || '').substring(0, 4) + '' : (lec.subject || pid);
+            return `
                         <div class="cal-bubble-wrap" title="${pid}: ${lec.subject || ''} (${isPresent ? 'Present' : 'Absent'})">
                             <svg viewBox="0 0 36 36" class="cal-bubble-svg">
                                 <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="2.5"/>
@@ -7177,7 +7177,7 @@ function showStudentLectureDetail(idx, mode) {
                                 <div class="cal-bubble-pct" style="color:${c}">${pid}</div>
                             </div>
                         </div>`;
-                    }).join('')}
+        }).join('')}
                 </div>
             </div>`;
 
@@ -7186,7 +7186,7 @@ function showStudentLectureDetail(idx, mode) {
                 <button class="btn btn-sm btn-secondary" onclick="${backFn}" style="flex-shrink:0"> Back</button>
                 <div>
                     <div class="cal-modal-title">${s.name || s.studentName || 'Unknown'}</div>
-                    <div class="cal-modal-sub">${enrollmentNo}  ${window._calModalDate?.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) || ''}</div>
+                    <div class="cal-modal-sub">${enrollmentNo}  ${window._calModalDate?.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) || ''}</div>
                 </div>
             </div>
 
@@ -7226,7 +7226,7 @@ function showStudentLectureDetail(idx, mode) {
                                 <div class="cal-lt-subject">${l.subject || 'Unknown Subject'}</div>
                                 <div class="cal-lt-meta">
                                     ${l.teacher ? `<span> ${l.teacher}</span>` : ''}
-                                    ${l.room    ? `<span> ${l.room}</span>` : ''}
+                                    ${l.room ? `<span> ${l.room}</span>` : ''}
                                     ${l.verificationType ? `<span class="cal-verify-badge">${l.verificationType}</span>` : ''}
                                 </div>
                             </div>
@@ -7245,7 +7245,7 @@ function showStudentLectureDetail(idx, mode) {
 let calSubjectModalData = null;   // { students, allPeriods }
 
 async function showSubjectAttendanceModal(date) {
-    const dateStr   = date.toISOString().split('T')[0];
+    const dateStr = date.toISOString().split('T')[0];
     const modalBody = document.getElementById('modalBody');
     modalBody.innerHTML = `<h2> ${calFilterSubject}  ${date.toDateString()}</h2><p style="color:var(--text-secondary)">Loading</p>`;
     openModal();
@@ -7260,16 +7260,18 @@ async function showSubjectAttendanceModal(date) {
                 </p>`;
             return;
         }
-        calSubjectModalData  = data;
-        calCurrentPeriodIdx  = 0;
+        calSubjectModalData = data;
+        calCurrentPeriodIdx = 0;
         window._calModalDate = date;
         window._calModalStudents = data.students.map(s => ({
             ...s,
             name: s.studentName,
             lectures: (data.allPeriods || []).map((p, i) => {
                 const pr = s.periods?.[i];
-                return { period: p, subject: calFilterSubject, status: pr?.status || 'absent',
-                         verificationType: pr?.verificationType, room: pr?.room, teacher: pr?.teacher };
+                return {
+                    period: p, subject: calFilterSubject, status: pr?.status || 'absent',
+                    verificationType: pr?.verificationType, room: pr?.room, teacher: pr?.teacher
+                };
             })
         }));
         renderSubjectModal(date);
@@ -7285,15 +7287,15 @@ async function showSubjectAttendanceModal(date) {
 function renderSubjectModal(date) {
     if (!calSubjectModalData) return;
     const { students, allPeriods } = calSubjectModalData;
-    const period    = allPeriods[calCurrentPeriodIdx];
+    const period = allPeriods[calCurrentPeriodIdx];
     const modalBody = document.getElementById('modalBody');
     const dateLabel = (date || window._calModalDate)
-        ? (date || window._calModalDate).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})
+        ? (date || window._calModalDate).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
         : '';
 
     const present = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'present').length;
-    const absent  = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'absent').length;
-    const pct     = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
+    const absent = students.filter(s => s.periods?.[calCurrentPeriodIdx]?.status === 'absent').length;
+    const pct = students.length > 0 ? Math.round((present / students.length) * 100) : 0;
     const barColor = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
 
     const prevDisabled = calCurrentPeriodIdx === 0 ? 'disabled' : '';
@@ -7348,12 +7350,12 @@ function renderSubjectModal(date) {
         <!-- Student cards -->
         <div class="cal-student-grid">
             ${students.map((s, i) => {
-                const pr  = s.periods?.[calCurrentPeriodIdx];
-                const st  = pr?.status || 'absent';
-                const isP = st === 'present';
-                return `
+        const pr = s.periods?.[calCurrentPeriodIdx];
+        const st = pr?.status || 'absent';
+        const isP = st === 'present';
+        return `
                 <div class="cal-student-card ${isP ? 'present' : 'absent'}" onclick="showStudentLectureDetail(${i},'subject')">
-                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.studentName||'?')[0].toUpperCase()}</div>
+                    <div class="cal-sc-avatar ${isP ? 'present' : 'absent'}">${(s.studentName || '?')[0].toUpperCase()}</div>
                     <div class="cal-sc-info">
                         <div class="cal-sc-name">${s.studentName || 'Unknown'}</div>
                         <div class="cal-sc-id">${s.enrollmentNo || ''}</div>
@@ -7361,7 +7363,7 @@ function renderSubjectModal(date) {
                     </div>
                     <div class="cal-sc-badge ${isP ? 'present' : 'absent'}">${isP ? '' : ''}</div>
                 </div>`;
-            }).join('')}
+    }).join('')}
         </div>`;
 }
 
@@ -7379,7 +7381,7 @@ async function backfillTimetableHistory() {
     try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 60000);
-        const res  = await fetch(POST_TIMETABLE_HISTORY_BACKFILL, {
+        const res = await fetch(POST_TIMETABLE_HISTORY_BACKFILL, {
             method: 'POST', signal: controller.signal
         });
         clearTimeout(timer);
@@ -7404,7 +7406,7 @@ async function runDbMigration() {
     try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 120000);
-        const res  = await fetch(POST_DB_MIGRATE, { method: 'POST', signal: controller.signal });
+        const res = await fetch(POST_DB_MIGRATE, { method: 'POST', signal: controller.signal });
         clearTimeout(timer);
         const data = await res.json();
         if (data.success) {
@@ -7431,7 +7433,7 @@ async function runAttendanceResync() {
     try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 120000);
-        const res  = await fetch(POST_DB_RESYNC_ATTENDANCE, { method: 'POST', signal: controller.signal });
+        const res = await fetch(POST_DB_RESYNC_ATTENDANCE, { method: 'POST', signal: controller.signal });
         clearTimeout(timer);
         const data = await res.json();
         if (data.success) {
@@ -7929,41 +7931,41 @@ function calculateDuration(startTime, endTime) {
 // Helper function to setup time input with better UX
 function setupTimeInput(input) {
     if (!input) return;
-    
+
     // Handle keyboard input for better time entry
-    input.addEventListener('keydown', function(e) {
+    input.addEventListener('keydown', function (e) {
         const value = this.value;
-        
+
         // Allow navigation keys
         if (['Tab', 'ArrowLeft', 'ArrowRight', 'Backspace', 'Delete'].includes(e.key)) {
             return;
         }
-        
+
         // Only allow numbers and colon
         if (!/[0-9:]/.test(e.key)) {
             e.preventDefault();
             return;
         }
     });
-    
+
     // Auto-format time input
-    input.addEventListener('input', function(e) {
+    input.addEventListener('input', function (e) {
         let value = this.value.replace(/[^0-9]/g, '');
-        
+
         if (value.length >= 2) {
             const hours = value.substring(0, 2);
             const minutes = value.substring(2, 4);
-            
+
             // Validate hours (00-23)
             if (parseInt(hours) > 23) {
                 value = '23' + minutes;
             }
-            
+
             // Validate minutes (00-59)
             if (minutes && parseInt(minutes) > 59) {
                 value = hours + '59';
             }
-            
+
             // Format as HH:MM
             if (value.length > 2) {
                 this.value = value.substring(0, 2) + ':' + value.substring(2, 4);
@@ -7972,9 +7974,9 @@ function setupTimeInput(input) {
             }
         }
     });
-    
+
     // Handle blur to ensure proper format
-    input.addEventListener('blur', function() {
+    input.addEventListener('blur', function () {
         if (this.value && this.value.length < 5) {
             // Pad with zeros if incomplete
             const parts = this.value.split(':');
@@ -8732,11 +8734,11 @@ function renderStudentOverviewModal(student, summary, dates) {
         const date = new Date(d.date);
         const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
         const attendedSec = Number(d.attended) || 0;  // now in minutes
-        const totalSec    = Number(d.total)    || 0;  // now in minutes
+        const totalSec = Number(d.total) || 0;  // now in minutes
         const attendedMin = attendedSec;  // already minutes
-        const totalMin    = totalSec;     // already minutes
-        const pct         = Number(d.percentage) || (d.status === 'present' ? 100 : 0);
-        const timeStr     = totalMin > 0 ? `${attendedMin}/${totalMin} min` : (d.status === 'present' ? 'Present' : '');
+        const totalMin = totalSec;     // already minutes
+        const pct = Number(d.percentage) || (d.status === 'present' ? 100 : 0);
+        const timeStr = totalMin > 0 ? `${attendedMin}/${totalMin} min` : (d.status === 'present' ? 'Present' : '');
 
         return `
                     <div class="date-card" onclick="viewDateDetails('${student.enrollmentNo}', '${d.date}', '${student.name}')">
@@ -8780,7 +8782,7 @@ function renderDateDetailsModal(enrollmentNo, studentName, record) {
     const date = new Date(record.date);
     const dateStr = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
     const attendedMin = Number(record.totalAttended) || 0;   // already minutes
-    const totalMin    = Number(record.totalClassTime) || 0;  // already minutes
+    const totalMin = Number(record.totalClassTime) || 0;  // already minutes
 
     modalBody.innerHTML = `
         <div class="attendance-detail-header">
@@ -9550,15 +9552,15 @@ function debounce(func, wait) {
 }
 
 // Initialize attendance history when section is shown
-    // Show instruction message when attendance section is clicked
-    const attendanceNavBtn = document.querySelector('[data-section="attendance"]');
-    if (attendanceNavBtn) {
-        attendanceNavBtn.addEventListener('click', () => {
-            setTimeout(() => {
-                // Show initial instruction if no data loaded
-                const tbody = document.getElementById('attendanceHistoryTableBody');
-                if (tbody && tbody.children.length === 0) {
-                    tbody.innerHTML = `
+// Show instruction message when attendance section is clicked
+const attendanceNavBtn = document.querySelector('[data-section="attendance"]');
+if (attendanceNavBtn) {
+    attendanceNavBtn.addEventListener('click', () => {
+        setTimeout(() => {
+            // Show initial instruction if no data loaded
+            const tbody = document.getElementById('attendanceHistoryTableBody');
+            if (tbody && tbody.children.length === 0) {
+                tbody.innerHTML = `
                         <tr>
                             <td colspan="9" style="text-align: center; padding: 60px;">
                                 <div style="font-size: 48px; margin-bottom: 20px;"></div>
@@ -9574,10 +9576,10 @@ function debounce(func, wait) {
                             </td>
                         </tr>
                     `;
-                }
-            }, 100);
-        });
-    }
+            }
+        }, 100);
+    });
+}
 
 
 
@@ -10225,7 +10227,7 @@ async function purgeOrphanSubjects() {
 
     try {
         showNotification('Purging ghost subjects...', 'info');
-        const res  = await fetch(POST_ADMIN_PURGE_ORPHAN_SUBJECTS, { method: 'POST' });
+        const res = await fetch(POST_ADMIN_PURGE_ORPHAN_SUBJECTS, { method: 'POST' });
         const data = await res.json();
         if (data.success) {
             const d = data.deleted;
@@ -12073,21 +12075,21 @@ function setupConfigListeners() {
 
 // Load config when config section is opened
 
-    // Load config when Settings section becomes active
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.target.id === 'settings-section' && mutation.target.classList.contains('active')) {
-                loadBranchesConfig();
-                loadSemestersConfig();
-                loadDepartmentsConfig();
-            }
-        });
+// Load config when Settings section becomes active
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.target.id === 'settings-section' && mutation.target.classList.contains('active')) {
+            loadBranchesConfig();
+            loadSemestersConfig();
+            loadDepartmentsConfig();
+        }
     });
+});
 
-    const settingsSection = document.getElementById('settings-section');
-    if (settingsSection) {
-        observer.observe(settingsSection, { attributes: true, attributeFilter: ['class'] });
-    }
+const settingsSection = document.getElementById('settings-section');
+if (settingsSection) {
+    observer.observe(settingsSection, { attributes: true, attributeFilter: ['class'] });
+}
 
 
 // ============================================
@@ -12098,13 +12100,13 @@ function setupConfigListeners() {
 async function loadPeriodReport() {
     try {
         console.log(' Loading period report...');
-        
+
         const date = document.getElementById('periodReportDate').value;
         const semester = document.getElementById('periodReportSemester').value;
         const branch = document.getElementById('periodReportBranch').value;
         const period = document.getElementById('periodReportPeriod').value;
         const search = document.getElementById('periodReportSearch').value.toLowerCase();
-        
+
         // Build query parameters
         const params = new URLSearchParams();
         if (date) params.append('date', date);
@@ -12112,21 +12114,21 @@ async function loadPeriodReport() {
         if (branch) params.append('branch', branch);
         if (period) params.append('period', period);
         params.append('limit', '100');
-        
+
         const response = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
         const data = await response.json();
-        
+
         if (data.success) {
             let records = data.records || [];
-            
+
             // Apply client-side search filter
             if (search) {
-                records = records.filter(r => 
+                records = records.filter(r =>
                     r.enrollmentNo.toLowerCase().includes(search) ||
                     r.studentName.toLowerCase().includes(search)
                 );
             }
-            
+
             renderPeriodReportTable(records);
             showNotification(`Loaded ${records.length} period records`, 'success');
         } else {
@@ -12140,7 +12142,7 @@ async function loadPeriodReport() {
 
 function renderPeriodReportTable(records) {
     const tbody = document.getElementById('periodReportTableBody');
-    
+
     if (records.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -12153,13 +12155,13 @@ function renderPeriodReportTable(records) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = records.map(record => {
         const date = new Date(record.date).toLocaleDateString();
         const checkInTime = record.checkInTime ? new Date(record.checkInTime).toLocaleTimeString() : '-';
         const statusClass = record.status === 'present' ? 'period-present' : 'period-absent';
         const verificationClass = `verification-${record.verificationType || 'initial'}`;
-        
+
         return `
             <tr>
                 <td>${date}</td>
@@ -12184,14 +12186,14 @@ async function exportPeriodReportCSV() {
         const semester = document.getElementById('periodReportSemester').value;
         const branch = document.getElementById('periodReportBranch').value;
         const period = document.getElementById('periodReportPeriod').value;
-        
+
         const params = new URLSearchParams();
         if (date) params.append('startDate', date);
         if (date) params.append('endDate', date);
         if (semester) params.append('semester', semester);
         if (branch) params.append('branch', branch);
         if (period) params.append('period', period);
-        
+
         const url = GET_ATTENDANCE_EXPORT;
         window.open(url, '_blank');
         showNotification('Exporting period report...', 'success');
@@ -12208,45 +12210,45 @@ async function loadStudentsForManualMarking() {
         const branch = document.getElementById('manualMarkBranch').value;
         const date = document.getElementById('manualMarkDate').value;
         const period = document.getElementById('manualMarkPeriod').value;
-        
+
         if (!semester || !branch || !date || !period) {
             showNotification('Please select all required fields', 'warning');
             return;
         }
-        
+
         console.log(' Loading students for manual marking...', { semester, branch, date, period });
-        
+
         // Get students for this semester and branch
         const studentsResponse = await fetch(GET_STUDENTS);
         const studentsData = await studentsResponse.json();
-        
+
         if (!studentsData.success) {
             showNotification('Failed to load students', 'error');
             return;
         }
-        
-        const students = studentsData.students.filter(s => 
+
+        const students = studentsData.students.filter(s =>
             s.semester == semester && s.branch === branch
         );
-        
+
         // Get existing attendance for this date and period
         const params = new URLSearchParams({ date, period, semester, branch });
         const attendanceResponse = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
         const attendanceData = await attendanceResponse.json();
-        
+
         const attendanceMap = {};
         if (attendanceData.success) {
             attendanceData.records.forEach(record => {
                 attendanceMap[record.enrollmentNo] = record.status;
             });
         }
-        
+
         // Render students table
         renderManualMarkingTable(students, attendanceMap);
         document.getElementById('manualMarkingContainer').style.display = 'block';
         document.getElementById('markAllPresentBtn').disabled = false;
         document.getElementById('markAllAbsentBtn').disabled = false;
-        
+
         showNotification(`Loaded ${students.length} students`, 'success');
     } catch (error) {
         console.error('Error loading students for marking:', error);
@@ -12256,7 +12258,7 @@ async function loadStudentsForManualMarking() {
 
 function renderManualMarkingTable(students, attendanceMap) {
     const tbody = document.getElementById('manualMarkingTableBody');
-    
+
     if (students.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -12269,12 +12271,12 @@ function renderManualMarkingTable(students, attendanceMap) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = students.map(student => {
         const currentStatus = attendanceMap[student.enrollmentNo] || 'not marked';
-        const statusClass = currentStatus === 'present' ? 'status-present' : 
-                           currentStatus === 'absent' ? 'status-absent' : '';
-        
+        const statusClass = currentStatus === 'present' ? 'status-present' :
+            currentStatus === 'absent' ? 'status-absent' : '';
+
         return `
             <tr class="student-marking-row" data-enrollment="${student.enrollmentNo}">
                 <td>
@@ -12320,7 +12322,7 @@ async function markStudentAbsent(enrollmentNo, studentName) {
 async function submitManualMarking(enrollmentNo, period, status, reason, date) {
     try {
         console.log(' Submitting manual marking...', { enrollmentNo, period, status, reason });
-        
+
         const response = await fetch(POST_ATTENDANCE_MANUAL_MARK, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -12333,9 +12335,9 @@ async function submitManualMarking(enrollmentNo, period, status, reason, date) {
                 timestamp: date ? new Date(date).toISOString() : new Date().toISOString()
             })
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             showNotification(`Marked ${status} for ${data.markedPeriods.length} period(s)`, 'success');
             // Reload the students table to show updated status
@@ -12396,20 +12398,20 @@ function toggleAllStudentsMarking(checked) {
 async function loadAuditTrail() {
     try {
         console.log(' Loading audit trail...');
-        
+
         const enrollmentNo = document.getElementById('auditTrailEnrollment').value;
         const date = document.getElementById('auditTrailDate').value;
         const period = document.getElementById('auditTrailPeriod').value;
-        
+
         const params = new URLSearchParams();
         if (enrollmentNo) params.append('enrollmentNo', enrollmentNo);
         if (date) params.append('date', date);
         if (period) params.append('period', period);
         params.append('limit', '100');
-        
+
         const response = await fetch(GET_ATTENDANCE_AUDIT_TRAIL);
         const data = await response.json();
-        
+
         if (data.success) {
             renderAuditTrailTable(data.records || []);
             showNotification(`Loaded ${data.records.length} audit records`, 'success');
@@ -12424,7 +12426,7 @@ async function loadAuditTrail() {
 
 function renderAuditTrailTable(records) {
     const tbody = document.getElementById('auditTrailTableBody');
-    
+
     if (records.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -12437,13 +12439,13 @@ function renderAuditTrailTable(records) {
         `;
         return;
     }
-    
+
     tbody.innerHTML = records.map(record => {
         const date = new Date(record.date).toLocaleDateString();
         const timestamp = new Date(record.modifiedAt).toLocaleString();
         const oldStatusClass = record.oldStatus === 'present' ? 'period-present' : 'period-absent';
         const newStatusClass = record.newStatus === 'present' ? 'period-present' : 'period-absent';
-        
+
         return `
             <tr>
                 <td>${date}</td>
@@ -12465,20 +12467,20 @@ function renderAuditTrailTable(records) {
 async function exportAuditTrailCSV() {
     try {
         showNotification('Exporting audit trail...', 'info');
-        
+
         const enrollmentNo = document.getElementById('auditTrailEnrollment').value;
         const date = document.getElementById('auditTrailDate').value;
         const period = document.getElementById('auditTrailPeriod').value;
-        
+
         const params = new URLSearchParams();
         if (enrollmentNo) params.append('enrollmentNo', enrollmentNo);
         if (date) params.append('date', date);
         if (period) params.append('period', period);
         params.append('limit', '10000');
-        
+
         const response = await fetch(GET_ATTENDANCE_AUDIT_TRAIL);
         const data = await response.json();
-        
+
         if (data.success && data.records.length > 0) {
             // Generate CSV
             const csvHeader = 'Date,Period,Enrollment No,Student Name,Old Status,New Status,Modified By,Role,Reason,Timestamp\n';
@@ -12487,9 +12489,9 @@ async function exportAuditTrailCSV() {
                 const timestamp = new Date(record.modifiedAt).toLocaleString();
                 return `${date},${record.period || ''},${record.enrollmentNo},${record.studentName},${record.oldStatus || ''},${record.newStatus},${record.modifierName},${record.modifierRole},"${record.reason || ''}",${timestamp}`;
             }).join('\n');
-            
+
             const csv = csvHeader + csvRows;
-            
+
             // Download CSV
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
@@ -12498,7 +12500,7 @@ async function exportAuditTrailCSV() {
             a.download = `audit_trail_${Date.now()}.csv`;
             a.click();
             window.URL.revokeObjectURL(url);
-            
+
             showNotification('Audit trail exported successfully', 'success');
         } else {
             showNotification('No audit records to export', 'warning');
@@ -12516,39 +12518,39 @@ function setupPeriodAttendanceListeners() {
     if (refreshPeriodReportBtn) {
         refreshPeriodReportBtn.addEventListener('click', loadPeriodReport);
     }
-    
+
     const exportPeriodReportBtn = document.getElementById('exportPeriodReportBtn');
     if (exportPeriodReportBtn) {
         exportPeriodReportBtn.addEventListener('click', exportPeriodReportCSV);
     }
-    
+
     // Manual Marking
     const loadStudentsForMarkingBtn = document.getElementById('loadStudentsForMarkingBtn');
     if (loadStudentsForMarkingBtn) {
         loadStudentsForMarkingBtn.addEventListener('click', loadStudentsForManualMarking);
     }
-    
+
     const markAllPresentBtn = document.getElementById('markAllPresentBtn');
     if (markAllPresentBtn) {
         markAllPresentBtn.addEventListener('click', markAllPresent);
     }
-    
+
     const markAllAbsentBtn = document.getElementById('markAllAbsentBtn');
     if (markAllAbsentBtn) {
         markAllAbsentBtn.addEventListener('click', markAllAbsent);
     }
-    
+
     // Audit Trail
     const refreshAuditTrailBtn = document.getElementById('refreshAuditTrailBtn');
     if (refreshAuditTrailBtn) {
         refreshAuditTrailBtn.addEventListener('click', loadAuditTrail);
     }
-    
+
     const exportAuditTrailBtn = document.getElementById('exportAuditTrailBtn');
     if (exportAuditTrailBtn) {
         exportAuditTrailBtn.addEventListener('click', exportAuditTrailCSV);
     }
-    
+
     // Populate filter dropdowns for new sections
     populatePeriodReportFilters();
     populateManualMarkingFilters();
@@ -12559,7 +12561,7 @@ function populatePeriodReportFilters() {
     if (semesterFilter) {
         semesterFilter.innerHTML = '<option value="">All Semesters</option>' + generateSemesterOptions();
     }
-    
+
     const branchFilter = document.getElementById('periodReportBranch');
     if (branchFilter) {
         branchFilter.innerHTML = '<option value="">All Branches</option>' + generateBranchOptions();
@@ -12571,12 +12573,12 @@ function populateManualMarkingFilters() {
     if (semesterFilter) {
         semesterFilter.innerHTML = '<option value="">-- Select Semester --</option>' + generateSemesterOptions();
     }
-    
+
     const branchFilter = document.getElementById('manualMarkBranch');
     if (branchFilter) {
         branchFilter.innerHTML = '<option value="">-- Select Branch --</option>' + generateBranchOptions();
     }
-    
+
     // Set today's date as default
     const dateInput = document.getElementById('manualMarkDate');
     if (dateInput) {
@@ -12589,9 +12591,9 @@ function populateManualMarkingFilters() {
 
 // Update switchSection to handle new sections
 const originalSwitchSection = switchSection;
-switchSection = function(sectionName) {
+switchSection = function (sectionName) {
     originalSwitchSection(sectionName);
-    
+
     // Load data when switching to new sections
     switch (sectionName) {
         case 'period-reports':
@@ -12674,13 +12676,13 @@ async function saveAttendanceThreshold() {
 //  Theme System 
 
 var THEME_META = {
-    dark:     { icon: '', label: 'Dark' },
-    light:    { icon: '', label: 'Light' },
-    slate:    { icon: '', label: 'Slate' },
-    blossom:  { icon: '', label: 'Blossom' },
-    matcha:   { icon: '', label: 'Matcha' },
-    peach:    { icon: '', label: 'Peach' },
-    clay:     { icon: '', label: 'Clay' },
+    dark: { icon: '', label: 'Dark' },
+    light: { icon: '', label: 'Light' },
+    slate: { icon: '', label: 'Slate' },
+    blossom: { icon: '', label: 'Blossom' },
+    matcha: { icon: '', label: 'Matcha' },
+    peach: { icon: '', label: 'Peach' },
+    clay: { icon: '', label: 'Clay' },
 };
 
 function applyTheme(theme) {
@@ -12734,7 +12736,7 @@ document.addEventListener('click', (e) => {
 function getLayoutMeta(layout) {
     var map = {
         default: { icon: '', label: 'Default' },
-        compact: { icon: '',  label: 'Compact' },
+        compact: { icon: '', label: 'Compact' },
     };
     return map[layout] || map['default'];
 }
@@ -12757,7 +12759,7 @@ function applyLayout(layout) {
     if (iconEl) iconEl.textContent = meta.icon;
     if (labelEl) labelEl.textContent = meta.label;
 
-    document.querySelectorAll('#layoutDropdown .theme-option').forEach(function(btn) {
+    document.querySelectorAll('#layoutDropdown .theme-option').forEach(function (btn) {
         btn.classList.toggle('active', btn.dataset.layout === layout);
     });
 
@@ -12776,14 +12778,14 @@ function closeLayoutPicker() {
     if (dropdown) dropdown.classList.remove('open');
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     var picker = document.getElementById('layoutPicker');
     if (picker && !picker.contains(e.target)) closeLayoutPicker();
 });
 
 // Update top-bar breadcrumb title on section switch
 var _origSwitchSection = switchSection;
-switchSection = function(sectionName) {
+switchSection = function (sectionName) {
     _origSwitchSection(sectionName);
     var titleEl = document.getElementById('topBarTitle');
     if (titleEl) {
@@ -12952,23 +12954,23 @@ function startWalkthrough(force = false) {
 }
 
 function renderWalkthroughStep() {
-    const step     = WT_STEPS[wtCurrentStep];
-    const total    = WT_STEPS.length;
-    const pct      = Math.round(((wtCurrentStep + 1) / total) * 100);
-    const isLast   = wtCurrentStep === total - 1;
-    const isFirst  = wtCurrentStep === 0;
+    const step = WT_STEPS[wtCurrentStep];
+    const total = WT_STEPS.length;
+    const pct = Math.round(((wtCurrentStep + 1) / total) * 100);
+    const isLast = wtCurrentStep === total - 1;
+    const isFirst = wtCurrentStep === 0;
 
     document.getElementById('wtProgressFill').style.width = pct + '%';
-    document.getElementById('wtStepCounter').textContent  = `Step ${wtCurrentStep + 1} of ${total}`;
-    document.getElementById('wtIcon').textContent         = step.icon;
-    document.getElementById('wtTitle').textContent        = step.title;
-    document.getElementById('wtBody').innerHTML           = step.body;
+    document.getElementById('wtStepCounter').textContent = `Step ${wtCurrentStep + 1} of ${total}`;
+    document.getElementById('wtIcon').textContent = step.icon;
+    document.getElementById('wtTitle').textContent = step.title;
+    document.getElementById('wtBody').innerHTML = step.body;
 
     const prevBtn = document.getElementById('wtPrevBtn');
     const nextBtn = document.getElementById('wtNextBtn');
     prevBtn.style.display = isFirst ? 'none' : 'block';
-    nextBtn.textContent   = isLast ? ' Finish' : 'Next ';
-    nextBtn.className     = isLast ? 'wt-btn wt-btn-finish' : 'wt-btn wt-btn-next';
+    nextBtn.textContent = isLast ? ' Finish' : 'Next ';
+    nextBtn.className = isLast ? 'wt-btn wt-btn-finish' : 'wt-btn wt-btn-next';
 
     // Navigate to the relevant section
     if (step.nav) {
@@ -12981,16 +12983,16 @@ function renderWalkthroughStep() {
 }
 
 function spotlightNav(sectionName) {
-    const navBtn    = document.querySelector(`[data-section="${sectionName}"]`);
+    const navBtn = document.querySelector(`[data-section="${sectionName}"]`);
     const spotlight = document.getElementById('wtSpotlight');
     if (!navBtn) { clearSpotlight(); return; }
 
     const rect = navBtn.getBoundingClientRect();
     spotlight.style.display = 'block';
-    spotlight.style.left    = (rect.left - 4) + 'px';
-    spotlight.style.top     = (rect.top  - 4) + 'px';
-    spotlight.style.width   = (rect.width  + 8) + 'px';
-    spotlight.style.height  = (rect.height + 8) + 'px';
+    spotlight.style.left = (rect.left - 4) + 'px';
+    spotlight.style.top = (rect.top - 4) + 'px';
+    spotlight.style.width = (rect.width + 8) + 'px';
+    spotlight.style.height = (rect.height + 8) + 'px';
 }
 
 function clearSpotlight() {
@@ -13039,18 +13041,18 @@ function walkthroughFinish() {
 let _attendanceSocket = null;
 // Track which student's attendance modal is currently open for live refresh
 let _openAttendanceEnrollmentNo = null;
-let _openAttendanceStudentName  = null;
+let _openAttendanceStudentName = null;
 let _attendanceModalRefreshTimer = null;
 
 function initAttendanceHistory() {
     // Set default date range: last 30 days
     const today = new Date();
-    const from  = new Date(today); from.setDate(from.getDate() - 30);
+    const from = new Date(today); from.setDate(from.getDate() - 30);
     const fmt = d => d.toISOString().split('T')[0];
     const startEl = document.getElementById('attendanceStartDate');
-    const endEl   = document.getElementById('attendanceEndDate');
+    const endEl = document.getElementById('attendanceEndDate');
     if (startEl && !startEl.value) startEl.value = fmt(from);
-    if (endEl   && !endEl.value)   endEl.value   = fmt(today);
+    if (endEl && !endEl.value) endEl.value = fmt(today);
 
     // Enable fetch button when both filters are selected
     onAttendanceFilterChange();
@@ -13148,12 +13150,12 @@ function _subscribeAttendanceLiveUpdates() {
         _attendanceSocket.on('student_timer_sync', (data) => {
             _handleTimerSyncForCalendar(data);
         });
-    } catch (_) {}
+    } catch (_) { }
 }
 
 // Track which student's calendar is currently open
 let _openCalendarEnrollmentNo = null;
-let _openCalendarStudentName  = null;
+let _openCalendarStudentName = null;
 
 function _handleTimerSyncForCalendar(data) {
     // 1. If the calendar modal is open for this student, refresh it silently
@@ -13211,7 +13213,7 @@ function _updateAttendanceRowLive(data) {
     if (timerCell && data.timerValue != null) {
         const m = Math.floor(data.timerValue / 60);
         const s = data.timerValue % 60;
-        timerCell.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        timerCell.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 }
 
@@ -13221,7 +13223,7 @@ async function loadAttendanceHistory(isPaging = false) {
     }
 
     const semesterFilter = document.getElementById('attendanceSemesterFilter')?.value;
-    const courseFilter   = document.getElementById('attendanceCourseFilter')?.value;
+    const courseFilter = document.getElementById('attendanceCourseFilter')?.value;
     const tbody = document.getElementById('attendanceHistoryTableBody');
     if (!tbody) return;
 
@@ -13239,14 +13241,14 @@ async function loadAttendanceHistory(isPaging = false) {
 
     try {
         const startDate = document.getElementById('attendanceStartDate')?.value || '';
-        const endDate   = document.getElementById('attendanceEndDate')?.value   || '';
-        const search    = document.getElementById('attendanceStudentSearch')?.value || '';
+        const endDate = document.getElementById('attendanceEndDate')?.value || '';
+        const search = document.getElementById('attendanceStudentSearch')?.value || '';
 
         // Build URL for the new paginated history endpoint
         let url = `${GET_ATTENDANCE_HISTORY_PAGINATED}?branch=${encodeURIComponent(courseFilter)}&semester=${semesterFilter}&page=${attendanceHistoryPage}&limit=${attendanceHistoryLimit}`;
         if (startDate) url += `&startDate=${startDate}`;
-        if (endDate)   url += `&endDate=${endDate}`;
-        if (search)    url += `&search=${encodeURIComponent(search)}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
 
         const response = await fetch(url);
         const data = await response.json();
@@ -13261,7 +13263,7 @@ async function loadAttendanceHistory(isPaging = false) {
         _setEl('totalStudentsAttendance', pagination.total);
         _setEl('avgAttendanceRate', `${stats.avgAttendance}%`);
         _setEl('totalDaysTracked', stats.maxDays);
-        
+
         // Hours calculation (estimated from aggregated days if not provided)
         const hEl = document.getElementById('totalHoursAttended') || document.getElementById('avgPeriodsPerDay');
         if (hEl) {
@@ -13313,7 +13315,7 @@ function renderAttendanceHistoryTable(students, startIdx = 0) {
         const pctColor = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
         const absentDays = Math.max(0, sum.totalDays - sum.presentDays);
         const statusLabel = pct >= 75 ? 'Present' : 'Absent';
-        const statusBg    = pct >= 75 ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
+        const statusBg = pct >= 75 ? 'rgba(34,197,94,.15)' : 'rgba(239,68,68,.15)';
         const statusColor = pct >= 75 ? '#22c55e' : '#ef4444';
 
         // Subject pills  max 3 shown
@@ -13324,7 +13326,7 @@ function renderAttendanceHistoryTable(students, startIdx = 0) {
                 font-size:11px;font-weight:600;background:rgba(0,217,255,.08);color:var(--text-secondary);
                 border:1px solid var(--border-color);white-space:nowrap;">
                 <span style="width:6px;height:6px;border-radius:50%;background:${c};flex-shrink:0;"></span>
-                ${sub.subject.length > 10 ? sub.subject.slice(0,10)+'' : sub.subject}
+                ${sub.subject.length > 10 ? sub.subject.slice(0, 10) + '' : sub.subject}
                 <span style="color:${c};">${sub.percentage}%</span>
             </span>`;
         }).join('');
@@ -13335,7 +13337,7 @@ function renderAttendanceHistoryTable(students, startIdx = 0) {
             style="border-bottom:1px solid var(--border-color);cursor:pointer;transition:background .15s;"
             onmouseover="this.style.background='rgba(0,217,255,.04)'"
             onmouseout="this.style.background=''"
-            onclick="showStudentAttendance('${s.enrollmentNo}','${s.name.replace(/'/g,"\\'")}')">
+            onclick="showStudentAttendance('${s.enrollmentNo}','${s.name.replace(/'/g, "\\'")}')">
 
             <td style="padding:14px 16px;font-size:13px;color:var(--text-secondary);">${startIdx + i + 1}</td>
 
@@ -13359,7 +13361,7 @@ function renderAttendanceHistoryTable(students, startIdx = 0) {
             <td style="padding:14px 16px;min-width:160px;">
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div style="flex:1;height:7px;background:var(--border-color);border-radius:4px;overflow:hidden;position:relative;">
-                        <div style="position:absolute;left:0;top:0;height:100%;width:${Math.min(pct,100)}%;
+                        <div style="position:absolute;left:0;top:0;height:100%;width:${Math.min(pct, 100)}%;
                             background:${pctColor};border-radius:4px;transition:width .4s;"></div>
                         <!-- 75% marker -->
                         <div style="position:absolute;left:75%;top:-2px;width:2px;height:11px;
@@ -13391,10 +13393,10 @@ async function exportAllAttendanceReport() {
     const crs = document.getElementById('attendanceCourseFilter')?.value;
     if (!sem || !crs) { showNotification('Select branch and semester first', 'warning'); return; }
     const start = document.getElementById('attendanceStartDate')?.value || '';
-    const end   = document.getElementById('attendanceEndDate')?.value   || '';
+    const end = document.getElementById('attendanceEndDate')?.value || '';
     let url = GET_ATTENDANCE_EXPORT;
     if (start) url += `&startDate=${start}`;
-    if (end)   url += `&endDate=${end}`;
+    if (end) url += `&endDate=${end}`;
     window.open(url, '_blank');
 }
 
@@ -13429,7 +13431,7 @@ async function initAttendanceShowcase() {
 
 // Save a showcase dropdown value to localStorage
 function _saveShowcaseSel(key, value) {
-    try { localStorage.setItem('showcase_' + key, value); } catch(_) {}
+    try { localStorage.setItem('showcase_' + key, value); } catch (_) { }
 }
 
 // Restore all saved dropdown selections after dropdowns are populated
@@ -13571,7 +13573,7 @@ async function loadShowcaseStudents() {
         alert('Please select both branch and semester');
         return;
     }
-    
+
     try {
         const response = await fetch(GET_STUDENTS);
         const data = await response.json();
@@ -13579,7 +13581,7 @@ async function loadShowcaseStudents() {
             const container = document.getElementById('studentListContainer');
             container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading attendance data...</div>';
             const studentItems = [];
-            
+
             for (const student of data.students) {
                 try {
                     const attendanceResponse = await fetch(GET_ATTENDANCE_SUMMARY(student.enrollmentNo));
@@ -13609,7 +13611,7 @@ function renderStudentList(studentItems) {
         container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No students found</div>';
         return;
     }
-    
+
     let html = '<div class="showcase-student-grid">';
     studentItems.forEach(item => {
         const { student, percentage } = item;
@@ -13639,7 +13641,7 @@ function renderStudentList(studentItems) {
 
 async function showStudentCalendar(enrollmentNo, studentName) {
     _openCalendarEnrollmentNo = enrollmentNo;
-    _openCalendarStudentName  = studentName;
+    _openCalendarStudentName = studentName;
     try {
         const response = await fetch(GET_STUDENT_ATTENDANCE_DATES(enrollmentNo));
         const data = await response.json();
@@ -13647,8 +13649,8 @@ async function showStudentCalendar(enrollmentNo, studentName) {
             // data.dates = array of objects: { date: "2026-04-05T00:00:00.000Z", status: "present"|"absent", ... }
             const dateObjects = data.dates || [];
             const presentSet = new Set();
-            const absentSet  = new Set();
-            const liveSet    = new Set();
+            const absentSet = new Set();
+            const liveSet = new Set();
             dateObjects.forEach(d => {
                 if (!d || !d.date) return;
                 const dt = new Date(d.date);
@@ -13679,13 +13681,13 @@ function buildAttendanceCalendar(presentSet, absentSet, enrollmentNo, liveSet = 
     months.forEach(monthKey => {
         const [year, month] = monthKey.split('-');
         const monthNum = parseInt(month, 10);
-        const yearNum  = parseInt(year,  10);
+        const yearNum = parseInt(year, 10);
 
         html += `<div class="calendar-month"><h4>${new Date(yearNum, monthNum - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h4><div class="calendar-grid">`;
-        ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => { html += `<div class="calendar-day-header">${d}</div>`; });
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => { html += `<div class="calendar-day-header">${d}</div>`; });
 
         const firstDay = new Date(yearNum, monthNum - 1, 1);
-        const lastDay  = new Date(yearNum, monthNum, 0);
+        const lastDay = new Date(yearNum, monthNum, 0);
 
         for (let i = 0; i < firstDay.getDay(); i++) {
             html += `<div class="calendar-day other-month"></div>`;
@@ -13694,7 +13696,7 @@ function buildAttendanceCalendar(presentSet, absentSet, enrollmentNo, liveSet = 
             const ds = `${year}-${month}-${String(d).padStart(2, '0')}`;
             const isLive = liveSet.has(ds);
             let cls = 'no-class';
-            if (presentSet.has(ds))     cls = 'present';
+            if (presentSet.has(ds)) cls = 'present';
             else if (absentSet.has(ds)) cls = 'absent';
             const click = (cls !== 'no-class' || isLive) ? `onclick="showPeriodBreakdown('${enrollmentNo}', '${ds}')"` : '';
             const liveDot = isLive ? `<span class="cal-live-dot" title="Session in progress"></span>` : '';
@@ -13710,7 +13712,7 @@ async function showPeriodBreakdown(enrollmentNo, date) {
     document.getElementById('periodTitle').textContent = `Period Breakdown - ${new Date(date).toLocaleDateString()}`;
     document.getElementById('periodListContainer').innerHTML = `
         <div class="period-breakdown">
-            ${Array.from({length: 5}, () => `
+            ${Array.from({ length: 5 }, () => `
             <div class="period-item" style="border-left:4px solid var(--border);">
                 <div class="period-info" style="flex:1;">
                     <div class="skeleton sk-row-cell" style="width:120px;margin-bottom:6px;"></div>
@@ -13723,7 +13725,7 @@ async function showPeriodBreakdown(enrollmentNo, date) {
 
     try {
         // 1. Fetch period records first — they carry semester/branch directly
-        const periodRes  = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
+        const periodRes = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
         const periodData = await periodRes.json();
         const periodRecords = periodData.records || [];
 
@@ -13733,7 +13735,7 @@ async function showPeriodBreakdown(enrollmentNo, date) {
 
         // Derive semester/branch from period records (kept for future use)
         const semester = periodRecords[0]?.semester || '';
-        const branch   = periodRecords[0]?.branch   || '';
+        const branch = periodRecords[0]?.branch || '';
 
         // 2. Fetch remaining data in parallel — only tested, deployed endpoints
         const [auditData] = await Promise.allSettled([
@@ -13763,7 +13765,7 @@ async function showPeriodBreakdown(enrollmentNo, date) {
                     teacher: r.teacher, teacherName: r.teacherName,
                     room: r.room,
                     startTime: r.startTime || null,
-                    endTime:   r.endTime   || null,
+                    endTime: r.endTime || null,
                     attendedSec, totalSec, timePct
                 };
             });
@@ -13779,19 +13781,19 @@ async function showPeriodBreakdown(enrollmentNo, date) {
         let presentCount = 0;
 
         classesList.forEach(cls => {
-            const rec         = periodMap[cls.period];
-            const status      = rec ? rec.status : 'absent';
-            const isPresent   = status === 'present';
+            const rec = periodMap[cls.period];
+            const status = rec ? rec.status : 'absent';
+            const isPresent = status === 'present';
             if (isPresent) presentCount++;
 
             const statusColor = isPresent ? '#28a745' : '#dc3545';
-            const statusIcon  = isPresent ? '✓' : '✗';
+            const statusIcon = isPresent ? '✓' : '✗';
 
             // Time data already calculated in classesList
-            const timePct     = cls.timePct;
+            const timePct = cls.timePct;
             const attendedMin = Math.floor(cls.attendedSec / 60);
-            const totalMin    = Math.floor(cls.totalSec    / 60);
-            const pctColor    = timePct >= 75 ? '#28a745' : timePct >= 50 ? '#ffc107' : '#dc3545';
+            const totalMin = Math.floor(cls.totalSec / 60);
+            const pctColor = timePct >= 75 ? '#28a745' : timePct >= 50 ? '#ffc107' : '#dc3545';
 
             // Audit / edit warning
             const audits = auditMap[cls.period] || [];
@@ -13862,11 +13864,11 @@ function timeStrToMinutes(t) {
 
 // ========== SUBJECT VIEW ==========
 async function loadShowcaseSubject() {
-    const branch   = document.getElementById('subjectViewBranch').value;
+    const branch = document.getElementById('subjectViewBranch').value;
     const semester = document.getElementById('subjectViewSemester').value;
-    const subject  = document.getElementById('subjectViewSelect').value;
+    const subject = document.getElementById('subjectViewSelect').value;
     const fromDate = document.getElementById('subjectViewFrom').value;   // YYYY-MM-DD or ''
-    const toDate   = document.getElementById('subjectViewTo').value;     // YYYY-MM-DD or ''
+    const toDate = document.getElementById('subjectViewTo').value;     // YYYY-MM-DD or ''
 
     if (!branch || !semester || !subject) {
         alert('Please select branch, semester, and subject');
@@ -13878,13 +13880,13 @@ async function loadShowcaseSubject() {
         <div class="skeleton-calendar-wrap">
             <div class="skeleton sk-month-title"></div>
             <div class="sk-grid">
-                ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => `<div class="skeleton sk-cell sk-header"></div>`).join('')}
-                ${Array.from({length: 35}, () => `<div class="skeleton sk-cell"></div>`).join('')}
+                ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div class="skeleton sk-cell sk-header"></div>`).join('')}
+                ${Array.from({ length: 35 }, () => `<div class="skeleton sk-cell"></div>`).join('')}
             </div>
             <div class="skeleton sk-month-title" style="width:120px;"></div>
             <div class="sk-grid">
-                ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(() => `<div class="skeleton sk-cell sk-header"></div>`).join('')}
-                ${Array.from({length: 28}, () => `<div class="skeleton sk-cell"></div>`).join('')}
+                ${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(() => `<div class="skeleton sk-cell sk-header"></div>`).join('')}
+                ${Array.from({ length: 28 }, () => `<div class="skeleton sk-cell"></div>`).join('')}
             </div>
         </div>`;
 
@@ -13936,7 +13938,7 @@ function buildSubjectCalendar(taughtDates, subject, branch, semester) {
 
     // Group by month
     const monthSet = new Set([...taughtDates].map(d => d.slice(0, 7)));
-    const months   = [...monthSet].sort();
+    const months = [...monthSet].sort();
 
     let html = `
         <div style="margin-bottom:18px;">
@@ -13952,15 +13954,15 @@ function buildSubjectCalendar(taughtDates, subject, branch, semester) {
     months.forEach(monthKey => {
         const [year, month] = monthKey.split('-');
         const monthNum = parseInt(month, 10);
-        const yearNum  = parseInt(year, 10);
+        const yearNum = parseInt(year, 10);
         const firstDay = new Date(yearNum, monthNum - 1, 1);
-        const lastDay  = new Date(yearNum, monthNum, 0);
+        const lastDay = new Date(yearNum, monthNum, 0);
 
         html += `<div class="calendar-month">
             <h4>${firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h4>
             <div class="calendar-grid">`;
 
-        ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+        ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(d => {
             html += `<div class="calendar-day-header">${d}</div>`;
         });
 
@@ -13997,11 +13999,11 @@ async function showSubjectDateAttendance(date, subject, branch, semester) {
     document.getElementById('subjectDateTitle').textContent = `${subject}`;
     document.getElementById('subjectDateContent').innerHTML = `
         <div class="skeleton-stats">
-            ${Array.from({length: 6}, () => `<div class="skeleton sk-stat"></div>`).join('')}
+            ${Array.from({ length: 6 }, () => `<div class="skeleton sk-stat"></div>`).join('')}
         </div>
         <table class="skeleton-table">
             <tbody>
-                ${Array.from({length: 8}, (_, i) => `
+                ${Array.from({ length: 8 }, (_, i) => `
                 <tr>
                     <td style="width:36px;"><div class="skeleton sk-row-cell" style="width:18px;"></div></td>
                     <td><div class="skeleton sk-row-cell" style="width:${70 + (i % 4) * 20}px;"></div></td>
@@ -14021,7 +14023,7 @@ async function showSubjectDateAttendance(date, subject, branch, semester) {
             fetch(GET_ATTENDANCE_PERIOD_REPORT)
         ]);
         const studentsData = await studentsRes.json();
-        const periodsData  = await periodsRes.json();
+        const periodsData = await periodsRes.json();
 
         if (!studentsData.success) {
             document.getElementById('subjectDateContent').innerHTML = '<p style="padding:20px;color:red;">Failed to load students.</p>';
@@ -14029,7 +14031,7 @@ async function showSubjectDateAttendance(date, subject, branch, semester) {
         }
 
         const allStudents = studentsData.students || [];
-        const allRecords  = periodsData.records   || [];
+        const allRecords = periodsData.records || [];
 
         // Records for this subject on this date
         const dayRecords = allRecords.filter(r => {
@@ -14101,12 +14103,12 @@ function refreshCurrentSection() {
 
 function renderSubjectDatePage(presentCount, total, pct, branch, semester) {
     const { subject, formattedDate } = _subjectDateContext;
-    const pageSize   = _subjectDatePageSize;
+    const pageSize = _subjectDatePageSize;
     const totalPages = Math.max(1, Math.ceil(_subjectDateAllRows.length / pageSize));
-    const page       = Math.min(_subjectDatePage, totalPages);
-    const start      = (page - 1) * pageSize;
-    const pageRows   = _subjectDateAllRows.slice(start, start + pageSize);
-    const pctColor   = pct >= 75 ? '#28a745' : pct >= 50 ? '#ffc107' : '#dc3545';
+    const page = Math.min(_subjectDatePage, totalPages);
+    const start = (page - 1) * pageSize;
+    const pageRows = _subjectDateAllRows.slice(start, start + pageSize);
+    const pctColor = pct >= 75 ? '#28a745' : pct >= 50 ? '#ffc107' : '#dc3545';
 
     let html = `
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
@@ -14130,11 +14132,11 @@ function renderSubjectDatePage(presentCount, total, pct, branch, semester) {
     `;
 
     pageRows.forEach((row, i) => {
-        const isP  = row.status === 'present';
-        const sc   = isP ? '#28a745' : '#dc3545';
+        const isP = row.status === 'present';
+        const sc = isP ? '#28a745' : '#dc3545';
         const mark = isP ? 'P' : 'A';
-        const bg   = isP ? 'rgba(40,167,69,0.06)' : 'rgba(220,53,69,0.06)';
-        const spc  = row.subjectPct >= 75 ? '#28a745' : row.subjectPct >= 50 ? '#ffc107' : '#dc3545';
+        const bg = isP ? 'rgba(40,167,69,0.06)' : 'rgba(220,53,69,0.06)';
+        const spc = row.subjectPct >= 75 ? '#28a745' : row.subjectPct >= 50 ? '#ffc107' : '#dc3545';
         html += `<tr style="background:${bg};">
             <td style="color:var(--text-secondary);font-size:12px;">${start + i + 1}</td>
             <td style="font-weight:500;">${row.name}</td>
@@ -14154,8 +14156,8 @@ function renderSubjectDatePage(presentCount, total, pct, branch, semester) {
         for (let p = 1; p <= totalPages; p++) {
             const active = p === page;
             html += `<button onclick="_subjectDateGoPage(${p},${presentCount},${total},${pct},'${branch}','${semester}')"
-                style="padding:5px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-weight:${active?'700':'400'};
-                background:${active?'var(--primary)':'var(--bg-card)'};color:${active?'#fff':'var(--text-primary)'};">${p}</button>`;
+                style="padding:5px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-weight:${active ? '700' : '400'};
+                background:${active ? 'var(--primary)' : 'var(--bg-card)'};color:${active ? '#fff' : 'var(--text-primary)'};">${p}</button>`;
         }
         html += `</div></div>`;
     }
@@ -14182,7 +14184,7 @@ async function loadShowcaseTeacher() {
         return;
     }
 
-    const filterBranch   = document.getElementById('teacherViewBranch').value;
+    const filterBranch = document.getElementById('teacherViewBranch').value;
     const filterSemester = document.getElementById('teacherViewSemester').value;
 
     try {
@@ -14196,7 +14198,7 @@ async function loadShowcaseTeacher() {
             let teacherRecords = data.records.filter(r => r.teacher === teacherId);
 
             // Apply optional branch / semester filters
-            if (filterBranch)   teacherRecords = teacherRecords.filter(r => r.branch   === filterBranch);
+            if (filterBranch) teacherRecords = teacherRecords.filter(r => r.branch === filterBranch);
             if (filterSemester) teacherRecords = teacherRecords.filter(r => r.semester === filterSemester);
 
             const classesMap = {};
@@ -14218,9 +14220,9 @@ async function loadShowcaseTeacher() {
 
 function renderTeacherClasses(teacherName, classesMap) {
     const container = document.getElementById('teacherClassesContainer');
-    
+
     let html = `<div style="margin-bottom: 20px;"><h3>${teacherName} - Classes</h3></div>`;
-    
+
     if (Object.keys(classesMap).length === 0) {
         html += '<div style="text-align: center; padding: 40px; color: var(--text-secondary);">No classes found</div>';
     } else {
@@ -14229,7 +14231,7 @@ function renderTeacherClasses(teacherName, classesMap) {
             const presentCount = classData.records.filter(r => r.status === 'present').length;
             const totalCount = classData.records.length;
             const percentage = Math.round((presentCount / totalCount) * 100);
-            
+
             html += `
                 <div class="showcase-student-card">
                     <div class="student-card-header">
@@ -14251,7 +14253,7 @@ function renderTeacherClasses(teacherName, classesMap) {
         });
         html += '</div>';
     }
-    
+
     container.innerHTML = html;
 }
 
@@ -14259,25 +14261,25 @@ async function showTeacherClassDetails(teacherId, semester, branch) {
     try {
         const response = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
         const data = await response.json();
-        
+
         if (data.success && data.records) {
-            const classRecords = data.records.filter(r => 
-                r.teacher === teacherId && 
-                r.semester === semester && 
+            const classRecords = data.records.filter(r =>
+                r.teacher === teacherId &&
+                r.semester === semester &&
                 r.branch === branch
             );
-            
+
             const presentCount = classRecords.filter(r => r.status === 'present').length;
             const totalCount = classRecords.length;
             const percentage = Math.round((presentCount / totalCount) * 100);
-            
+
             let html = `
                 <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-hover); border-radius: 8px; color: var(--text-primary);">
                     <strong>Total Lectures: ${totalCount} | Present: ${presentCount} | Percentage: ${percentage}%</strong>
                 </div>
                 <div class="period-breakdown">
             `;
-            
+
             classRecords.forEach(record => {
                 const status = record.status === 'present' ? '' : '';
                 const statusColor = record.status === 'present' ? '#28a745' : '#dc3545';
@@ -14291,9 +14293,9 @@ async function showTeacherClassDetails(teacherId, semester, branch) {
                     </div>
                 `;
             });
-            
+
             html += '</div>';
-            
+
             document.getElementById('teacherClassTitle').textContent = `${branch} - Semester ${semester}`;
             document.getElementById('teacherClassContent').innerHTML = html;
             document.getElementById('teacherClassModal').style.display = 'block';
@@ -14309,7 +14311,7 @@ function closeCalendarModal() {
     const modal = document.getElementById('calendarModal');
     if (modal) modal.style.display = 'none';
     _openCalendarEnrollmentNo = null;
-    _openCalendarStudentName  = null;
+    _openCalendarStudentName = null;
 }
 
 function closePeriodModal() {
@@ -14351,7 +14353,7 @@ function attachSubjectViewListeners() {
 async function loadSubjectsForShowcase() {
     const branch = document.getElementById('subjectViewBranch').value;
     const semester = document.getElementById('subjectViewSemester').value;
-    
+
     if (!branch || !semester) {
         document.getElementById('subjectViewSelect').innerHTML = '<option value="">Select Subject</option>';
         return;

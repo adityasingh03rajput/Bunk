@@ -10901,7 +10901,7 @@ app.post('/api/email/bulk', async (req, res) => {
 
                 try {
                     const response = await resendInstance.emails.send({
-                        from: 'LetsBunk <no-reply@letsbunk.co>',
+                        from: process.env.RESEND_FROM_EMAIL || 'LetsBunk <no-reply@letsbunk.co>',
                         to: studentEmail,
                         subject: subject,
                         html: `<div style="font-family: sans-serif; line-height: 1.5; color: #333;">${htmlMessage}</div>`

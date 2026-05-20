@@ -2480,7 +2480,7 @@ export default function App() {
         socketRef.current.emit('leave_class_room', { semester: oldSem, branch: oldBr });
       }
     }
-    socketRef.current.emit('join_class_room', { semester: sem, branch: br });
+    socketRef.current.emit('join_class_room', { semester: sem, branch: br, enrollmentNo: studentIdRef.current });
     currentClassRoomRef.current = { semester: sem, branch: br };
   };
 

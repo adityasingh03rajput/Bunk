@@ -195,7 +195,7 @@ async function createDatabaseIndexes() {
         // StudentManagement indexes
         // Note: enrollmentNo and email are already unique via schema field definition.
         // Only add compound/non-unique indexes here to avoid duplicate index conflicts.
-        await StudentManagement.collection.createIndex({ semester: 1, course: 1 });
+        await StudentManagement.collection.createIndex({ semester: 1, branch: 1 });
         await StudentManagement.collection.createIndex({ isRunning: 1 });
 
         // AttendanceRecord indexes
@@ -536,6 +536,7 @@ let timetableMemory = {};
 let studentManagementMemory = [];
 let teachersMemory = [];
 let classroomsMemory = [];
+let cachedPeriods = null;
 let attendanceRecordsMemory = [];
 
 // SDUI Configuration endpoint
@@ -834,10 +835,12 @@ app.post('/api/timetable', async (req, res) => {
             }
             // Invalidate timetable cache
             await cacheDel(`timetable:${semester}:${branch}`);
+            cachedPeriods = null;
             res.json({ success: true, timetable: existingTimetable });
         } else {
             const key = `${semester}_${branch}`;
             timetableMemory[key] = { semester, branch, periods, timetable, lastUpdated: new Date() };
+            cachedPeriods = null;
             res.json({ success: true, timetable: timetableMemory[key] });
         }
 
@@ -880,16 +883,19 @@ app.put('/api/timetable/:semester/:branch', async (req, res) => {
                 });
                 await newTimetable.save();
                 console.log('✅ New timetable created');
+                cachedPeriods = null;
                 res.json({ success: true, timetable: newTimetable });
             }
         } else {
             const key = `${semester}_${effectiveBranch}`;
             timetableMemory[key] = { semester, branch: effectiveBranch, periods: periods || [], timetable, lastUpdated: new Date() };
+            cachedPeriods = null;
             res.json({ success: true, timetable: timetableMemory[key] });
         }
 
         // Notify all students (fire-and-forget after response sent)
         try {
+            cachedPeriods = null;
             io.emit('timetable_updated', { semester, branch: effectiveBranch });
             await broadcastBSSIDScheduleUpdate(semester, effectiveBranch);
         } catch (notifyErr) {
@@ -1118,6 +1124,9 @@ app.post('/api/periods/update-all', async (req, res) => {
                 message: `Updated ${result.modifiedCount} timetables with ${periods.length} periods`
             });
 
+            // Update local cache
+            cachedPeriods = periods;
+
             // ─── Post-update Sync ───
             // Re-sync all student attendance records for today to match new period settings structure (Show all periods 0%)
             (async () => {
@@ -1137,14 +1146,23 @@ app.post('/api/periods/update-all', async (req, res) => {
             // Notify all connected clients
             io.emit('periods_updated', { periods });
             
-            // Broadcast BSSID schedule update to ALL students (period times changed)
-            console.log('📡 Broadcasting BSSID updates to all students (period times changed)');
-            const allTimetablesForBroadcast = await Timetable.find({});
-            for (const tt of allTimetablesForBroadcast) {
-                if (tt.semester && tt.branch) {
-                    await broadcastBSSIDScheduleUpdate(tt.semester, tt.branch);
+            // Broadcast BSSID schedule update to ALL students asynchronously in background (period times changed)
+            setImmediate(async () => {
+                try {
+                    console.log('📡 Broadcasting BSSID updates to all students (period times changed)');
+                    const allTimetablesForBroadcast = await Timetable.find({});
+                    await Promise.all(
+                        allTimetablesForBroadcast.map(async (tt) => {
+                            if (tt.semester && tt.branch) {
+                                await broadcastBSSIDScheduleUpdate(tt.semester, tt.branch);
+                            }
+                        })
+                    );
+                    console.log('✅ Background BSSID updates to all students completed.');
+                } catch (broadcastErr) {
+                    console.error('❌ Error broadcasting background BSSID updates:', broadcastErr);
                 }
-            }
+            });
         } else {
             // Update in-memory timetables
             let count = 0;
@@ -1153,6 +1171,7 @@ app.post('/api/periods/update-all', async (req, res) => {
                 timetableMemory[key].lastUpdated = new Date();
                 count++;
             });
+            cachedPeriods = periods;
 
             res.json({
                 success: true,
@@ -1169,18 +1188,27 @@ app.post('/api/periods/update-all', async (req, res) => {
 // Get current periods configuration
 app.get('/api/periods', async (req, res) => {
     try {
-        if (mongoose.connection.readyState === 1) {
-            const tt = await Timetable.findOne({ periods: { $exists: true, $ne: [] } }).select('periods');
+        if (cachedPeriods) {
             return res.json({
                 success: true,
-                periods: tt?.periods || []
+                periods: cachedPeriods
+            });
+        }
+
+        if (mongoose.connection.readyState === 1) {
+            const tt = await Timetable.findOne({ periods: { $exists: true, $ne: [] } }).select('periods');
+            cachedPeriods = tt?.periods || [];
+            return res.json({
+                success: true,
+                periods: cachedPeriods
             });
         }
 
         const firstKey = Object.keys(timetableMemory).find(k => Array.isArray(timetableMemory[k]?.periods) && timetableMemory[k].periods.length > 0);
+        cachedPeriods = firstKey ? (timetableMemory[firstKey].periods || []) : [];
         return res.json({
             success: true,
-            periods: firstKey ? (timetableMemory[firstKey].periods || []) : []
+            periods: cachedPeriods
         });
     } catch (error) {
         console.error('❌ Error fetching periods:', error);
@@ -1824,12 +1852,18 @@ const liveTimerState = {
 io.on('connection', (socket) => {
     console.log('� Client connected:', socket.id);
 
-    // Teacher joins a class room to receive targeted broadcasts
-    socket.on('join_class_room', ({ semester, branch }) => {
+    // Client joins a class room to receive targeted broadcasts
+    socket.on('join_class_room', ({ semester, branch, enrollmentNo }) => {
         if (!semester || !branch) return;
         const room = `class:${semester}:${branch}`;
         socket.join(room);
-        console.log(`👨‍🏫 Teacher joined room: ${room}`);
+        console.log(`📡 Client joined room: ${room}`);
+
+        if (enrollmentNo) {
+            const privateRoom = `student:${enrollmentNo}`;
+            socket.join(privateRoom);
+            console.log(`🎓 Student joined private room: ${privateRoom}`);
+        }
 
         const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
         const SYNC_TIMEOUT_MS    =      90 * 1000; // 90 seconds — missed sync = student offline
@@ -2177,67 +2211,89 @@ async function broadcastBSSIDScheduleUpdate(semester, branch) {
             return;
         }
         
-        // Fetch classroom BSSIDs for each period
-        const scheduleWithBSSID = await Promise.all(
-            todaySchedule.map(async (period) => {
-                let bssid = null;
-                let bssids = [];
-                let roomInfo = null;
+        // Fetch all classrooms once to avoid N database queries in loop
+        const classrooms = await Classroom.find({}).lean();
+        const classroomMap = new Map();
+        classrooms.forEach(c => {
+            if (c.roomNumber) {
+                classroomMap.set(c.roomNumber.toString().trim(), c);
+            }
+        });
+        
+        // Fetch classroom BSSIDs for each period (synchronously using in-memory map)
+        const scheduleWithBSSID = todaySchedule.map((period) => {
+            let bssid = null;
+            let bssids = [];
+            let roomInfo = null;
 
-                if (period.room) {
-                    const classroom = await Classroom.findOne({ roomNumber: period.room });
-                    if (classroom) {
-                        // Support both single BSSID and multiple BSSIDs
-                        if (classroom.wifiBSSIDs && Array.isArray(classroom.wifiBSSIDs) && classroom.wifiBSSIDs.length > 0) {
-                            bssids = classroom.wifiBSSIDs.filter(b => b && b.trim() !== '');
-                            bssid = bssids[0]; // Primary BSSID for backward compatibility
-                        }
-                        
-                        
-                        roomInfo = {
-                            building: classroom.building,
-                            capacity: classroom.capacity,
-                            isActive: classroom.isActive
-                        };
+            if (period.room) {
+                const classroom = classroomMap.get(period.room.toString().trim());
+                if (classroom) {
+                    // Support both single BSSID and multiple BSSIDs
+                    if (classroom.wifiBSSIDs && Array.isArray(classroom.wifiBSSIDs) && classroom.wifiBSSIDs.length > 0) {
+                        bssids = classroom.wifiBSSIDs.filter(b => b && b.trim() !== '');
+                        bssid = bssids[0]; // Primary BSSID for backward compatibility
                     }
+                    
+                    roomInfo = {
+                        building: classroom.building,
+                        capacity: classroom.capacity,
+                        isActive: classroom.isActive
+                    };
                 }
+            }
 
-                // Get period times from periods array
-                let startTime = null;
-                let endTime = null;
-                
-                if (timetableObj.periods && Array.isArray(timetableObj.periods)) {
-                    const periodDef = timetableObj.periods.find(p => p.number === period.period);
-                    if (periodDef) {
-                        startTime = periodDef.startTime;
-                        endTime = periodDef.endTime;
-                    }
+            // Get period times from periods array
+            let startTime = null;
+            let endTime = null;
+            
+            if (timetableObj.periods && Array.isArray(timetableObj.periods)) {
+                const periodDef = timetableObj.periods.find(p => p.number === period.period);
+                if (periodDef) {
+                    startTime = periodDef.startTime;
+                    endTime = periodDef.endTime;
                 }
+            }
 
-                return {
-                    period: period.period,
-                    subject: period.subject || period.teacherName || '',
-                    subjectCode: period.subjectCode || '',
-                    teacher: period.teacher || period.teacherName || '',
-                    room: period.room || '',
-                    startTime: startTime,
-                    endTime: endTime,
-                    bssid: bssid || bssids, // Return array if multiple, single if one, or null
-                    bssids: bssids, // Always return array for new clients
-                    roomInfo: roomInfo
-                };
-            })
-        );
+            return {
+                period: period.period,
+                subject: period.subject || period.teacherName || '',
+                subjectCode: period.subjectCode || '',
+                teacher: period.teacher || period.teacherName || '',
+                room: period.room || '',
+                startTime: startTime,
+                endTime: endTime,
+                bssid: bssid || bssids, // Return array if multiple, single if one, or null
+                bssids: bssids, // Always return array for new clients
+                roomInfo: roomInfo
+            };
+        });
         
         // Emit socket event to all students in this semester/branch
+        const roomName = `class:${semester}:${branch}`;
         for (const student of students) {
-            io.emit('bssid-schedule-update', {
-                enrollmentNo: student.enrollmentNo,
-                date: today.toISOString().split('T')[0],
-                dayName: dayName,
-                schedule: scheduleWithBSSID,
-                reason: 'timetable_updated'
-            });
+            const privateRoom = `student:${student.enrollmentNo}`;
+            const hasPrivateRoom = io.sockets.adapter.rooms.has(privateRoom);
+
+            if (hasPrivateRoom) {
+                // Highly efficient targeted emit to only the student's private socket room
+                io.to(privateRoom).emit('bssid-schedule-update', {
+                    enrollmentNo: student.enrollmentNo,
+                    date: today.toISOString().split('T')[0],
+                    dayName: dayName,
+                    schedule: scheduleWithBSSID,
+                    reason: 'timetable_updated'
+                });
+            } else {
+                // Fallback targeted emit to the class room for older clients
+                io.to(roomName).emit('bssid-schedule-update', {
+                    enrollmentNo: student.enrollmentNo,
+                    date: today.toISOString().split('T')[0],
+                    dayName: dayName,
+                    schedule: scheduleWithBSSID,
+                    reason: 'timetable_updated'
+                });
+            }
         }
         
         console.log(`✅ BSSID schedule broadcast complete (${students.length} students)`);

@@ -2,6 +2,7 @@ package com.countdowntimer.app
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.support.common.FileUtil
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -15,6 +16,14 @@ class FaceEmbeddingHelper(private val context: Context) {
     private var interpreter: Interpreter? = null
     private val inputSize = 112 // MobileFaceNet input size
     private val embeddingSize = 192 // MobileFaceNet output embedding size
+
+    /**
+     * True only when the real MobileFaceNet model loaded successfully.
+     * If false, extractEmbedding() will throw rather than silently return a
+     * trivially-spoofable pixel-average embedding.
+     */
+    var isModelLoaded: Boolean = false
+        private set
     
     init {
         loadModel()
@@ -27,18 +36,34 @@ class FaceEmbeddingHelper(private val context: Context) {
                 setNumThreads(4)
             }
             interpreter = Interpreter(model, options)
+            isModelLoaded = true
+            Log.d("FaceEmbeddingHelper", "MobileFaceNet model loaded successfully")
         } catch (e: Exception) {
-            // Model will be added later
+            // Do NOT silently fall back to a weak embedding — that would allow any face
+            // (or a printed photo) to pass verification. Surface the failure so the caller
+            // can block verification and prompt the user to reinstall / contact support.
+            isModelLoaded = false
+            Log.e("FaceEmbeddingHelper", "CRITICAL: Failed to load MobileFaceNet model — face verification is disabled: ${e.message}")
         }
     }
     
+    /**
+     * Extract a 192-dimensional face embedding using MobileFaceNet.
+     *
+     * Returns null if:
+     *   - The model failed to load (isModelLoaded == false)
+     *   - TFLite inference throws
+     *
+     * NEVER falls back to a pixel-average embedding. A null return must be
+     * treated by the caller as a hard verification failure.
+     */
     fun extractEmbedding(bitmap: Bitmap): FloatArray? {
         if (interpreter == null) {
-            // Fallback: Generate a simple embedding based on image features
-            return generateSimpleEmbedding(bitmap)
+            Log.e("FaceEmbeddingHelper", "extractEmbedding called but model is not loaded — returning null")
+            return null
         }
         
-        try {
+        return try {
             // Preprocess image
             val imageProcessor = ImageProcessor.Builder()
                 .add(ResizeOp(inputSize, inputSize, ResizeOp.ResizeMethod.BILINEAR))
@@ -68,38 +93,11 @@ class FaceEmbeddingHelper(private val context: Context) {
             val outputBuffer = Array(1) { FloatArray(embeddingSize) }
             interpreter?.run(inputBuffer, outputBuffer)
             
-            return outputBuffer[0]
+            outputBuffer[0]
         } catch (e: Exception) {
-            return generateSimpleEmbedding(bitmap)
+            Log.e("FaceEmbeddingHelper", "TFLite inference failed: ${e.message}")
+            null
         }
-    }
-    
-    private fun generateSimpleEmbedding(bitmap: Bitmap): FloatArray {
-        // Simple feature extraction as fallback
-        val resized = Bitmap.createScaledBitmap(bitmap, 32, 32, true)
-        val embedding = FloatArray(embeddingSize)
-        
-        val pixels = IntArray(32 * 32)
-        resized.getPixels(pixels, 0, 32, 0, 0, 32, 32)
-        
-        // Extract color histogram and spatial features
-        for (i in 0 until minOf(pixels.size, embeddingSize)) {
-            val pixel = pixels[i]
-            val r = (pixel shr 16 and 0xFF) / 255f
-            val g = (pixel shr 8 and 0xFF) / 255f
-            val b = (pixel and 0xFF) / 255f
-            embedding[i] = (r + g + b) / 3f
-        }
-        
-        // Normalize
-        val norm = kotlin.math.sqrt(embedding.sumOf { (it * it).toDouble() }).toFloat()
-        if (norm > 0) {
-            for (i in embedding.indices) {
-                embedding[i] /= norm
-            }
-        }
-        
-        return embedding
     }
     
     fun close() {

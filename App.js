@@ -871,7 +871,10 @@ export default function App() {
 
           // Auto-start timer for period transitions (P1->P2, P2->P3, etc.)
           // First time of day requires manual start, regardless of which period
-          const hasStartedTimerToday = prev.timerSeconds > 0 || prev.isRunning;
+          // NOTE: Check OfflineTimerService.timerSeconds (the singleton's restored value)
+          // NOT prev.timerSeconds (React state), because on app reopen React state starts
+          // at 0 before the initialize() async call has updated it.
+          const hasStartedTimerToday = OfflineTimerService.timerSeconds > 0 || OfflineTimerService.isRunning || prev.timerSeconds > 0 || prev.isRunning;
           const wasRunningBeforeLectureEnd = OfflineTimerService.wasRunningBeforeLectureEnd;
 
           if (hasStartedTimerToday && wasRunningBeforeLectureEnd) {
@@ -919,31 +922,41 @@ export default function App() {
             })();
           } else if (!hasStartedTimerToday) {
             console.log('🌅 First time of day - requires manual START TIMER button');
-            // Reset stale timer from previous session
-            OfflineTimerService.timerSeconds = 0;
-            OfflineTimerService.attendanceStatus = 'absent';
-            OfflineTimerService.thresholdSeconds = null;
-            OfflineTimerService.isManuallyMarked = false; // Reset manual mark
+            // Only reset if the singleton also has no timer running — don't clobber a
+            // restored timer that hasn't propagated to React state yet (app reopen race).
+            if (!OfflineTimerService.isRunning && OfflineTimerService.timerSeconds === 0) {
+              OfflineTimerService.timerSeconds = 0;
+              OfflineTimerService.attendanceStatus = 'absent';
+              OfflineTimerService.thresholdSeconds = null;
+              OfflineTimerService.isManuallyMarked = false;
+            }
           } else {
             console.log('⏸️ Timer was not running in previous period - requires manual start');
-            // Reset stale timer from previous period so new period starts clean
-            OfflineTimerService.timerSeconds = 0;
-            OfflineTimerService.attendanceStatus = 'absent';
-            OfflineTimerService.thresholdSeconds = null;
-            OfflineTimerService.isManuallyMarked = false; // Reset manual mark
+            // Only reset if the singleton also has no timer running — don't clobber a
+            // restored timer that hasn't propagated to React state yet (app reopen race).
+            if (!OfflineTimerService.isRunning && OfflineTimerService.timerSeconds === 0) {
+              OfflineTimerService.timerSeconds = 0;
+              OfflineTimerService.attendanceStatus = 'absent';
+              OfflineTimerService.thresholdSeconds = null;
+              OfflineTimerService.isManuallyMarked = false;
+            }
           }
 
           // Also update OfflineTimerService's internal currentLecture
           if (OfflineTimerService.isRunning) {
             OfflineTimerService.currentLecture = updatedLecture;
           }
-          // Reset timerSeconds in React state too so UI shows 00:00:00 for new period
+          // Reset timerSeconds in React state for new period.
+          // Also check the singleton directly — on app reopen the singleton may have
+          // a restored running timer that hasn't propagated to React state yet.
+          const singletonRunning = OfflineTimerService.isRunning;
+          const singletonSeconds = OfflineTimerService.timerSeconds;
           return {
             ...prev,
             currentLecture: updatedLecture,
-            timerSeconds: prev.isRunning ? prev.timerSeconds : 0,
-            attendanceStatus: prev.isRunning ? prev.attendanceStatus : 'absent',
-            thresholdSeconds: prev.isRunning ? prev.thresholdSeconds : null,
+            timerSeconds: (prev.isRunning || singletonRunning) ? (singletonRunning ? singletonSeconds : prev.timerSeconds) : 0,
+            attendanceStatus: (prev.isRunning || singletonRunning) ? prev.attendanceStatus : 'absent',
+            thresholdSeconds: (prev.isRunning || singletonRunning) ? prev.thresholdSeconds : null,
           };
         });
       } else {
@@ -954,7 +967,10 @@ export default function App() {
             return {
               ...prev,
               currentLecture: null,
-              timerSeconds: 0,
+              // Only zero out timerSeconds if the timer is genuinely not running.
+              // On app reopen, React state starts at 0 but the singleton may have
+              // already restored a running timer — don't clobber it.
+              timerSeconds: (prev.isRunning || OfflineTimerService.isRunning) ? prev.timerSeconds : 0,
               attendanceStatus: 'absent',
               thresholdSeconds: null,
             };

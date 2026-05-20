@@ -7942,6 +7942,7 @@ app.get('/api/attendance/student/:enrollmentNo/date/:date', async (req, res) => 
         res.json({
             success: true,
             record: {
+                enrollmentNo: record.enrollmentNo || enrollmentNo, // echoed back for client-side strict validation
                 date: record.date,
                 status: record.status,
                 dayPercentage: record.dayPercentage || 0,

@@ -325,37 +325,96 @@ class OfflineTimerService {
           this.thresholdSeconds = null;
         }
 
-        // NEW LOGIC: Fetch existing attendance from server if timer is 0 or it's a new lecture
-        if (!isSameLecture || this.timerSeconds === 0) {
+        // ── SYNC-FIRST TIMER RECOVERY ──────────────────────────────────────────────
+        // The server is ALWAYS the authoritative source for the timer on app reopen.
+        // We validate with BOTH enrollmentNo AND periodId to prevent any crossing:
+        //   ✅ Loads confirmed server-synced seconds (safe, tamper-proof)
+        //   ✅ Falls back to local kill-state / AsyncStorage ONLY if server is offline
+        //
+        // Priority: server-confirmed → local kill-state (SharedPrefs) → AsyncStorage
+        // ──────────────────────────────────────────────────────────────────────────
+        const periodId = lectureInfo.period
+          ? `P${lectureInfo.period}`
+          : (lectureInfo.periodNumber ? `P${lectureInfo.periodNumber}` : null);
+
+        let serverSeconds = null; // null = server unreachable / no data
+
+        if (periodId) {
           try {
-            console.log('📡 Fetching existing attendance from server for initial state...');
-            const todayStr = this._getISTDateString();
+            console.log(`📡 [SYNC] Fetching server-confirmed timer for enrollment=${this.studentId}, period=${periodId}...`);
             const attController = new AbortController();
-            const attTimeout = setTimeout(() => attController.abort(), 5000);
-            const response = await fetch(`${this.serverUrl}/api/attendance/student/${this.studentId}/date/${todayStr}`, {
-              signal: attController.signal
-            });
+            const attTimeout = setTimeout(() => attController.abort(), 6000);
+
+            // URL itself scopes the query to this.studentId — no other student's data can leak in
+            const response = await fetch(
+              `${this.serverUrl}/api/attendance/student/${encodeURIComponent(this.studentId)}/date/${todayStr}`,
+              { signal: attController.signal }
+            );
             clearTimeout(attTimeout);
+
             if (response.ok) {
               const data = await response.json();
-              if (data.success && data.record && data.record.lectures) {
-                const periodId = lectureInfo.period ? `P${lectureInfo.period}` : (lectureInfo.periodNumber ? `P${lectureInfo.periodNumber}` : 'P1');
-                const existingLecture = data.record.lectures.find(l => l.period === periodId);
-                if (existingLecture) {
-                  const recoveredSeconds = existingLecture.actualAttended != null
-                    ? existingLecture.actualAttended
-                    : (existingLecture.attended || 0);
-                  if (recoveredSeconds > 0) {
-                    this.timerSeconds = recoveredSeconds;
-                    console.log(`✅ Recovered ${this.timerSeconds} actual seconds from server for ${periodId}`);
+
+              if (data.success && data.record && Array.isArray(data.record.lectures)) {
+
+                // STRICT CHECK 1: enrollmentNo in response must match our studentId
+                // (defends against server bugs that might return another student's record)
+                const respEnrollment = String(
+                  data.record.enrollmentNo || data.record.studentId || data.record.enrollment || ''
+                ).trim();
+                const expectedEnrollment = String(this.studentId).trim();
+
+                if (respEnrollment && respEnrollment !== expectedEnrollment) {
+                  console.warn(`🚨 [SYNC] Enrollment mismatch! Server returned "${respEnrollment}", expected "${expectedEnrollment}" — IGNORING server timer`);
+                } else {
+                  // STRICT CHECK 2: find the lecture record for exactly our periodId
+                  const matchedLecture = data.record.lectures.find(l => {
+                    const lp = String(l.period || '').trim().toUpperCase();
+                    const ep = periodId.trim().toUpperCase();
+                    return lp === ep;
+                  });
+
+                  if (matchedLecture) {
+                    // actualAttended = real seconds from PeriodAttendance (pre-capped by server)
+                    const raw = matchedLecture.actualAttended != null
+                      ? matchedLecture.actualAttended
+                      : (matchedLecture.attended || 0);
+                    serverSeconds = Math.max(0, Math.floor(raw));
+                    console.log(`✅ [SYNC] Server confirmed ${serverSeconds}s for enrollment=${expectedEnrollment}, period=${periodId}`);
+                  } else {
+                    console.log(`ℹ️ [SYNC] No lecture record found for period=${periodId} (new session or first start)`);
+                    serverSeconds = 0; // Server reachable but no record yet — start fresh
                   }
                 }
-              }
+              } // end if data.success
+            } else if (response.status === 404) {
+              // No attendance record today yet — fresh first session
+              console.log(`ℹ️ [SYNC] No attendance record today (404) — starting fresh for ${periodId}`);
+              serverSeconds = 0;
+            } else {
+              console.warn(`⚠️ [SYNC] Server returned HTTP ${response.status} — will use local fallback`);
             }
           } catch (err) {
-            console.log('⚠️ Failed to fetch existing attendance (offline?):', err.message);
+            console.log(`⚠️ [SYNC] Server unreachable (${err.message}) — using local fallback`);
           }
         }
+
+        // Apply the resolved timer value with clear priority chain
+        if (serverSeconds !== null) {
+          // Server was reachable — use its confirmed value as the baseline.
+          // If the local kill-state has a HIGHER value (unsent ticks between last sync and kill),
+          // keep the server value — we trust the server for integrity.
+          // The local excess will be re-earned by the running timer.
+          if (serverSeconds !== this.timerSeconds) {
+            console.log(`🔄 [SYNC] Setting timer to server-confirmed ${serverSeconds}s (was local ${this.timerSeconds}s)`);
+          }
+          this.timerSeconds = serverSeconds;
+        } else {
+          // Server offline — use whatever loadState() restored (kill-state or AsyncStorage)
+          console.log(`📦 [SYNC] Server offline — using local timer value: ${this.timerSeconds}s`);
+        }
+        // ──────────────────────────────────────────────────────────────────────────
+
 
         // Step 3: Set lecture context and start timer
         this.currentLecture = lectureInfo;
@@ -1935,9 +1994,22 @@ class OfflineTimerService {
                 return;
               }
 
-              // Step 2: Native timer still running — sync elapsed seconds
-              this.timerSeconds = Math.floor(seconds);
-              console.log(`⏱️ Synced from native timer: ${this.timerSeconds}s`);
+              // Step 2: Native timer still running — sync elapsed seconds.
+              // IMPORTANT: Only accept the native value if it's actually ahead of what
+              // we already have. If the native service was killed (onTaskRemoved on MIUI/
+              // swipe-from-recents), it resets elapsedSeconds = 0 but the JS process
+              // stays alive with the correct timerSeconds. Blindly taking 0 from a dead
+              // service would wipe the timer.
+              if (seconds > 0 && Math.floor(seconds) >= this.timerSeconds) {
+                this.timerSeconds = Math.floor(seconds);
+                console.log(`⏱️ Synced from native timer: ${this.timerSeconds}s`);
+              } else if (seconds === 0 || Math.floor(seconds) < this.timerSeconds) {
+                // Native service was killed or returned stale 0 — keep JS-side value
+                // and restart the native service from the current JS value.
+                console.log(`⏱️ Native timer returned ${Math.floor(seconds)}s (JS has ${this.timerSeconds}s) — keeping JS value and restarting native service`);
+                // Restart native service from current JS timerSeconds so it counts forward
+                this.startCounting();
+              }
             } catch (e) {
               console.warn('⚠️ Could not sync from native timer:', e);
             }
@@ -2022,6 +2094,8 @@ class OfflineTimerService {
         pausedDueToWiFiLoss: this.pausedDueToWiFiLoss,
         previousLectureData: this.previousLectureData,
         isManuallyMarked: this.isManuallyMarked,
+        verifiedToday: this.verifiedToday,
+        verifiedTodayDate: this.verifiedTodayDate,
         timestamp: _getBootMs() || Date.now(),
         bootMs: _getBootMs(),  // spoof-proof anchor for age check on restore
         date: this._getISTDateString() // Add date to discard across midnight
@@ -2107,6 +2181,9 @@ class OfflineTimerService {
           this.attendanceStatus = state.attendanceStatus || 'absent';
           this.thresholdSeconds = state.thresholdSeconds || null;
           this.isManuallyMarked = state.isManuallyMarked || false;
+          // Restore face-verification state so students don't re-verify on kill+reopen
+          this.verifiedToday = state.verifiedToday || false;
+          this.verifiedTodayDate = state.verifiedTodayDate || null;
           
           console.log('📦 Loaded timer state from storage:', {
             timerSeconds: this.timerSeconds,
@@ -2114,6 +2191,43 @@ class OfflineTimerService {
             pausedDueToWiFiLoss: this.pausedDueToWiFiLoss,
             lecture: this.currentLecture?.subject
           });
+
+          // ── KILL-STATE RECOVERY (Fix for swipe-from-recents reset to 0) ────────
+          // When the user swipes the app from recents, onTaskRemoved() fires in the
+          // native layer BEFORE JS has a chance to call saveState(). The native service
+          // writes the exact elapsedSeconds to SharedPreferences right before stopping.
+          // We read that here and use it if it's higher than what AsyncStorage had.
+          if (TimerModule && TimerModule.getKillStateElapsed) {
+            try {
+              const killState = await TimerModule.getKillStateElapsed();
+              if (killState.hasData) {
+                const killSecs = Math.floor(killState.elapsedSeconds);
+                console.log(`🔋 Kill-state snapshot: ${killSecs}s (periodId=${killState.periodId}, age=${Math.round(killState.ageMs / 1000)}s)`);
+
+                // Determine the current period from saved lecture context
+                const savedPeriodId = state.currentLecture?.period
+                  ? `P${state.currentLecture.period}`
+                  : (state.currentLecture?.periodId || null);
+
+                // Only apply the kill-state if it matches the same period AND it's newer
+                const periodMatches = !killState.periodId || !savedPeriodId ||
+                  killState.periodId === savedPeriodId;
+
+                if (periodMatches && killSecs > this.timerSeconds) {
+                  console.log(`✅ Kill-state value (${killSecs}s) > AsyncStorage value (${this.timerSeconds}s) — using kill-state`);
+                  this.timerSeconds = killSecs;
+                } else {
+                  console.log(`ℹ️ Kill-state not used: killSecs=${killSecs}, stored=${this.timerSeconds}, periodMatches=${periodMatches}`);
+                }
+
+                // Always clear the kill-state after consuming it to avoid stale data on next start
+                TimerModule.clearKillState().catch(() => {});
+              }
+            } catch (ksErr) {
+              console.warn('⚠️ Could not read kill-state:', ksErr.message);
+            }
+          }
+          // ────────────────────────────────────────────────────────────────────────
 
           // If was running, try to get the latest timerSeconds from the native module
           // (it may have kept counting while the app was killed)

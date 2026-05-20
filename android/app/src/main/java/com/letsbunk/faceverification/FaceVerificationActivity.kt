@@ -79,6 +79,24 @@ class FaceVerificationActivity : AppCompatActivity() {
             }
         )
         faceEmbeddingHelper = FaceEmbeddingHelper(this)
+
+        // Guard: if MobileFaceNet failed to load, abort immediately rather than
+        // silently falling back to a weak pixel-average embedding that is spoofable.
+        if (!faceEmbeddingHelper.isModelLoaded) {
+            Toast.makeText(
+                this,
+                "Face verification unavailable: model failed to load. Please reinstall the app or contact support.",
+                Toast.LENGTH_LONG
+            ).show()
+            val intent = Intent()
+            intent.putExtra("isMatch", false)
+            intent.putExtra("similarity", 0f)
+            intent.putExtra("distance", Float.MAX_VALUE)
+            intent.putExtra("message", "Face verification model not loaded")
+            setResult(RESULT_OK, intent)
+            finish()
+            return
+        }
         livenessDetector    = LivenessDetector()
         faceComparator      = FaceComparator()
 

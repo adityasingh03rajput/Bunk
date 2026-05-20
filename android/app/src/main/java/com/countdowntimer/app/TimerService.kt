@@ -52,6 +52,41 @@ class TimerService : Service() {
          * Boot-relative elapsed time in milliseconds.
          */
         @Volatile var bootElapsedMs: Long = 0L
+
+        /** SharedPreferences key used to persist timer state across process kills. */
+        const val PREFS_NAME = "timer_kill_state"
+        const val PREF_ELAPSED = "elapsed_seconds"
+        const val PREF_PERIOD  = "period_id"
+        const val PREF_BOOT_MS = "boot_elapsed_ms"
+        const val PREF_SUBJECT = "lecture_subject"
+        const val PREF_SAVED_AT_BOOT_MS = "saved_at_boot_ms"
+
+        /**
+         * Read the last persisted elapsed seconds from SharedPreferences.
+         * Returns null if nothing was saved or the data is too old (>2h).
+         */
+        fun readElapsedFromPrefs(context: Context): Map<String, Any>? {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val elapsed = prefs.getLong(PREF_ELAPSED, -1L)
+            if (elapsed < 0) return null
+            val savedAtBootMs = prefs.getLong(PREF_SAVED_AT_BOOT_MS, 0L)
+            // Discard if saved more than 2 hours ago (stale data from a previous session)
+            val age = SystemClock.elapsedRealtime() - savedAtBootMs
+            if (age > 2 * 60 * 60 * 1000L) return null
+            return mapOf(
+                "elapsedSeconds" to elapsed,
+                "periodId"       to (prefs.getString(PREF_PERIOD, "") ?: ""),
+                "bootElapsedMs"  to (prefs.getLong(PREF_BOOT_MS, 0L)),
+                "lectureSubject" to (prefs.getString(PREF_SUBJECT, "") ?: ""),
+                "savedAtBootMs"  to savedAtBootMs,
+                "ageMs"          to age
+            )
+        }
+
+        /** Clear the SharedPreferences snapshot (call after a clean stop). */
+        fun clearPrefs(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+        }
     }
 
     private val binder = LocalBinder()
@@ -188,8 +223,33 @@ class TimerService : Service() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
+        // Persist the current elapsed seconds to SharedPreferences BEFORE stopping.
+        // When the user swipes the app from recents, this is the ONLY reliable
+        // place to save state — AsyncStorage (JS side) is too slow and may not
+        // have written the latest value yet.
+        saveElapsedToPrefs()
         stopTimer()
         super.onTaskRemoved(rootIntent)
+    }
+
+    /**
+     * Persist elapsed seconds + context to SharedPreferences so JS can recover
+     * the correct timer value after the process is killed and restarted.
+     */
+    private fun saveElapsedToPrefs() {
+        try {
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putLong(PREF_ELAPSED,         elapsedSeconds)
+                .putString(PREF_PERIOD,         periodId)
+                .putLong(PREF_BOOT_MS,          bootElapsedMs)
+                .putString(PREF_SUBJECT,        lectureSubject)
+                .putLong(PREF_SAVED_AT_BOOT_MS, SystemClock.elapsedRealtime())
+                .apply()
+            Log.d(TAG, "saveElapsedToPrefs: saved ${elapsedSeconds}s for period=$periodId")
+        } catch (e: Exception) {
+            Log.w(TAG, "saveElapsedToPrefs failed: ${e.message}")
+        }
     }
 
     private val tickRunnable = object : Runnable {

@@ -1,78 +1,103 @@
 @echo off
 setlocal enabledelayedexpansion
 echo ========================================
-echo LetsBunk Offline-BSSID Build and Install
+echo  LetsBunk Build ^& Install Script
+echo  Usage: BUILD_FAST.bat [--release]
 echo ========================================
 echo.
 
+REM Parse args: default = debug (fast), pass --release for release build
+set BUILD_TYPE=assembleDebug
+set APK_SUBPATH=debug\app-debug.apk
+set BUILD_LABEL=DEBUG
+
+for %%A in (%*) do (
+    if /I "%%A"=="--release" (
+        set BUILD_TYPE=assembleRelease
+        set APK_SUBPATH=release\app-release.apk
+        set BUILD_LABEL=RELEASE
+    )
+)
+
+echo Build mode: %BUILD_LABEL%
+echo.
+
 REM Step 1: Cleanup old APKs (no uninstall - preserves permissions)
-echo Step 1: Removing old APKs...
+echo [1/3] Removing old APKs...
 del /S /F /Q *.apk >nul 2>&1
-echo ✅ Cleanup complete
+echo     Done.
 echo.
 
 REM Step 2: Build
-echo Step 2: Building (Fast Mode)...
-echo This may take a few minutes...
+echo [2/3] Building (%BUILD_LABEL% mode)...
+echo     This may take a few minutes...
 cd android
-call gradlew assembleRelease --no-daemon
+call gradlew %BUILD_TYPE% --no-daemon --build-cache --parallel
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo ❌ Build failed!
+    echo ❌ Build FAILED! Check errors above.
     cd ..
     pause
     exit /b 1
 )
 cd ..
 echo.
-echo ✅ Build completed successfully!
+echo ✅ Build complete!
+echo.
 
-REM Step 3: Install
-set APK_PATH=android\app\build\outputs\apk\release\app-release.apk
+REM Step 3: Locate APK
+set APK_PATH=android\app\build\outputs\apk\%APK_SUBPATH%
 if not exist "%APK_PATH%" (
     echo ❌ APK not found at: %APK_PATH%
     pause
     exit /b 1
 )
+echo     APK: %APK_PATH%
+echo.
 
-echo ✅ APK ready: %APK_PATH%
-
-REM Check for devices
+REM Step 4: Detect connected device (prefer wireless TCP/IP)
+echo [3/3] Detecting device...
 set TARGET_DEVICE=
-for /f "tokens=1" %%i in ('adb devices') do (
+
+REM Look for a TCP/IP (wireless) device first — format: 192.168.x.x:PORT or serial:5555
+for /f "tokens=1" %%i in ('adb devices 2^>nul') do (
     set "LINE=%%i"
-    if not "!LINE!"=="!LINE::5555=!" (
-        set "TARGET_DEVICE=!LINE!"
+    if not "!LINE!"=="!LINE::5555=!" set "TARGET_DEVICE=!LINE!"
+    if not "!LINE!"=="!LINE::5554=!" set "TARGET_DEVICE=!LINE!"
+    if not "!LINE!"=="!LINE::5556=!" set "TARGET_DEVICE=!LINE!"
+)
+
+REM Fallback: any device (USB)
+if "!TARGET_DEVICE!"=="" (
+    for /f "skip=1 tokens=1" %%i in ('adb devices 2^>nul') do (
+        set "LINE=%%i"
+        if not "!LINE!"=="" if not "!LINE!"=="List" (
+            if "!TARGET_DEVICE!"=="" set "TARGET_DEVICE=!LINE!"
+        )
     )
 )
 
-adb devices > temp_devices.txt 2>nul
-findstr /C:"device" temp_devices.txt | findstr /V /C:"List of devices" >nul
+if "!TARGET_DEVICE!"=="" (
+    echo ⚠️  No device connected.
+    echo     APK is ready at: %APK_PATH%
+    echo     Run manually:  adb install -r "%APK_PATH%"
+    echo.
+    pause
+    exit /b 0
+)
+
+echo     Device: !TARGET_DEVICE!
+adb -s !TARGET_DEVICE! install -r "%APK_PATH%"
 if %ERRORLEVEL% EQU 0 (
-    if not "!TARGET_DEVICE!"=="" (
-        echo ✅ Wireless TCP/IP device detected: !TARGET_DEVICE! - installing wirelessly...
-        adb -s !TARGET_DEVICE! install -r "%APK_PATH%"
-    ) else (
-        echo ✅ USB Device detected - installing directly...
-        adb install -r "%APK_PATH%"
-    )
-    
-    if %ERRORLEVEL% EQU 0 (
-        echo.
-        echo ========================================
-        echo ✅ SUCCESS! APK installed on device
-        echo ========================================
-    ) else (
-        echo.
-        echo ⚠️ Install failed - check your device for permission prompts
-        echo You may need to enable "Install via USB" or "Wireless Debugging" in Developer Options.
-    )
+    echo.
+    echo ========================================
+    echo  ✅ SUCCESS! Installed on !TARGET_DEVICE!
+    echo ========================================
 ) else (
     echo.
-    echo ⚠️ No device connected - Build successful
-    echo APK is located at: %APK_PATH%
+    echo ⚠️  Install failed. Check for permission prompts on device.
+    echo     Enable "Install via USB" / "Wireless Debugging" in Developer Options.
 )
 
-del temp_devices.txt 2>nul
 echo.
 pause

@@ -358,4 +358,50 @@ class TimerModule(private val reactContext: ReactApplicationContext) :
             promise.reject("CLEAR_REDUNDANCY_ERROR", e.message)
         }
     }
+
+    /**
+     * Read the elapsed-seconds snapshot written by TimerService.saveElapsedToPrefs()
+     * when the app is swiped from recents (onTaskRemoved).
+     *
+     * Returns a map:
+     *   { elapsedSeconds, periodId, lectureSubject, bootElapsedMs, savedAtBootMs, ageMs, hasData }
+     *
+     * Returns hasData=false if no snapshot exists or it is too old (>2h).
+     * JS should call clearKillState() after it has consumed the value.
+     */
+    @ReactMethod
+    fun getKillStateElapsed(promise: Promise) {
+        try {
+            val snapshot = TimerService.readElapsedFromPrefs(reactContext)
+            val result = WritableNativeMap()
+            if (snapshot != null) {
+                result.putDouble("elapsedSeconds",  (snapshot["elapsedSeconds"] as Long).toDouble())
+                result.putString("periodId",         snapshot["periodId"] as? String ?: "")
+                result.putString("lectureSubject",   snapshot["lectureSubject"] as? String ?: "")
+                result.putDouble("bootElapsedMs",    (snapshot["bootElapsedMs"] as Long).toDouble())
+                result.putDouble("savedAtBootMs",    (snapshot["savedAtBootMs"] as Long).toDouble())
+                result.putDouble("ageMs",            (snapshot["ageMs"] as Long).toDouble())
+                result.putBoolean("hasData", true)
+            } else {
+                result.putBoolean("hasData", false)
+            }
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("GET_KILL_STATE_ERROR", e.message)
+        }
+    }
+
+    /**
+     * Clear the SharedPreferences kill-state snapshot after JS has consumed it.
+     * Call this after successfully restoring timer state from getKillStateElapsed().
+     */
+    @ReactMethod
+    fun clearKillState(promise: Promise) {
+        try {
+            TimerService.clearPrefs(reactContext)
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("CLEAR_KILL_STATE_ERROR", e.message)
+        }
+    }
 }

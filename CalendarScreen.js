@@ -56,6 +56,7 @@ export default function CalendarScreen({
     const [drillSubjectStats, setDrillSubjectStats]  = useState([]);   // per-subject bubbles
     const [visibleStudentsCount, setVisibleStudentsCount] = useState(20);
     const [modalTimerOffset, setModalTimerOffset] = useState(0);
+    const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
     // ── Live timer for modal ──
     useEffect(() => {
@@ -438,6 +439,7 @@ export default function CalendarScreen({
         if (!semester || !branch) return;
         setLoadingStudents(true);
         setStudentsOnDate([]); // optimistic clear
+        setStudentSearchQuery(''); // reset search on new date
         try {
             // Use IST date parts to match how badges are indexed (consistency)
             // badge key logic in fetchTeacherMonthData uses (UTC + 5.5).toDateString()
@@ -483,6 +485,7 @@ export default function CalendarScreen({
         if (!semester || !branch || !selectedSubject) return;
         setLoadingStudents(true);
         setStudentsOnDate([]); // optimistic clear
+        setStudentSearchQuery(''); // reset search on new date
         try {
             // Use local date parts to build YYYY-MM-DD — avoids UTC offset shifting the date
             const y = date.getFullYear();
@@ -1022,11 +1025,43 @@ export default function CalendarScreen({
                                             </View>
                                         )}
 
-                        {/* Student list */}
+                        {/* Student search bar */}
+                                        <View style={[styles.searchBarWrap, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                                            <Text style={{ fontSize: 14, marginRight: 6 }}>🔍</Text>
+                                            <TextInput
+                                                style={[styles.searchBarInput, { color: theme.text }]}
+                                                placeholder="Search by name or enrollment…"
+                                                placeholderTextColor={theme.textSecondary}
+                                                value={studentSearchQuery}
+                                                onChangeText={t => { setStudentSearchQuery(t); setVisibleStudentsCount(20); }}
+                                                autoCorrect={false}
+                                                autoCapitalize="none"
+                                                clearButtonMode="while-editing"
+                                            />
+                                            {studentSearchQuery.length > 0 && (
+                                                <TouchableOpacity onPress={() => { setStudentSearchQuery(''); setVisibleStudentsCount(20); }}>
+                                                    <Text style={{ color: theme.textSecondary, fontSize: 16, paddingLeft: 4 }}>✕</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        {/* Student list */}
+                                        {(() => {
+                                            const filtered = studentSearchQuery.trim()
+                                                ? studentsOnDate.filter(s => {
+                                                    const q = studentSearchQuery.trim().toLowerCase();
+                                                    return (
+                                                        (s.name || s.studentName || '').toLowerCase().includes(q) ||
+                                                        (s.enrollmentNo || '').toLowerCase().includes(q)
+                                                    );
+                                                })
+                                                : studentsOnDate;
+                                            return (
+                                                <>
                                         <Text style={[styles.studentsTitle, { color: theme.text }]}>
-                                            Students ({studentsOnDate.length})
+                                            Students ({filtered.length}{studentSearchQuery.trim() ? ` of ${studentsOnDate.length}` : ''})
                                         </Text>
-                                        {studentsOnDate.slice(0, visibleStudentsCount).map((student, i) => {
+                                        {filtered.slice(0, visibleStudentsCount).map((student, i) => {
                                             const periodRecord = filterMode === 'subject' && allPeriods.length > 0
                                                 ? student.periods?.[currentPeriodIdx]
                                                 : null;
@@ -1073,18 +1108,20 @@ export default function CalendarScreen({
                                             );
                                         })}
 
-                                        {studentsOnDate.length > visibleStudentsCount && (
+                                        {filtered.length > visibleStudentsCount && (
                                             <TouchableOpacity 
                                                 style={[styles.loadMoreBtn, { borderColor: theme.border, backgroundColor: theme.background + '50' }]}
                                                 onPress={() => setVisibleStudentsCount(prev => prev + 30)}
                                                 activeOpacity={0.7}
                                             >
                                                 <Text style={[styles.loadMoreText, { color: theme.primary }]}>
-                                                    Load More ({studentsOnDate.length - visibleStudentsCount} remaining)
+                                                    Load More ({filtered.length - visibleStudentsCount} remaining)
                                                 </Text>
                                             </TouchableOpacity>
                                         )}
-                                    </>
+                                                </>
+                                            );
+                                        })()}
                                 )}
                             </ScrollView>
 
@@ -1559,5 +1596,21 @@ const styles = StyleSheet.create({
     loadMoreText: {
         fontSize: 14,
         fontWeight: 'bold',
+    },
+
+    // ── student search bar ────────────────────────────────────────────────────
+    searchBarWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 14,
+    },
+    searchBarInput: {
+        flex: 1,
+        fontSize: 14,
+        paddingVertical: 2,
     },
 });

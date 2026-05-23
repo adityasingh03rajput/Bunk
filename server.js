@@ -5316,10 +5316,12 @@ app.get('/api/attendance/date/:date', async (req, res) => {
             if (p.status === 'present') studentMap[key].status = 'present';
         }
 
-        // ── Fallback: AttendanceRecord for students with no PeriodAttendance ──
-        // Track which enrollmentNos actually came from PeriodAttendance (have real lecture data)
-        const hasPeriodData = new Set(Object.keys(studentMap));
-
+        // ── Merge AttendanceRecord lectures with PeriodAttendance ───────────────
+        // PeriodAttendance is the canonical source for periods that have an
+        // actual check-in/sync row. AttendanceRecord contains the full timetable
+        // expansion, including absent/0-minute periods. Previously we skipped the
+        // AttendanceRecord as soon as a student had any PeriodAttendance, which
+        // made the admin panel lose periods like P2 when only P1 had synced.
         const arRecords = await AttendanceRecord.find({
             date: { $gte: startOfDay, $lte: endOfDay },
             $or: [{ semester: sem, branch }, { enrollmentNo: { $in: enrollmentNos } }]
@@ -5327,13 +5329,9 @@ app.get('/api/attendance/date/:date', async (req, res) => {
 
         for (const r of arRecords) {
             const key = r.enrollmentNo || r.studentId;
-            // Skip only if we already have real PeriodAttendance data for this student
-            if (!key || hasPeriodData.has(key)) continue;
-            studentMap[key] = {
-                enrollmentNo: key,
-                name:         r.studentName || nameMap[key] || 'Unknown',
-                status:       r.status || 'absent',
-                lectures:     (r.lectures || []).map(l => ({
+            if (!key) continue;
+
+            const arLectures = (r.lectures || []).map(l => ({
                     period:  l.period || '',
                     subject: l.subject || '',
                     teacher: l.teacherName || l.teacher || '',
@@ -5343,8 +5341,37 @@ app.get('/api/attendance/date/:date', async (req, res) => {
                     checkInTime: l.studentCheckIn || null,
                     attended: l.attended || 0,
                     total: l.total || 0
-                }))
-            };
+            }));
+
+            if (!studentMap[key]) {
+                studentMap[key] = {
+                    enrollmentNo: key,
+                    name:         r.studentName || nameMap[key] || 'Unknown',
+                    status:       r.status || 'absent',
+                    lectures:     arLectures
+                };
+                continue;
+            }
+
+            // Merge missing aggregate periods while preserving PeriodAttendance
+            // rows for periods that actually synced.
+            const existingPeriods = new Set((studentMap[key].lectures || []).map(l => l.period));
+            for (const lecture of arLectures) {
+                if (lecture.period && !existingPeriods.has(lecture.period)) {
+                    studentMap[key].lectures.push(lecture);
+                    existingPeriods.add(lecture.period);
+                }
+            }
+
+            studentMap[key].lectures.sort((a, b) => {
+                const pa = parseInt(String(a.period || '').replace(/[^0-9]/g, ''), 10) || 0;
+                const pb = parseInt(String(b.period || '').replace(/[^0-9]/g, ''), 10) || 0;
+                return pa - pb;
+            });
+
+            if (studentMap[key].lectures.some(l => l.status === 'present')) {
+                studentMap[key].status = 'present';
+            }
         }
 
         // ── Ensure every class student appears (absent if no record) ──────────

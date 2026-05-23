@@ -3082,15 +3082,22 @@ app.get('/api/students/:studentId/face-data', async (req, res) => {
 // POST /api/attendance/offline-sync - Sync offline timer data
 app.post('/api/attendance/offline-sync', async (req, res) => {
     const startTime = Date.now();
-    const { studentId, timerSeconds, lecture, timestamp, isRunning, isPaused, periodId: clientPeriodId } = req.body;
+    const { studentId, lecture, timestamp, isRunning, isPaused, periodId: clientPeriodId, offlineStartTime, lastKnownSeconds } = req.body;
+    
+    // Support timerSeconds or fallback to lastKnownSeconds from socket reconnection logic
+    let timerSeconds = req.body.timerSeconds !== undefined ? req.body.timerSeconds : lastKnownSeconds;
+    
+    // Support timestamp or fallback to offlineStartTime
+    let effectiveTimestamp = timestamp || offlineStartTime;
+    
     const isQueuedSync = Boolean(req.body.isQueuedSync);
     // Guard: detect boot-relative timestamps (e.g. 543210 ms since boot, not epoch).
     // These produce dates in January 1970 and corrupt all date-based calculations.
     // If the parsed date is before 2020, it's clearly not an epoch timestamp — use server time.
     const MIN_VALID_EPOCH = new Date('2020-01-01').getTime(); // 1577836800000
-    let eventTime = timestamp ? new Date(timestamp) : new Date();
+    let eventTime = effectiveTimestamp ? new Date(effectiveTimestamp) : new Date();
     if (eventTime.getTime() < MIN_VALID_EPOCH) {
-        console.warn(`⚠️ [OFFLINE-SYNC] Invalid timestamp detected (${timestamp}) — appears to be boot-relative, not epoch. Falling back to server time.`);
+        console.warn(`⚠️ [OFFLINE-SYNC] Invalid timestamp detected (${effectiveTimestamp}) — appears to be boot-relative, not epoch. Falling back to server time.`);
         eventTime = new Date();
     }
     
@@ -3098,11 +3105,11 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
     
     try {
         // 1. Validate request body
-        if (!studentId || timerSeconds === undefined || !timestamp) {
+        if (!studentId || timerSeconds === undefined || (!timestamp && !offlineStartTime)) {
             const missingFields = [];
             if (!studentId) missingFields.push('studentId');
             if (timerSeconds === undefined) missingFields.push('timerSeconds');
-            if (!timestamp) missingFields.push('timestamp');
+            if (!timestamp && !offlineStartTime) missingFields.push('timestamp');
             
             console.log(`❌ [OFFLINE-SYNC] Missing required fields: ${missingFields.join(', ')}`);
             return res.status(400).json({
@@ -3187,13 +3194,15 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                     const periodEnd = new Date(`${todayDateStr}T${pInfo.endTime}:00+05:30`);
                     
                     const elapsedMs = eventTime.getTime() - periodStart.getTime();
+                    const durationSec = Math.floor((periodEnd.getTime() - periodStart.getTime()) / 1000);
                     
                     if (elapsedMs > 0) {
                         const elapsedSec = Math.floor(elapsedMs / 1000);
-                        const durationSec = Math.floor((periodEnd.getTime() - periodStart.getTime()) / 1000);
                         elapsedSecondsCap = Math.min(durationSec, elapsedSec);
                     } else {
-                        elapsedSecondsCap = 0; // class hasn't started yet on the server timeline
+                        // Sync arrived before period start (student started timer early or device clock drift).
+                        // Cap at full period duration to prevent zeroing out legitimate early attendance.
+                        elapsedSecondsCap = durationSec;
                     }
                 } catch (_) {
                     elapsedSecondsCap = maxSeconds;

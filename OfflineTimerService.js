@@ -333,7 +333,13 @@ class OfflineTimerService {
 
           // Reset timer only for new lecture
           if (!isSameLecture) {
-            console.log('📚 New lecture detected - resetting timer to 0');
+            console.log('📚 New lecture detected - saving final state before resetting timer to 0');
+            if (this.currentLecture && this.timerSeconds > 0) {
+               const prevPeriodId = this.currentLecture.period ? `P${this.currentLecture.period}` : (this.currentLecture.periodId || null);
+               if (prevPeriodId) {
+                  await this.reconcileActivePeriodQueueItem(prevPeriodId); // Force queue update for previous period
+               }
+            }
             this.timerSeconds = 0;
           } else {
             console.log('📚 First start of day — continuing from:', this.timerSeconds);
@@ -342,7 +348,13 @@ class OfflineTimerService {
 
         // For period transitions (already verified today, different lecture) — always reset timer to 0
         if (isAlreadyVerifiedToday && !isSameLecture) {
-          console.log('📚 Period transition — resetting timer to 0 for new period');
+          console.log('📚 Period transition — saving final state before resetting timer to 0 for new period');
+          if (this.currentLecture && this.timerSeconds > 0) {
+             const prevPeriodId = this.currentLecture.period ? `P${this.currentLecture.period}` : (this.currentLecture.periodId || null);
+             if (prevPeriodId) {
+                await this.reconcileActivePeriodQueueItem(prevPeriodId); // Force queue update for previous period
+             }
+          }
           this.timerSeconds = 0;
           this.attendanceStatus = 'absent';
           this.thresholdSeconds = null;
@@ -1811,6 +1823,26 @@ class OfflineTimerService {
           
           await this.saveSyncQueue();
         }
+      } else if (highestSeconds > 0) {
+        // BUG FIX: If the app was backgrounded for the entire period, the interval never ran, so the queue is empty.
+        // We MUST create a new queue item here to prevent complete loss of the period's data.
+        console.log(`🛡️ [RECONCILE] Creating MISSING queued item for ${activePeriodId} with ${highestSeconds}s`);
+        let timestampToUse;
+        try { timestampToUse = getServerTime().now(); } catch { timestampToUse = Date.now(); }
+        
+        this.syncQueue.push({
+          periodId: activePeriodId,
+          timerSeconds: highestSeconds,
+          attendedMinutes: Math.floor(highestSeconds / 60),
+          lecture: this.currentLecture,
+          timestamp: timestampToUse,
+          isRunning: this.isRunning,
+          isPaused: this.isPaused,
+          isQueuedSync: true, // Historical data — don't touch live state
+          finalSync: true,
+          reason: 'background_reconciliation'
+        });
+        await this.saveSyncQueue();
       }
     } catch (err) {
       console.error('❌ [RECONCILE] Error during active period queue reconciliation:', err);

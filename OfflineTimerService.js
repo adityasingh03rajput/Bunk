@@ -162,11 +162,11 @@ class OfflineTimerService {
           .catch(() => {});
       }
       
-      // Load saved state
-      await this.loadState();
-      
       // Load sync queue
       await this.loadSyncQueue();
+
+      // Load saved state
+      await this.loadState();
       
       // Setup app state listener
       this.setupAppStateListener();
@@ -333,7 +333,13 @@ class OfflineTimerService {
 
           // Reset timer only for new lecture
           if (!isSameLecture) {
-            console.log('📚 New lecture detected - resetting timer to 0');
+            console.log('📚 New lecture detected - saving final state before resetting timer to 0');
+            if (this.currentLecture && this.timerSeconds > 0) {
+               const prevPeriodId = this.currentLecture.period ? `P${this.currentLecture.period}` : (this.currentLecture.periodId || null);
+               if (prevPeriodId) {
+                  await this.reconcileActivePeriodQueueItem(prevPeriodId); // Force queue update for previous period
+               }
+            }
             this.timerSeconds = 0;
           } else {
             console.log('📚 First start of day — continuing from:', this.timerSeconds);
@@ -342,7 +348,13 @@ class OfflineTimerService {
 
         // For period transitions (already verified today, different lecture) — always reset timer to 0
         if (isAlreadyVerifiedToday && !isSameLecture) {
-          console.log('📚 Period transition — resetting timer to 0 for new period');
+          console.log('📚 Period transition — saving final state before resetting timer to 0 for new period');
+          if (this.currentLecture && this.timerSeconds > 0) {
+             const prevPeriodId = this.currentLecture.period ? `P${this.currentLecture.period}` : (this.currentLecture.periodId || null);
+             if (prevPeriodId) {
+                await this.reconcileActivePeriodQueueItem(prevPeriodId); // Force queue update for previous period
+             }
+          }
           this.timerSeconds = 0;
           this.attendanceStatus = 'absent';
           this.thresholdSeconds = null;
@@ -797,6 +809,12 @@ class OfflineTimerService {
       console.log('   Previous lecture:', this.previousLectureData.lecture?.subject);
       console.log('   Timer seconds:', this.previousLectureData.timerSeconds);
       
+      // Derive periodId from previous lecture context so server writes to the correct period
+      const prevLecture = this.previousLectureData.lecture;
+      const prevPeriodId = prevLecture?.period
+        ? `P${prevLecture.period}`
+        : (prevLecture?.periodId || null);
+
       // Perform final sync with previous lecture data
       const response = await fetch(POST_ATTENDANCE_OFFLINE_SYNC, {
         method: 'POST',
@@ -804,10 +822,12 @@ class OfflineTimerService {
         body: JSON.stringify({
           studentId: this.studentId,
           timerSeconds: this.previousLectureData.timerSeconds,
-          lecture: this.previousLectureData.lecture,
-          timestamp: this.previousLectureData.disconnectionTime || _getBootMs() || Date.now(),
+          lecture: prevLecture,
+          periodId: prevPeriodId,
+          timestamp: Date.now(),
           isRunning: false, // Mark as stopped since we're switching lectures
           isPaused: false,
+          isQueuedSync: true, // Historical data — don't touch live state
           finalSync: true, // Flag to indicate this is a final sync
           reason: 'lecture_change'
         }),
@@ -1528,7 +1548,7 @@ class OfflineTimerService {
       try {
         // Try to reach the server with a quick ping
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout to allow for slow connections/cold starts
         
         const response = await fetch(GET_HEALTH, {
           method: 'GET',
@@ -1538,7 +1558,11 @@ class OfflineTimerService {
         
         clearTimeout(timeoutId);
         this.hasInternetConnection = response.ok;
+        if (!response.ok) {
+           console.log(`⚠️ Health check returned non-OK status: ${response.status}`);
+        }
       } catch (error) {
+        console.log(`❌ Health check fetch failed:`, error.message);
         this.hasInternetConnection = false;
       }
       
@@ -1585,6 +1609,9 @@ class OfflineTimerService {
    * Sync all pending data when internet is restored
    */
   async syncPendingData() {
+    // Reconcile queue item for active period before flushing the queue
+    await this.reconcileActivePeriodQueueItem();
+
     if (!this.hasInternetConnection || this.syncQueue.length === 0) {
       return;
     }
@@ -1706,6 +1733,9 @@ class OfflineTimerService {
   async forceSyncTimerData() {
     console.log('🔄 Force syncing timer data...');
 
+    // Reconcile queue item for active period before syncing
+    await this.reconcileActivePeriodQueueItem();
+
     // Check internet connectivity (any network — WiFi or mobile data)
     await this.checkInternetConnectivity();
 
@@ -1744,29 +1774,100 @@ class OfflineTimerService {
   }
 
   /**
+   * Reconciles the active period's queue item with the highest available timer value
+   * from either JS memory (this.timerSeconds) or Native memory (TimerModule).
+   */
+  async reconcileActivePeriodQueueItem() {
+    try {
+      const activePeriodId = this.currentLecture?.period 
+        ? `P${this.currentLecture.period}` 
+        : (this.currentLecture?.periodId || null);
+      
+      if (!activePeriodId) return;
+
+      let highestSeconds = this.timerSeconds || 0;
+
+      // Try to query the Native layer
+      const { NativeModules } = require('react-native');
+      const TimerModule = NativeModules.TimerModule;
+      if (TimerModule) {
+        try {
+          const { seconds } = await TimerModule.getElapsedSeconds();
+          const nativeSec = Math.floor(seconds);
+          if (nativeSec > highestSeconds) {
+            console.log(`🛡️ [RECONCILE] Native timer (${nativeSec}s) is higher than JS timer (${highestSeconds}s).`);
+            highestSeconds = nativeSec;
+            this.timerSeconds = nativeSec; // sync JS memory too
+          }
+        } catch (nativeErr) {
+          console.warn('⚠️ [RECONCILE] Could not query native timer:', nativeErr.message);
+        }
+      }
+
+      // Check if there is an item in the syncQueue for this activePeriodId
+      const existingIndex = this.syncQueue.findIndex(item => item.periodId === activePeriodId);
+      if (existingIndex !== -1) {
+        const currentQueuedSeconds = this.syncQueue[existingIndex].timerSeconds || 0;
+        if (highestSeconds > currentQueuedSeconds) {
+          console.log(`🛡️ [RECONCILE] Updating queued item for ${activePeriodId} from ${currentQueuedSeconds}s to ${highestSeconds}s`);
+          this.syncQueue[existingIndex].timerSeconds = highestSeconds;
+          this.syncQueue[existingIndex].attendedMinutes = Math.floor(highestSeconds / 60);
+          
+          // Always reflect the CURRENT timer state so queued items don't carry
+          // stale isRunning=true after the timer has stopped (prevents 'active' ghost status)
+          this.syncQueue[existingIndex].isRunning = this.isRunning;
+          this.syncQueue[existingIndex].isPaused = this.isPaused;
+          
+          // Update timestamp to epoch time (never boot-relative) for server compatibility
+          try { this.syncQueue[existingIndex].timestamp = getServerTime().now(); } catch { this.syncQueue[existingIndex].timestamp = Date.now(); }
+          
+          await this.saveSyncQueue();
+        }
+      } else if (highestSeconds > 0) {
+        // BUG FIX: If the app was backgrounded for the entire period, the interval never ran, so the queue is empty.
+        // We MUST create a new queue item here to prevent complete loss of the period's data.
+        console.log(`🛡️ [RECONCILE] Creating MISSING queued item for ${activePeriodId} with ${highestSeconds}s`);
+        let timestampToUse;
+        try { timestampToUse = getServerTime().now(); } catch { timestampToUse = Date.now(); }
+        
+        this.syncQueue.push({
+          periodId: activePeriodId,
+          timerSeconds: highestSeconds,
+          attendedMinutes: Math.floor(highestSeconds / 60),
+          lecture: this.currentLecture,
+          timestamp: timestampToUse,
+          isRunning: this.isRunning,
+          isPaused: this.isPaused,
+          isQueuedSync: true, // Historical data — don't touch live state
+          finalSync: true,
+          reason: 'background_reconciliation'
+        });
+        await this.saveSyncQueue();
+      }
+    } catch (err) {
+      console.error('❌ [RECONCILE] Error during active period queue reconciliation:', err);
+    }
+  }
+
+  /**
    * Sync with explicit lecture context — used for final sync after timer stops
    * so the server can identify the correct period even after currentLecture is cleared.
    */
   async syncToServerWithContext(lecture, timerSeconds, periodId) {
-    // Temporarily override instance values for this sync call
-    const savedLecture   = this.currentLecture;
-    const savedSeconds   = this.timerSeconds;
-    this.currentLecture  = lecture;
-    this.timerSeconds    = timerSeconds;
-    this._finalSyncPeriodId = periodId;  // picked up by syncToServer
     try {
-      await this.syncToServer();
-    } finally {
-      this.currentLecture = savedLecture;
-      this.timerSeconds   = savedSeconds;
-      this._finalSyncPeriodId = null;
+      await this.syncToServer(lecture, timerSeconds, periodId);
+    } catch (e) {
+      console.warn('⚠️ syncToServerWithContext error:', e);
     }
   }
 
   /**
    * Sync timer data to server
+   * @param {Object} overrideLecture - Optional lecture to sync (instead of current state)
+   * @param {number} overrideTimerSeconds - Optional timer value to sync
+   * @param {string} overridePeriodId - Optional period ID to sync
    */
-  async syncToServer() {
+  async syncToServer(overrideLecture = null, overrideTimerSeconds = null, overridePeriodId = null) {
     try {
       this.lastSyncAttempt = _getBootMs() || Date.now();
 
@@ -1777,7 +1878,18 @@ class OfflineTimerService {
 
       // Use server-synced time for the timestamp sent to server (spoof-proof)
       let syncTimestamp;
-      try { syncTimestamp = getServerTime().now(); } catch { syncTimestamp = _getBootMs() || Date.now(); }
+      try { syncTimestamp = getServerTime().now(); } catch { syncTimestamp = Date.now(); }
+
+      // CAPTURE STATE AT THE START TO PREVENT CONCURRENT MODIFICATION BUGS
+      // Use overrides if provided, otherwise use current instance state
+      const capturedTimerSeconds = overrideTimerSeconds !== null ? overrideTimerSeconds : this.timerSeconds;
+      const capturedLecture = overrideLecture !== null ? overrideLecture : this.currentLecture;
+      const capturedIsRunning = this.isRunning;
+      const capturedIsPaused = this.isPaused;
+      const capturedLectureStartTime = this.lectureStartTime;
+      const capturedPeriodId = overridePeriodId !== null ? overridePeriodId : (capturedLecture?.period
+          ? `P${capturedLecture.period}`
+          : (capturedLecture?.periodId || null));
 
       // Enforce a hard 10-second timeout so a slow/sleeping server never blocks the interval
       const controller = new AbortController();
@@ -1790,19 +1902,17 @@ class OfflineTimerService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             studentId: this.studentId,
-            timerSeconds: this.timerSeconds,
-            lecture: this.currentLecture,
+            timerSeconds: capturedTimerSeconds,
+            lecture: capturedLecture,
             // Include periodId so server can update the right PeriodAttendance record
             // even after the period has ended (set by syncToServerWithContext for final syncs)
-            periodId: this._finalSyncPeriodId || (this.currentLecture?.period
-                ? `P${this.currentLecture.period}`
-                : (this.currentLecture?.periodId || null)),
+            periodId: capturedPeriodId,
             timestamp: syncTimestamp,
-            isRunning: this.isRunning,
-            isPaused: this.isPaused,
+            isRunning: capturedIsRunning,
+            isPaused: capturedIsPaused,
             currentBSSID: currentBSSID,
-            attendedMinutes: Math.floor(this.timerSeconds / 60),
-            sessionStartTime: this.lectureStartTime
+            attendedMinutes: Math.floor(capturedTimerSeconds / 60),
+            sessionStartTime: capturedLectureStartTime
           }),
           signal: controller.signal
         });
@@ -1858,11 +1968,16 @@ class OfflineTimerService {
           });
         }
         
-        // Clear sync queue on successful sync — save empty queue first, then clear in memory
-        await this.saveSyncQueue();
-        this.syncQueue = [];
-        await this.saveSyncQueue();
-        this.pendingSyncCount = 0;
+        // Filter out only the successfully synced active period from the queue
+        if (capturedPeriodId) {
+          const previousLength = this.syncQueue.length;
+          this.syncQueue = this.syncQueue.filter(item => item.periodId !== capturedPeriodId);
+          if (this.syncQueue.length !== previousLength) {
+            await this.saveSyncQueue();
+            this.pendingSyncCount = this.syncQueue.length;
+            console.log(`✅ Removed active period ${capturedPeriodId} from the sync queue. Queue size: ${this.pendingSyncCount}`);
+          }
+        }
         
         console.log('✅ Sync successful - Duration updated in MongoDB');
         
@@ -1891,24 +2006,26 @@ class OfflineTimerService {
       }
       
     } catch (error) {
-      const periodId = this._finalSyncPeriodId || (this.currentLecture?.period 
-            ? `P${this.currentLecture.period}` 
-            : (this.currentLecture?.periodId || 'Unknown'));
-      console.warn(`⚠️ Sync failed for ${periodId} (${this.timerSeconds}s), queuing for later:`, error.message);
+      const periodId = capturedPeriodId || 'Unknown';
+      console.warn(`⚠️ Sync failed for ${periodId} (${capturedTimerSeconds}s), queuing for later:`, error.message);
       
       this.hasInternetConnection = false;
       this.isOnline = false;
       
       // Add to sync queue — capture full lecture context including period ID
+      // CRITICAL: timestamp MUST be epoch (Date.now()), never boot-relative (_getBootMs()),
+      // because the server parses it with `new Date(timestamp)` for date/period calculations.
+      let queueTimestamp;
+      try { queueTimestamp = getServerTime().now(); } catch { queueTimestamp = Date.now(); }
       const existingIndex = this.syncQueue.findIndex(item => item.periodId === periodId);
       const queueItem = {
-        timerSeconds: this.timerSeconds,
-        lecture: this.currentLecture,
+        timerSeconds: capturedTimerSeconds,
+        lecture: capturedLecture,
         periodId: periodId,
-        timestamp: _getBootMs() || Date.now(),
-        isRunning: this.isRunning,
-        isPaused: this.isPaused,
-        attendedMinutes: Math.floor(this.timerSeconds / 60)
+        timestamp: queueTimestamp,
+        isRunning: capturedIsRunning,
+        isPaused: capturedIsPaused,
+        attendedMinutes: Math.floor(capturedTimerSeconds / 60)
       };
 
       if (existingIndex !== -1) {
@@ -1952,6 +2069,9 @@ class OfflineTimerService {
         // App came to foreground
         console.log('📱 App resumed from background');
 
+        // Reconcile queue item for active period immediately on foreground
+        await this.reconcileActivePeriodQueueItem();
+
         if (this.isRunning || TimerService?.isRunning) {
           // Step 1: Check if native service stopped the timer due to WiFi mismatch
           if (TimerModule) {
@@ -1980,9 +2100,13 @@ class OfflineTimerService {
                 return;
               }
 
-              // Step 2: Native timer still running — sync elapsed seconds
-              this.timerSeconds = Math.floor(seconds);
-              console.log(`⏱️ Synced from native timer: ${this.timerSeconds}s`);
+              // Step 2: Native timer still running or recently stopped — sync elapsed seconds safely
+              if (seconds > this.timerSeconds) {
+                this.timerSeconds = Math.floor(seconds);
+                console.log(`⏱️ Synced from native timer: ${this.timerSeconds}s`);
+              } else {
+                console.log(`ℹ️ Preserved JS timer (${this.timerSeconds}s), ignored native (${seconds}s)`);
+              }
             } catch (e) {
               console.warn('⚠️ Could not sync from native timer:', e);
             }
@@ -2167,6 +2291,9 @@ class OfflineTimerService {
             pausedDueToWiFiLoss: this.pausedDueToWiFiLoss,
             lecture: this.currentLecture?.subject
           });
+
+          // Reconcile queue item for active period immediately on loading state
+          await this.reconcileActivePeriodQueueItem();
 
           // If was running, try to get the latest timerSeconds from the native module
           // (it may have kept counting while the app was killed)

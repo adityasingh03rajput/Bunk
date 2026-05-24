@@ -13722,51 +13722,43 @@ async function showPeriodBreakdown(enrollmentNo, date) {
     document.getElementById('periodModal').style.display = 'block';
 
     try {
-        // 1. Fetch period records first — they carry semester/branch directly
-        const periodRes  = await fetch(GET_ATTENDANCE_PERIOD_REPORT);
-        const periodData = await periodRes.json();
-        const periodRecords = periodData.records || [];
+        const summaryRes = await fetch(`/api/attendance/student/${encodeURIComponent(enrollmentNo)}/date/${date}/summary`);
+        const summaryData = await summaryRes.json();
+        const periodRecords = summaryData.periods || [];
 
         // Build period map keyed by period id
         const periodMap = {};
         periodRecords.forEach(r => { periodMap[r.period] = r; });
 
-        // Derive semester/branch from period records (kept for future use)
-        const semester = periodRecords[0]?.semester || '';
-        const branch   = periodRecords[0]?.branch   || '';
-
-        // 2. Fetch remaining data in parallel — only tested, deployed endpoints
+        // Fetch remaining data in parallel (audit data)
         const [auditData] = await Promise.allSettled([
             fetch(GET_ATTENDANCE_AUDIT_TRAIL).then(r => r.ok ? r.json() : { records: [] })
         ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : {}));
 
-        // 3. Build lookup maps
+        // Build lookup maps
         const auditMap = {};
         (auditData.records || []).forEach(a => {
             if (!auditMap[a.period]) auditMap[a.period] = [];
             auditMap[a.period].push(a);
         });
 
-        // 4. Build classes list from PeriodAttendance (source of truth for deployed server)
-        const classesList = Object.values(periodMap)
-            .sort((a, b) => a.period.localeCompare(b.period))
-            .map(r => {
-                // Time data from PeriodAttendance.timerSeconds (real-time sync from mobile)
-                const attendedSec = r.timerSeconds || 0;
-                const totalSec = (r.startTime && r.endTime)
-                    ? (timeStrToMinutes(r.endTime) - timeStrToMinutes(r.startTime)) * 60
-                    : 3600;  // default 60 min
-                const timePct = totalSec > 0 ? Math.min(100, Math.round((attendedSec / totalSec) * 100)) : 0;
+        // Build classes list
+        const classesList = periodRecords.map(r => {
+            const attendedSec = r.timerSeconds || 0;
+            const totalSec = (r.startTime && r.endTime)
+                ? (timeStrToMinutes(r.endTime) - timeStrToMinutes(r.startTime)) * 60
+                : 3600;
+            const timePct = totalSec > 0 ? Math.min(100, Math.round((attendedSec / totalSec) * 100)) : 0;
 
-                return {
-                    period: r.period, subject: r.subject,
-                    teacher: r.teacher, teacherName: r.teacherName,
-                    room: r.room,
-                    startTime: r.startTime || null,
-                    endTime:   r.endTime   || null,
-                    attendedSec, totalSec, timePct
-                };
-            });
+            return {
+                period: r.period, subject: r.subject,
+                teacher: r.teacher, teacherName: r.teacherName,
+                room: r.room,
+                startTime: r.startTime || null,
+                endTime: r.endTime || null,
+                attendedSec, totalSec, timePct
+            };
+        });
 
         if (classesList.length === 0) {
             document.getElementById('periodListContainer').innerHTML =
@@ -14383,3 +14375,94 @@ async function loadSubjectsForShowcase() {
     }
 }
 
+
+// --- Showcase Teacher View ---
+async function loadShowcaseTeacher() {
+    const teacherId = document.getElementById('teacherViewSelect').value;
+    const branch = document.getElementById('teacherViewBranch').value;
+    const semester = document.getElementById('teacherViewSemester').value;
+
+    if (!teacherId) {
+        alert('Please select a teacher');
+        return;
+    }
+
+    const container = document.getElementById('teacherClassesContainer');
+    container.innerHTML = '<div style="text-align: center; padding: 20px;">Loading teacher allocations...</div>';
+
+    try {
+        const response = await fetch(`/api/attendance/teacher/${encodeURIComponent(teacherId)}/class-allocation`);
+        const data = await response.json();
+
+        if (!data.success || !data.allocations || data.allocations.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">No class allocations found for this teacher.</div>';
+            return;
+        }
+
+        let allocations = data.allocations;
+
+        // Apply local filters if selected
+        if (branch) {
+            allocations = allocations.filter(a => a.branch === branch);
+        }
+        if (semester) {
+            allocations = allocations.filter(a => a.semester === semester);
+        }
+
+        if (allocations.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-secondary);">No classes match the selected branch and semester.</div>';
+            return;
+        }
+
+        let html = '<div class="student-list">';
+
+        for (const alloc of allocations) {
+            html += `
+                <div class="student-item">
+                    <div class="student-info">
+                        <h4>${alloc.subject}</h4>
+                        <p>${alloc.semester} - ${alloc.branch}</p>
+                        <p style="margin-top:2px;">Period: ${alloc.period} | Room: ${alloc.room || 'N/A'}</p>
+                    </div>
+                    <button onclick="showTeacherClassStats('${teacherId}', '${alloc.semester}', '${alloc.branch}')">View Stats</button>
+                </div>
+            `;
+        }
+        html += '</div>';
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error fetching teacher allocations:', error);
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:#dc3545;">Error loading teacher data</div>';
+    }
+}
+
+async function showTeacherClassStats(teacherId, semester, branch) {
+    try {
+        const response = await fetch(`/api/attendance/teacher/${encodeURIComponent(teacherId)}/class/${encodeURIComponent(semester)}/${encodeURIComponent(branch)}/attendance`);
+        const data = await response.json();
+
+        if (data.success) {
+            let details = `Class: ${semester} - ${branch}\n\n`;
+            details += `Total Students: ${data.stats.totalStudents}\n`;
+            details += `Average Attendance: ${data.stats.percentage}%\n\n`;
+            details += `Recent Lectures:\n`;
+
+            data.lectures.slice(0, 5).forEach(l => {
+                details += `- ${l.date} (${l.period}): ${l.percentage}% (${l.presentCount}/${l.totalStudents})\n`;
+            });
+
+            alert(details);
+        } else {
+            alert('Failed to load class stats');
+        }
+    } catch (error) {
+        console.error('Error fetching class stats:', error);
+        alert('Error fetching class stats');
+    }
+}
+
+// Make loadShowcaseTeacher available globally since it's called from index.html onclick
+window.loadShowcaseTeacher = loadShowcaseTeacher;
+window.showTeacherClassStats = showTeacherClassStats;

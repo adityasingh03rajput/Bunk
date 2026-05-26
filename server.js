@@ -11153,3 +11153,394 @@ app.post('/api/email/bulk', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to send bulk emails: ' + error.message });
     }
 });
+
+// --- Showcase API Endpoints ---
+app.get('/api/attendance/student/:enrollmentNo/overall-percentage', async (req, res) => {
+  try {
+    const { enrollmentNo } = req.params;
+    let { tillDate } = req.query; // YYYY-MM-DD format
+
+    if (!tillDate) {
+        const lastDay = await getLastWorkingDay();
+        tillDate = lastDay.toISOString().split('T')[0];
+    }
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, percentage: 0, presentDays: 0, totalWorkingDays: 0 });
+    }
+
+    const data = await calculateOverallPercentage(enrollmentNo, tillDate);
+
+    res.json({
+        success: true,
+        percentage: data.percentage,
+        presentDays: data.presentDays,
+        totalWorkingDays: data.totalWorkingDays,
+        lastDate: data.lastDate
+    });
+  } catch (error) {
+    console.error('Error fetching overall percentage:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch overall percentage' });
+  }
+});
+
+app.get('/api/attendance/student/:enrollmentNo/date/:date/summary', async (req, res) => {
+  try {
+    const { enrollmentNo, date } = req.params;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, periods: [], dailyPercentage: 0, totalPeriods: 0, presentPeriods: 0 });
+    }
+
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const records = await PeriodAttendance.find({
+        enrollmentNo,
+        date: { $gte: dayStart, $lte: dayEnd }
+    }).sort({ period: 1 });
+
+    const totalPeriods = records.length;
+    const presentPeriods = records.filter(r => r.status === 'present').length;
+    const dailyPercentage = totalPeriods > 0 ? (presentPeriods / totalPeriods) * 100 : 0;
+
+    res.json({
+        success: true,
+        periods: records,
+        dailyPercentage: Math.round(dailyPercentage * 100) / 100,
+        totalPeriods,
+        presentPeriods
+    });
+  } catch (error) {
+    console.error('Error fetching date summary:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch date summary' });
+  }
+});
+
+app.get('/api/attendance/student/:enrollmentNo/subject/:subject/stats', async (req, res) => {
+  try {
+    const { enrollmentNo, subject } = req.params;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, percentage: 0, presentPeriods: 0, totalPeriods: 0, dates: [] });
+    }
+
+    const records = await PeriodAttendance.find({
+        enrollmentNo,
+        subject
+    }).sort({ date: 1 });
+
+    const totalPeriods = records.length;
+    const presentPeriods = records.filter(r => r.status === 'present').length;
+    const percentage = totalPeriods > 0 ? (presentPeriods / totalPeriods) * 100 : 0;
+
+    const dateObjects = records.map(r => ({
+        date: r.date.toISOString(),
+        status: r.status,
+        period: r.period
+    }));
+
+    res.json({
+        success: true,
+        percentage: Math.round(percentage * 100) / 100,
+        presentPeriods,
+        totalPeriods,
+        dates: dateObjects
+    });
+  } catch (error) {
+    console.error('Error fetching subject stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch subject stats' });
+  }
+});
+
+app.get('/api/attendance/subject/:subject/showcase-dates', async (req, res) => {
+  try {
+    const { subject } = req.params;
+    const { semester, branch } = req.query;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, dates: [], totalClasses: 0, semester, branch });
+    }
+
+    const query = { subject };
+    if (semester) query.semester = semester;
+    if (branch) query.branch = branch;
+
+    const records = await PeriodAttendance.find(query, { date: 1 }).lean();
+
+    const uniqueDates = [...new Set(records.map(r => r.date.toISOString().split('T')[0]))].sort();
+
+    res.json({
+        success: true,
+        dates: uniqueDates,
+        totalClasses: uniqueDates.length,
+        semester,
+        branch
+    });
+  } catch (error) {
+    console.error('Error fetching subject dates:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch subject dates' });
+  }
+});
+
+app.get('/api/attendance/teacher/:teacherId/class-allocation', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, allocations: [] });
+    }
+
+    const teacher = await Teacher.findOne({ employeeId: teacherId });
+    if (!teacher) {
+        return res.status(404).json({ success: false, error: 'Teacher not found' });
+    }
+
+    const timetables = await Timetable.find().lean();
+    const allocations = [];
+
+    for (const tt of timetables) {
+        const semester = tt.semester;
+        const branch = tt.branch;
+
+        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
+            if (tt.timetable && tt.timetable[day]) {
+                tt.timetable[day].forEach(entry => {
+                    if (entry.teacher === teacherId && !entry.isBreak) {
+                        const periodInfo = tt.periods ? tt.periods.find(p => p.number === entry.period) : null;
+
+                        // Check if we already added this class (to avoid duplicates from multiple days)
+                        const exists = allocations.find(a =>
+                            a.semester === semester &&
+                            a.branch === branch &&
+                            a.period === `P${entry.period}` &&
+                            a.subject === entry.subject
+                        );
+
+                        if (!exists) {
+                            allocations.push({
+                                semester,
+                                branch,
+                                period: `P${entry.period}`,
+                                subject: entry.subject,
+                                room: entry.room || '',
+                                startTime: periodInfo ? periodInfo.startTime : '',
+                                endTime: periodInfo ? periodInfo.endTime : ''
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    res.json({ success: true, allocations });
+  } catch (error) {
+    console.error('Error fetching class allocation:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch class allocation' });
+  }
+});
+
+app.get('/api/attendance/teacher/:teacherId/class/:semester/:branch/attendance', async (req, res) => {
+  try {
+    const { teacherId, semester, branch } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, stats: { totalStudents: 0, presentCount: 0, absentCount: 0, percentage: 0 }, lectures: [] });
+    }
+
+    const query = { teacher: teacherId, semester, branch };
+
+    if (startDate && endDate) {
+        query.date = {
+            $gte: new Date(startDate),
+            $lte: new Date(endDate)
+        };
+    }
+
+    const records = await PeriodAttendance.find(query).lean();
+
+    // Calculate overall stats
+    const totalRecords = records.length;
+    const presentCount = records.filter(r => r.status === 'present').length;
+    const absentCount = totalRecords - presentCount;
+    const percentage = totalRecords > 0 ? (presentCount / totalRecords) * 100 : 0;
+
+    const uniqueStudents = new Set(records.map(r => r.enrollmentNo)).size;
+
+    // Group into lectures (unique date + period + subject)
+    const lectureMap = {};
+    for (const r of records) {
+        const key = `${r.date.toISOString().split('T')[0]}_${r.period}_${r.subject}`;
+        if (!lectureMap[key]) {
+            lectureMap[key] = {
+                date: r.date.toISOString().split('T')[0],
+                period: r.period,
+                subject: r.subject,
+                room: r.room || '',
+                totalStudents: 0,
+                presentCount: 0,
+                absentCount: 0
+            };
+        }
+        lectureMap[key].totalStudents++;
+        if (r.status === 'present') {
+            lectureMap[key].presentCount++;
+        } else {
+            lectureMap[key].absentCount++;
+        }
+    }
+
+    const lectures = Object.values(lectureMap).map(l => ({
+        ...l,
+        percentage: l.totalStudents > 0 ? Math.round((l.presentCount / l.totalStudents) * 100) : 0
+    })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    res.json({
+        success: true,
+        stats: {
+            totalStudents: uniqueStudents,
+            presentCount,
+            absentCount,
+            percentage: Math.round(percentage * 100) / 100
+        },
+        lectures
+    });
+  } catch (error) {
+    console.error('Error fetching class attendance stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch class attendance stats' });
+  }
+});
+
+app.get('/api/attendance/teacher/:teacherId/lecture/:date/:period/attendance', async (req, res) => {
+  try {
+    const { teacherId, date, period } = req.params;
+
+    if (mongoose.connection.readyState !== 1) {
+        return res.json({ success: true, students: [], totalStudents: 0, presentCount: 0, percentage: 0 });
+    }
+
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const records = await PeriodAttendance.find({
+        teacher: teacherId,
+        date: { $gte: dayStart, $lte: dayEnd },
+        period
+    }).lean();
+
+    const totalStudents = records.length;
+    const presentCount = records.filter(r => r.status === 'present').length;
+    const percentage = totalStudents > 0 ? (presentCount / totalStudents) * 100 : 0;
+
+    const students = records.map(r => ({
+        enrollmentNo: r.enrollmentNo,
+        studentName: r.studentName,
+        status: r.status,
+        semester: r.semester,
+        branch: r.branch
+    })).sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+    res.json({
+        success: true,
+        students,
+        totalStudents,
+        presentCount,
+        percentage: Math.round(percentage * 100) / 100
+    });
+  } catch (error) {
+    console.error('Error fetching lecture attendance:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch lecture attendance' });
+  }
+});
+
+// --- Attendance Showcase Utility Functions ---
+
+// Calculate working days (exclude weekends and holidays)
+async function getWorkingDays(startDate, endDate) {
+  let holidays = [];
+  if (mongoose.connection.readyState === 1) {
+    holidays = await Holiday.find({
+      date: { $gte: startDate, $lte: endDate }
+    });
+  }
+
+  const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
+
+  let workingDays = 0;
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayOfWeek = currentDate.getDay();
+    const dateString = currentDate.toDateString();
+
+    // Skip weekends (0=Sunday, 6=Saturday) and holidays
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateString)) {
+      workingDays++;
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return workingDays;
+}
+
+// Get last working day till today
+async function getLastWorkingDay() {
+  let currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0);
+
+  let holidays = [];
+  if (mongoose.connection.readyState === 1) {
+    holidays = await Holiday.find({
+      date: { $lte: currentDate }
+    });
+  }
+
+  const holidayDates = new Set(holidays.map(h => h.date.toDateString()));
+
+  while (currentDate >= new Date('2025-01-01')) {
+    const dayOfWeek = currentDate.getDay();
+    const dateString = currentDate.toDateString();
+
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidayDates.has(dateString)) {
+      return currentDate;
+    }
+
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+
+  return new Date();
+}
+
+// Calculate overall attendance percentage
+async function calculateOverallPercentage(enrollmentNo, tillDate) {
+  const startDate = new Date('2025-01-01');
+  const endDate = new Date(tillDate);
+
+  // Get all attendance records
+  const records = await AttendanceRecord.find({
+    enrollmentNo,
+    date: { $gte: startDate, $lte: endDate }
+  });
+
+  // Count present days
+  const presentDays = records.filter(r => r.status === 'present').length;
+
+  // Get working days
+  const workingDays = await getWorkingDays(startDate, endDate);
+
+  const percentage = workingDays > 0 ? (presentDays / workingDays) * 100 : 0;
+
+  return {
+    percentage: Math.round(percentage * 100) / 100,
+    presentDays,
+    totalWorkingDays: workingDays,
+    lastDate: endDate
+  };
+}

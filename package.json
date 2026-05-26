@@ -39,6 +39,7 @@
     "react": "^18.2.0",
     "react-native": "^0.74.5",
     "react-native-svg": "13.4.0",
+    "react-native-webrtc": "^124.0.7",
     "react-native-webview": "13.8.6",
     "react-native-wifi-reborn": "^4.12.0",
     "resend": "^6.12.3",

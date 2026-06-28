@@ -8,6 +8,7 @@ import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
+import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription } from 'react-native-webrtc';
 import OfflineTimerService from './OfflineTimerService';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import BottomNavigation from './BottomNavigation';
@@ -1919,6 +1920,36 @@ export default function App() {
       console.log('✅ Transport:', socketRef.current.io.engine.transport.name);
       console.log('✅ Connected at:', new Date().toISOString());
 
+      // Immediately identify this student to the server so teachers can route P2P offers
+      const identifyEnrollment = studentIdRef.current;
+      if (identifyEnrollment) {
+        socketRef.current.emit('student_identify', {
+          enrollmentNo: identifyEnrollment,
+          semester: semesterRef.current?.toString(),
+          branch: branchRef.current,
+        });
+      } else {
+        // Try to identify from AsyncStorage on cold start
+        try {
+          const storedUserData = await AsyncStorage.getItem('@user_data');
+          const storedRole = await AsyncStorage.getItem('@user_role');
+          const role = storedRole ? JSON.parse(storedRole) : null;
+          if (role === 'student' && storedUserData) {
+            const parsed = JSON.parse(storedUserData);
+            if (parsed.enrollmentNo) {
+              console.log('📡 Cold-start student_identify:', parsed.enrollmentNo);
+              socketRef.current.emit('student_identify', {
+                enrollmentNo: parsed.enrollmentNo,
+                semester: parsed.semester?.toString(),
+                branch: parsed.branch || parsed.course,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ student_identify cold-start failed:', e.message);
+        }
+      }
+
       // Check for offline session and sync
       try {
         const offlineSessionData = await AsyncStorage.getItem('offline_session');
@@ -2001,11 +2032,50 @@ export default function App() {
       // Re-send current status if student is active (period-based attendance)
       if (selectedRoleRef.current === 'student' && studentIdRef.current) {
         console.log('📡 Re-sending student status after reconnect');
-        // Rejoin class room so student keeps receiving random ring notifications
         const currentSem = semesterRef.current;
         const currentBranch = branchRef.current;
         if (currentSem && currentBranch) {
           joinClassRoom(currentSem?.toString(), currentBranch);
+        } else {
+          // React state not hydrated yet — fallback to AsyncStorage
+          try {
+            const storedUserData = await AsyncStorage.getItem('@user_data');
+            if (storedUserData) {
+              const parsed = JSON.parse(storedUserData);
+              const storedSem = parsed.semester?.toString();
+              const storedBranch = parsed.branch || parsed.course;
+              if (storedSem && storedBranch && socketRef.current?.connected) {
+                console.log('📡 Auto-joining class room from stored profile:', storedSem, storedBranch);
+                socketRef.current.emit('join_class_room', { semester: storedSem, branch: storedBranch });
+                currentClassRoomRef.current = { semester: storedSem, branch: storedBranch };
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Could not load stored user data for auto-join:', e.message);
+          }
+        }
+      } else if (!selectedRoleRef.current || selectedRoleRef.current === 'student') {
+        // Socket connected but role not yet set — preemptively join from AsyncStorage
+        // This handles cold-start scenario where socket connects before React state loads
+        try {
+          const [storedUserData, storedRole] = await Promise.all([
+            AsyncStorage.getItem('@user_data'),
+            AsyncStorage.getItem('@user_role'),
+          ]);
+          const role = storedRole ? JSON.parse(storedRole) : null;
+          if (role === 'student' && storedUserData) {
+            const parsed = JSON.parse(storedUserData);
+            const storedSem = parsed.semester?.toString();
+            const storedBranch = parsed.branch || parsed.course;
+            const storedStudentId = parsed.enrollmentNo;
+            if (storedSem && storedBranch && storedStudentId && socketRef.current?.connected) {
+              console.log('🚀 Cold-start: Auto-joining class room for student:', storedStudentId, storedSem, storedBranch);
+              socketRef.current.emit('join_class_room', { semester: storedSem, branch: storedBranch });
+              currentClassRoomRef.current = { semester: storedSem, branch: storedBranch };
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Cold-start auto-join failed:', e.message);
         }
       }
     });
@@ -2043,6 +2113,23 @@ export default function App() {
           await fetchTimetable(currentSem, currentBranch);
           // Rejoin class room on reconnect
           joinClassRoom(currentSem?.toString(), currentBranch);
+        } else {
+          // Fallback to AsyncStorage if React state not yet hydrated
+          try {
+            const storedUserData = await AsyncStorage.getItem('@user_data');
+            if (storedUserData) {
+              const parsed = JSON.parse(storedUserData);
+              const storedSem = parsed.semester?.toString();
+              const storedBranch = parsed.branch || parsed.course;
+              if (storedSem && storedBranch && socketRef.current?.connected) {
+                console.log('🔄 Reconnect: Auto-joining from stored profile:', storedSem, storedBranch);
+                socketRef.current.emit('join_class_room', { semester: storedSem, branch: storedBranch });
+                currentClassRoomRef.current = { semester: storedSem, branch: storedBranch };
+              }
+            }
+          } catch (e) {
+            console.warn('⚠️ Reconnect auto-join failed:', e.message);
+          }
         }
 
         // Refresh BSSID schedule - get enrollment number from storage
@@ -2073,6 +2160,73 @@ export default function App() {
 
     socketRef.current.on('reconnect_failed', () => {
       console.log('❌ Socket reconnect failed - giving up');
+    });
+
+    // --- WebRTC P2P (Student Side) ---
+    socketRef.current.on('webrtc_offer', async (data) => {
+      if (selectedRoleRef.current !== 'student') return;
+      console.log('📶 WebRTC P2P Offer received from Teacher:', data.teacherId);
+      
+      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      socketRef.current.rtcPC = pc;
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketRef.current.emit('webrtc_ice_candidate', {
+            targetSocketId: data.teacherSocketId,
+            candidate: event.candidate
+          });
+        }
+      };
+
+      pc.ondatachannel = (event) => {
+        const dc = event.channel;
+        socketRef.current.rtcDC = dc;
+        console.log('⚡ P2P DataChannel connected!');
+        
+        dc.onmessage = (msgEvent) => {
+          try {
+            const msg = JSON.parse(msgEvent.data);
+            if (msg.type === 'RANDOM_RING_TRIGGER') {
+              console.log('🚨 P2P RANDOM RING TRIGGERED INSTANTLY!');
+              
+              // Reply with acknowledgment back to teacher immediately
+              try {
+                dc.send(JSON.stringify({ type: 'RANDOM_RING_ACK' }));
+              } catch (sendErr) {
+                console.warn('Failed sending P2P ACK:', sendErr.message);
+              }
+
+              // Trigger the existing random ring UI flow
+              const ringPauseTime = Date.now();
+              OfflineTimerService.pauseTimer('random_ring');
+              setRandomRingData({
+                randomRingId: 'p2p_ring_' + Date.now(),
+                teacherId: data.teacherId,
+                timestamp: Date.now(),
+                expiresAt: Date.now() + 60000,
+                ringPauseTime,
+              });
+            }
+          } catch(e) {}
+        };
+      };
+
+      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socketRef.current.emit('webrtc_answer', {
+        targetSocketId: data.teacherSocketId,
+        answer: pc.localDescription,
+        studentId: studentIdRef.current
+      });
+    });
+
+    socketRef.current.on('webrtc_ice_candidate', (data) => {
+      if (socketRef.current.rtcPC && data.candidate) {
+        socketRef.current.rtcPC.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
     });
 
     // Test socket communication with ping/pong

@@ -79,14 +79,18 @@ cloudinary.config({
 const app = express();
 const server = http.createServer(app);
 
-// CORS Configuration - Restrict in production
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://localhost:8081'];
+// CORS Configuration - Allow all origins for testing/local files
+const corsOptions = {
+    origin: (origin, callback) => {
+        // Echo back the requesting origin (including null for local file://)
+        callback(null, true);
+    },
+    credentials: true
+};
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.NODE_ENV === 'production' ? ALLOWED_ORIGINS : "*",
+        origin: (origin, callback) => callback(null, true),
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -96,10 +100,7 @@ const io = new Server(server, {
     transports: ['websocket', 'polling']
 });
 
-app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? ALLOWED_ORIGINS : "*",
-    credentials: true
-}));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' })); // Reduced from 100mb for security
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -167,6 +168,11 @@ if (!fs.existsSync(uploadsDir)) {
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
+
+// Serve teacher P2P & management console test page
+app.get('/teacher-test', (req, res) => {
+    res.sendFile(path.join(__dirname, 'teacher_test.html'));
+});
 
 // MongoDB Connection with proper pool configuration
 const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/attendance_app';
@@ -2682,8 +2688,43 @@ const liveTimerState = {
     }
 };
 
+// Maps enrollmentNo → socket.id for active student connections
+const studentSocketMap = new Map();
+
 io.on('connection', (socket) => {
     console.log('� Client connected:', socket.id);
+
+    // Student identifies itself on connect so teacher can route P2P WebRTC offers
+    socket.on('student_identify', ({ enrollmentNo, semester, branch }) => {
+        if (!enrollmentNo) return;
+        studentSocketMap.set(enrollmentNo, socket.id);
+        // Store/update socketId in liveTimerState if already tracking this student
+        const existing = liveTimerState.get(enrollmentNo);
+        if (existing) {
+            liveTimerState.set(enrollmentNo, { ...existing, socketId: socket.id });
+        } else if (semester && branch) {
+            // Create a minimal entry so teacher can see the student is online
+            liveTimerState.set(enrollmentNo, {
+                studentId: enrollmentNo,
+                enrollmentNo,
+                semester: semester.toString(),
+                branch,
+                socketId: socket.id,
+                isRunning: false,
+                attendedSeconds: 0,
+                timerValue: 0,
+                status: 'absent',
+                lastSeen: Date.now()
+            });
+        }
+        // Clean up on disconnect
+        socket.once('disconnect', () => {
+            if (studentSocketMap.get(enrollmentNo) === socket.id) {
+                studentSocketMap.delete(enrollmentNo);
+            }
+        });
+        console.log(`📱 Student identified: ${enrollmentNo} → ${socket.id}`);
+    });
 
     // Teacher joins a class room to receive targeted broadcasts
     socket.on('join_class_room', ({ semester, branch }) => {
@@ -2706,14 +2747,16 @@ io.on('connection', (socket) => {
                 // Student hasn't synced in 90s but marked running → offline
                 const isSyncTimedOut = state.isRunning && state.lastSeen && (now - state.lastSeen) > SYNC_TIMEOUT_MS;
 
+                // Resolve live socketId from studentSocketMap (most up-to-date)
+                const liveSocketId = studentSocketMap.get(state.enrollmentNo || state.studentId) || state.socketId;
                 if (isStale || isFromPreviousDay) {
-                    classStudents.push({ ...state, status: 'absent', isRunning: false, attendedSeconds: 0, timerValue: 0 });
+                    classStudents.push({ ...state, socketId: liveSocketId, status: 'absent', isRunning: false, attendedSeconds: 0, timerValue: 0 });
                 } else if (isSyncTimedOut) {
                     // Freeze at last known value — student went offline
-                    classStudents.push({ ...state, status: 'offline', isRunning: false });
+                    classStudents.push({ ...state, socketId: liveSocketId, status: 'offline', isRunning: false });
                 } else {
                     const displayTimer = state.status === 'absent' ? 0 : (state.attendedSeconds || 0);
-                    classStudents.push({ ...state, attendedSeconds: displayTimer, timerValue: displayTimer });
+                    classStudents.push({ ...state, socketId: liveSocketId, attendedSeconds: displayTimer, timerValue: displayTimer });
                 }
             }
         });
@@ -2726,6 +2769,39 @@ io.on('connection', (socket) => {
         const room = `class:${semester}:${branch}`;
         socket.leave(room);
         console.log(`👨‍🏫 Teacher left room: ${room}`);
+    });
+
+    // --- WebRTC P2P Signaling ---
+    socket.on('webrtc_offer', (data) => {
+        // Teacher sends offer to a specific student
+        if (data.targetSocketId) {
+            io.to(data.targetSocketId).emit('webrtc_offer', {
+                offer: data.offer,
+                teacherSocketId: socket.id,
+                teacherId: data.teacherId
+            });
+        }
+    });
+
+    socket.on('webrtc_answer', (data) => {
+        // Student sends answer back to teacher
+        if (data.targetSocketId) {
+            io.to(data.targetSocketId).emit('webrtc_answer', {
+                answer: data.answer,
+                studentSocketId: socket.id,
+                studentId: data.studentId
+            });
+        }
+    });
+
+    socket.on('webrtc_ice_candidate', (data) => {
+        // Exchange ICE candidates
+        if (data.targetSocketId) {
+            io.to(data.targetSocketId).emit('webrtc_ice_candidate', {
+                candidate: data.candidate,
+                senderSocketId: socket.id
+            });
+        }
     });
 
     socket.on('disconnect', () => {
@@ -4249,15 +4325,19 @@ app.post('/api/attendance/offline-sync', async (req, res) => {
                     status: computedStatus
                 };
 
+                // Resolve socketId for this student
+                const socketId = studentSocketMap.get(student.enrollmentNo) || null;
+
                 // Update in-memory live state
                 await liveTimerState.set(student.enrollmentNo, {
                     ...broadcastData,
+                    socketId,
                     lastSeen: Date.now()
                 });
 
-                // Emit to targeted class room only
+                // Emit to targeted class room only (include socketId for WebRTC P2P routing)
                 const room = `class:${semester}:${branch}`;
-                io.to(room).emit('timer_broadcast', broadcastData);
+                io.to(room).emit('timer_broadcast', { ...broadcastData, socketId });
             } catch (broadcastError) {
                 console.error(`❌ [OFFLINE-SYNC] Error broadcasting timer data:`, broadcastError);
             }
